@@ -1,0 +1,16 @@
+# Dependencias y logs
+node_modules/
+*.log
+npm-debug.log*
+
+# Sistema / editores
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# Env y secretos (nunca commitear credenciales)
+.env
+.env.*
+*.pem
+*.key
