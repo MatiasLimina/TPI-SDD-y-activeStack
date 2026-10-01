@@ -1,0 +1,167 @@
+{
+  "version": 4,
+  "step": "kb",
+  "owner": "active-orchestrator",
+  "discovery": {
+    "created_by": "discovery-research",
+    "sources": [
+      "https://bilog.com.ar/",
+      "https://www.clinia.com.ar/odontologia",
+      "https://www.dentalbox.app/",
+      "https://dentalcore.app/",
+      "https://www.softwaredentalink.com/?c=cl",
+      "https://web.dentaltec.com.ar/",
+      "https://www.dentidesk.com/",
+      "https://dentiqa.app/",
+      "https://www.doctocliq.com/",
+      "https://pro.doctoralia.com/ar/agenda-doctoralia-para-especialistas",
+      "https://miagendadental.com/",
+      "https://odonthia.com/",
+      "https://odontoapp.com.ar/",
+      "https://www.opendental.com/",
+      "https://hiorbita.com/",
+      "https://www.simplesdental.com/",
+      "https://smiledental.app/"
+    ],
+    "sources_fetched_at": "2026-10-01",
+    "report_file": "docs/discovery/informe-discovery.md",
+    "checklist_file": "docs/discovery/discovery.md",
+    "competitors": [
+      {
+        "name": "Bilog",
+        "notes_file": "docs/discovery/sources/bilog.md"
+      },
+      {
+        "name": "ClinIA (OdontoClinIA)",
+        "notes_file": "docs/discovery/sources/clinia.md"
+      },
+      {
+        "name": "DentalBox",
+        "notes_file": "docs/discovery/sources/dentalbox.md"
+      },
+      {
+        "name": "DentalCore",
+        "notes_file": "docs/discovery/sources/dentalcore.md"
+      },
+      {
+        "name": "Dentalink",
+        "notes_file": "docs/discovery/sources/dentalink.md"
+      },
+      {
+        "name": "DentalTec",
+        "notes_file": "docs/discovery/sources/dentaltec.md"
+      },
+      {
+        "name": "Dentidesk",
+        "notes_file": "docs/discovery/sources/dentidesk.md"
+      },
+      {
+        "name": "Dentiqa",
+        "notes_file": "docs/discovery/sources/dentiqa.md"
+      },
+      {
+        "name": "Doctocliq",
+        "notes_file": "docs/discovery/sources/doctocliq.md"
+      },
+      {
+        "name": "Doctoralia Pro (agenda para especialistas)",
+        "notes_file": "docs/discovery/sources/doctoralia-pro.md"
+      },
+      {
+        "name": "Mi Agenda Dental",
+        "notes_file": "docs/discovery/sources/mi-agenda-dental.md"
+      },
+      {
+        "name": "Odonthia",
+        "notes_file": "docs/discovery/sources/odonthia.md"
+      },
+      {
+        "name": "OdontoApp",
+        "notes_file": "docs/discovery/sources/odontoapp.md"
+      },
+      {
+        "name": "Open Dental",
+        "notes_file": "docs/discovery/sources/open-dental.md"
+      },
+      {
+        "name": "Órbita",
+        "notes_file": "docs/discovery/sources/orbita.md"
+      },
+      {
+        "name": "Simples Dental",
+        "notes_file": "docs/discovery/sources/simples-dental.md"
+      },
+      {
+        "name": "SMILE",
+        "notes_file": "docs/discovery/sources/smile.md"
+      }
+    ],
+    "problema": "Los consultorios odontológicos chicos de Argentina (1-5 profesionales, 1-4 sillones) llevan la agenda en papel, planillas o WhatsApp manual: turnos superpuestos entre profesionales y sillones, y ausentismo de pacientes que no avisan.",
+    "usuarios": [
+      "Recepcionista: da, reprograma y cancela turnos; configura profesionales, sillones, prestaciones y horarios",
+      "Odontólogo: consulta su agenda y bloquea horarios propios"
+    ],
+    "casos_de_uso": [
+      "Como recepcionista, quiero crear un turno con prestación, profesional y sillón sin solapamientos",
+      "Como recepcionista, quiero reprogramar un turno con la misma validación",
+      "Como recepcionista, quiero cancelar un turno y liberar el horario",
+      "Como odontólogo, quiero ver mi agenda diaria o semanal y bloquear franjas",
+      "Como sistema, quiero generar un recordatorio previo a cada turno para reducir el ausentismo"
+    ],
+    "funcionalidades_necesarias": [
+      "Agenda diaria/semanal multiprofesional y multisillón",
+      "Prestaciones con duración por defecto",
+      "Crear, reprogramar y cancelar turnos sin solapamientos",
+      "Horarios de atención y bloqueos",
+      "Registro básico de pacientes (datos ficticios)",
+      "Autenticación JWT con roles recepcionista y odontólogo",
+      "Recordatorio por abstracción de envío con adaptador mock"
+    ],
+    "funcionalidades_opcionales": [
+      "Enlace público de reserva y autogestión del paciente",
+      "WhatsApp Business API real",
+      "Lista de espera con oferta automática",
+      "Sobreturnos controlados",
+      "Seña por Mercado Pago",
+      "Ficha clínica, anamnesis y odontograma",
+      "Presupuestos, caja, facturación ARCA, obras sociales/prepagas",
+      "Panel de ausentismo y ocupación de sillones",
+      "Multisede"
+    ],
+    "reglas_de_negocio": [
+      "RN1: un profesional no puede tener dos turnos superpuestos",
+      "RN2: un sillón no puede tener dos turnos superpuestos",
+      "RN3: intervalos semiabiertos [inicio, fin); un turno que empieza cuando termina otro es válido",
+      "RN4: la duración por defecto es la de la prestación; la recepcionista puede ajustarla",
+      "RN5: no hay turnos fuera del horario del profesional ni dentro de un bloqueo",
+      "RN6: un turno cancelado libera el horario y no cuenta para solapamientos"
+    ],
+    "integraciones": [
+      "Puerto de notificación con adaptador mock (WhatsApp Business API a futuro)",
+      "Redis como cola de recordatorios asincrónicos"
+    ],
+    "restricciones": [
+      "Stack backend: Python, FastAPI, SQLAlchemy, PostgreSQL, Redis, JWT, Docker/Docker Compose",
+      "Stack frontend: React, TypeScript, Vite",
+      "Datos de salud (Ley 25.326 y 26.529): control de acceso por rol y auditoría de cambios en turnos",
+      "Solo datos ficticios en repo, ejemplos, tests y capturas",
+      "Sin secretos en el repo: variables de entorno y .env.example",
+      "Horarios en UTC, presentados en America/Argentina/Buenos_Aires"
+    ],
+    "riesgos": [
+      "Supuesto sin probar: que los recordatorios reduzcan el ausentismo",
+      "Datos de competidores desactualizados o mal citados (blogs de proveedores)",
+      "Reservas concurrentes: la no superposición requiere garantía a nivel de base de datos",
+      "Dependencia de acceso y costo de WhatsApp Business API",
+      "Crecimiento de alcance hacia un sistema clínico completo"
+    ],
+    "preguntas_abiertas": [
+      "¿Se permiten sobreturnos, con qué límite y quién los autoriza?",
+      "¿Con cuánta anticipación se envía el recordatorio?",
+      "¿Anticipación mínima para cancelar y tratamiento de cancelación tardía?",
+      "¿Un turno puede no requerir sillón?",
+      "Ítems 'No evidenciado' del informe: precios en pesos, ARCA, WhatsApp API oficial vs QR, duración por prestación en competidores",
+      "Verificación de centros de ayuda (pendiente; 9 fuentes verificadas, incluidos los canales oficiales de YouTube de DentalTec y Bilog)"
+    ]
+  }
+}
