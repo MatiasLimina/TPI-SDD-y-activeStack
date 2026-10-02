@@ -1,6 +1,6 @@
 {
   "version": 4,
-  "step": "find-skill",
+  "step": "done",
   "owner": "active-orchestrator",
   "discovery": {
     "created_by": "discovery-research",
@@ -209,6 +209,159 @@
       "C-14",
       "C-15",
       "C-16"
+    ]
+  },
+  "skills": {
+    "recommended": [
+      {
+        "name": "fastapi-python",
+        "source": "mindrally/skills",
+        "installs": 13400,
+        "why": "FastAPI + Python patterns (routers, deps, Pydantic, async)",
+        "install": "npx skills add mindrally/skills --skill fastapi-python -g"
+      },
+      {
+        "name": "python-testing-patterns",
+        "source": "wshobson/agents",
+        "installs": 34200,
+        "why": "pytest fixtures, parametrize, mocking for strict TDD",
+        "install": "npx skills add wshobson/agents --skill python-testing-patterns -g"
+      },
+      {
+        "name": "tdd",
+        "source": "mattpocock/skills",
+        "installs": 1000000,
+        "why": "Red-green-refactor workflow, reinforces strict TDD",
+        "install": "npx skills add mattpocock/skills --skill tdd -g"
+      },
+      {
+        "name": "supabase-postgres-best-practices",
+        "source": "supabase/agent-skills",
+        "installs": 426500,
+        "why": "PostgreSQL indexing, constraints, schema/query best practices",
+        "install": "npx skills add supabase/agent-skills --skill supabase-postgres-best-practices -g"
+      },
+      {
+        "name": "sqlalchemy-alembic-expert-best-practices-code-review",
+        "source": "wispbit-ai/skills",
+        "installs": 1800,
+        "why": "SQLAlchemy models/sessions and Alembic migrations review",
+        "install": "npx skills add wispbit-ai/skills --skill sqlalchemy-alembic-expert-best-practices-code-review -g"
+      },
+      {
+        "name": "auth-implementation-patterns",
+        "source": "wshobson/agents",
+        "installs": 17000,
+        "why": "JWT/auth flows, token handling patterns",
+        "install": "npx skills add wshobson/agents --skill auth-implementation-patterns -g"
+      },
+      {
+        "name": "docker-patterns",
+        "source": "affaan-m/ecc",
+        "installs": 12600,
+        "why": "Dockerfile and Compose patterns for API+Postgres+Redis",
+        "install": "npx skills add affaan-m/ecc --skill docker-patterns -g"
+      },
+      {
+        "name": "async-python-patterns",
+        "source": "wshobson/agents",
+        "installs": 17100,
+        "why": "Async Python/asyncio patterns for async FastAPI/SQLAlchemy",
+        "install": "npx skills add wshobson/agents --skill async-python-patterns -g"
+      }
+    ],
+    "installed": [
+      "tdd",
+      "python-testing-patterns",
+      "fastapi-python",
+      "supabase-postgres-best-practices",
+      "auth-implementation-patterns"
+    ],
+    "decisions": [
+      {
+        "name": "tdd",
+        "source": "mattpocock/skills",
+        "installed": true,
+        "reason": "Instalada: el ciclo OPSX se implementa con TDD estricto y refuerza la disciplina red-green-refactor."
+      },
+      {
+        "name": "python-testing-patterns",
+        "source": "wshobson/agents",
+        "installed": true,
+        "reason": "Instalada: los tests por escenario del spec se escriben con pytest (fixtures, parametrize)."
+      },
+      {
+        "name": "fastapi-python",
+        "source": "mindrally/skills",
+        "installed": true,
+        "reason": "Instalada: la API del change C-03 (POST /turnos) se construye con FastAPI."
+      },
+      {
+        "name": "supabase-postgres-best-practices",
+        "source": "supabase/agent-skills",
+        "installed": true,
+        "reason": "Instalada: la garantía de no solapamiento vive en constraints de PostgreSQL; es la más adoptada (426K) y no depende de Supabase."
+      },
+      {
+        "name": "sqlalchemy-alembic-expert-best-practices-code-review",
+        "source": "wispbit-ai/skills",
+        "installed": false,
+        "reason": "No instalada: muy pocas instalaciones (1.8K) para una fuente desconocida; SQLAlchemy/Alembic se cubren con la documentación oficial."
+      },
+      {
+        "name": "auth-implementation-patterns",
+        "source": "wshobson/agents",
+        "installed": true,
+        "reason": "Instalada: el MVP incluye JWT con dos roles (C-06) y datos de salud que exigen control de acceso."
+      },
+      {
+        "name": "docker-patterns",
+        "source": "affaan-m/ecc",
+        "installed": false,
+        "reason": "No instalada: el Docker Compose del proyecto es simple (API + Postgres + Redis) y no justifica una skill."
+      },
+      {
+        "name": "async-python-patterns",
+        "source": "wshobson/agents",
+        "installed": false,
+        "reason": "No instalada: no está decidido que FastAPI y SQLAlchemy corran en modo async; se reevalúa si se adopta."
+      }
+    ]
+  },
+  "registry": {
+    "created_by": "skill-registry",
+    "path": ".atl/skill-registry.md",
+    "skills": [
+      "tdd",
+      "python-testing-patterns",
+      "fastapi-python",
+      "supabase-postgres-best-practices",
+      "auth-implementation-patterns"
+    ],
+    "conventions": [
+      "knowledge-base/README.md",
+      "CHANGES.md",
+      "openspec/config.yaml"
+    ],
+    "generated_at": "2026-10-02"
+  },
+  "agents": {
+    "created_by": "agent-instruction",
+    "files": [
+      "AGENTS.md",
+      "CLAUDE.md"
+    ],
+    "reglas_applied": [
+      "datos-ficticios",
+      "sin-secretos",
+      "solapamiento-en-bd",
+      "fechas-utc",
+      "recordatorios-sin-datos-clinicos",
+      "type-hints-ruff",
+      "tests-postgres-real",
+      "commit-solo-si-se-pide",
+      "conventional-commits",
+      "el-spec-manda"
     ]
   }
 }
