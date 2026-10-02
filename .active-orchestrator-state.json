@@ -1,6 +1,6 @@
 {
   "version": 4,
-  "step": "kb",
+  "step": "roadmap",
   "owner": "active-orchestrator",
   "discovery": {
     "created_by": "discovery-research",
@@ -162,6 +162,31 @@
       "¿Un turno puede no requerir sillón?",
       "Ítems 'No evidenciado' del informe: precios en pesos, ARCA, WhatsApp API oficial vs QR, duración por prestación en competidores",
       "Verificación de centros de ayuda (pendiente; 9 fuentes verificadas, incluidos los canales oficiales de YouTube de DentalTec y Bilog)"
+    ]
+  },
+  "kb": {
+    "created_by": "kb-creator",
+    "source": "ingest",
+    "discovery": {
+      "problem": "Los consultorios odontológicos chicos de Argentina (1-5 profesionales, 1-4 sillones) llevan la agenda en papel, planillas o WhatsApp manual: turnos superpuestos entre profesionales y sillones, y ausentismo de pacientes que no avisan.",
+      "system_type": "web_app",
+      "domain": "dental_scheduling (agenda de turnos para consultorios odontologicos)",
+      "scale": "team (1-5 profesionales, 1-4 sillones, un consultorio por despliegue)",
+      "stack": "Python + FastAPI + SQLAlchemy + PostgreSQL + Redis + JWT + Docker Compose; React + TypeScript + Vite",
+      "needs_infra": true
+    },
+    "files": [
+      "knowledge-base/01_vision_y_objetivos.md",
+      "knowledge-base/02_descripcion_general.md",
+      "knowledge-base/03_actores_y_roles.md",
+      "knowledge-base/04_modelo_de_datos.md",
+      "knowledge-base/05_reglas_de_negocio.md",
+      "knowledge-base/06_funcionalidades.md",
+      "knowledge-base/07_flujos_principales.md",
+      "knowledge-base/08_arquitectura_propuesta.md",
+      "knowledge-base/09_decisiones_y_supuestos.md",
+      "knowledge-base/10_preguntas_abiertas.md",
+      "knowledge-base/README.md"
     ]
   }
 }
