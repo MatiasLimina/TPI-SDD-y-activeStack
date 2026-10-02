@@ -1,6 +1,6 @@
 {
   "version": 4,
-  "step": "roadmap",
+  "step": "find-skill",
   "owner": "active-orchestrator",
   "discovery": {
     "created_by": "discovery-research",
@@ -187,6 +187,28 @@
       "knowledge-base/09_decisiones_y_supuestos.md",
       "knowledge-base/10_preguntas_abiertas.md",
       "knowledge-base/README.md"
+    ]
+  },
+  "roadmap": {
+    "created_by": "roadmap-generator",
+    "source": "CHANGES.md",
+    "changes": [
+      "C-01",
+      "C-02",
+      "C-03",
+      "C-04",
+      "C-05",
+      "C-06",
+      "C-07",
+      "C-08",
+      "C-09",
+      "C-10",
+      "C-11",
+      "C-12",
+      "C-13",
+      "C-14",
+      "C-15",
+      "C-16"
     ]
   }
 }
