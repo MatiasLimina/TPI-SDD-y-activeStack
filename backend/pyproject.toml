@@ -40,3 +40,7 @@ addopts = "--strict-markers"
 markers = [
     "integration: tests que requieren PostgreSQL real (docker compose up -d db)",
 ]
+
+[tool.ruff.lint.isort]
+# el directorio backend/alembic/ no debe confundirse con el paquete alembic
+known-third-party = ["alembic"]
