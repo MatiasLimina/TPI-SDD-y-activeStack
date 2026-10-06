@@ -42,5 +42,5 @@
 
 ## 7. README y verificación de punta a punta
 
-- [ ] 7.1 Agregar sección "Cómo correr el backend y los tests" al `README.md` (requisitos: Docker + Python 3.13; `cp .env.example .env`; `docker compose up -d db`; crear venv con `python -m venv .venv` y activación en Windows/Linux; `pip install -e ".[dev]"`; `alembic upgrade head`; `pytest`, `pytest -m "not integration"`; `ruff`; nota sobre `POSTGRES_PORT` ocupado; reemplazar "Tests: Pendiente"); verificar siguiendo el README literalmente desde un clon limpio
-- [ ] 7.2 Verificación integral: `docker compose up -d db` + `pytest` completo en verde, `ruff format --check . && ruff check .` limpio y `docker compose up -d api` + `curl http://localhost:8000/health` devuelve `{"status":"ok","database":"ok"}`
+- [x] 7.1 Agregar sección "Cómo correr el backend y los tests" al `README.md` (requisitos: Docker + Python 3.13; `cp .env.example .env`; `docker compose up -d db`; crear venv con `python -m venv .venv` y activación en Windows/Linux; `pip install -e ".[dev]"`; `alembic upgrade head`; `pytest`, `pytest -m "not integration"`; `ruff`; nota sobre `POSTGRES_PORT` ocupado; reemplazar "Tests: Pendiente"); verificar siguiendo el README literalmente desde un clon limpio
+- [x] 7.2 Verificación integral: `docker compose up -d db` + `pytest` completo en verde, `ruff format --check . && ruff check .` limpio y `docker compose up -d api` + `curl http://localhost:8000/health` devuelve `{"status":"ok","database":"ok"}`
