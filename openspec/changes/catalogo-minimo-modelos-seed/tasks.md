@@ -24,11 +24,11 @@
 
 ## 4. Seed de desarrollo (spec `datos-semilla`)
 
-- [ ] 4.1 RED: `tests/integration/test_seed.py` — seed sobre base vacía deja 2 profesionales, 2 sillones, 4 prestaciones, 4 pacientes, todos activos; verificar que falla por ausencia de `seed_catalogo`
-- [ ] 4.2 GREEN: implementar `seed_catalogo(session: Session) -> None` en `backend/app/infrastructure/db/seed.py` con ids uuid fijos y `INSERT ... ON CONFLICT DO NOTHING`, datos 100 % ficticios; verificar que 4.1 pasa
-- [ ] 4.3 RED→GREEN (triangular): test de las prestaciones sembradas (Consulta 30/sin sillón, Control 20/sin sillón, Limpieza 45/con sillón, Conservadora 60/con sillón); verificar en verde
-- [ ] 4.4 RED→GREEN: tests de idempotencia — doble ejecución sin error y mismas cantidades; ids estables entre ejecuciones; un sillón sembrado marcado inactivo no se revierte al re-ejecutar; verificar en verde
-- [ ] 4.5 RED→GREEN: test de datos ficticios — todo email de paciente sembrado termina en `@example.com`; revisar a mano que no haya datos reales ni credenciales en el módulo; verificar en verde
+- [x] 4.1 RED: `tests/integration/test_seed.py` — seed sobre base vacía deja 2 profesionales, 2 sillones, 4 prestaciones, 4 pacientes, todos activos; verificar que falla por ausencia de `seed_catalogo`
+- [x] 4.2 GREEN: implementar `seed_catalogo(session: Session) -> None` en `backend/app/infrastructure/db/seed.py` con ids uuid fijos y `INSERT ... ON CONFLICT DO NOTHING`, datos 100 % ficticios; verificar que 4.1 pasa
+- [x] 4.3 RED→GREEN (triangular): test de las prestaciones sembradas (Consulta 30/sin sillón, Control 20/sin sillón, Limpieza 45/con sillón, Conservadora 60/con sillón); verificar en verde
+- [x] 4.4 RED→GREEN: tests de idempotencia — doble ejecución sin error y mismas cantidades; ids estables entre ejecuciones; un sillón sembrado marcado inactivo no se revierte al re-ejecutar; verificar en verde
+- [x] 4.5 RED→GREEN: test de datos ficticios — todo email de paciente sembrado termina en `@example.com`; revisar a mano que no haya datos reales ni credenciales en el módulo; verificar en verde
 - [ ] 4.6 Agregar `main()` ejecutable (`python -m app.infrastructure.db.seed`, sesión desde Settings, commit) y verificar ejecutándolo dos veces contra la BD de desarrollo de Docker Compose sin error
 - [ ] 4.7 Documentar en el README cómo correr el seed (después de `alembic upgrade head`) y verificar que el comando documentado funciona tal cual
 
