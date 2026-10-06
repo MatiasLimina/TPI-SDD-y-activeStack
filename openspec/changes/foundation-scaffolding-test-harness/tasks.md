@@ -36,9 +36,9 @@
 
 ## 6. Health check (service-health)
 
-- [ ] 6.1 RED: escribir `tests/integration/test_health.py` (200 `{"status":"ok","database":"ok"}`; 503 `{"status":"degraded","database":"unavailable"}` sobreescribiendo la dependencia con un engine a `127.0.0.1:1` y `connect_timeout` bajo, asegurando que el cuerpo no contenga la URL; `GET /turnos` → 404); verificar que falla
-- [ ] 6.2 GREEN: implementar `app/infrastructure/db/health.py` (`check_database`), `app/api/health.py` (router) y `app/main.py` (`create_app()` con `lifespan`, incluye router); verificar `pytest -m integration tests/integration/test_health.py` en verde
-- [ ] 6.3 REFACTOR: schema Pydantic de respuesta `HealthResponse`; verificar tests verdes y ruff limpio
+- [x] 6.1 RED: escribir `tests/integration/test_health.py` (200 `{"status":"ok","database":"ok"}`; 503 `{"status":"degraded","database":"unavailable"}` sobreescribiendo la dependencia con un engine a `127.0.0.1:1` y `connect_timeout` bajo, asegurando que el cuerpo no contenga la URL; `GET /turnos` → 404); verificar que falla
+- [x] 6.2 GREEN: implementar `app/infrastructure/db/health.py` (`check_database`), `app/api/health.py` (router) y `app/main.py` (`create_app()` con `lifespan`, incluye router); verificar `pytest -m integration tests/integration/test_health.py` en verde
+- [x] 6.3 REFACTOR: schema Pydantic de respuesta `HealthResponse`; verificar tests verdes y ruff limpio
 
 ## 7. README y verificación de punta a punta
 

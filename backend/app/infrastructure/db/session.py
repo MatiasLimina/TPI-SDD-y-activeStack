@@ -19,3 +19,10 @@ def get_session() -> Iterator[Session]:
     factory = sessionmaker(bind=get_engine(), expire_on_commit=False)
     with factory() as session:
         yield session
+
+
+def dispose_engine() -> None:
+    """Cierra el pool si el engine fue creado (se llama al apagar la app)."""
+    if get_engine.cache_info().currsize:
+        get_engine().dispose()
+        get_engine.cache_clear()
