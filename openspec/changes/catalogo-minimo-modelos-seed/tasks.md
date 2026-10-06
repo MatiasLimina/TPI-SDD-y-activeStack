@@ -34,4 +34,4 @@
 
 ## 5. Cierre
 
-- [ ] 5.1 Verificar suite completa: `pytest` en verde (C-01 + C-02), `ruff format --check` y `ruff check` sin errores, y `openspec validate catalogo-minimo-modelos-seed` sin errores
+- [x] 5.1 Verificar suite completa: `pytest` en verde (C-01 + C-02), `ruff format --check` y `ruff check` sin errores, y `openspec validate catalogo-minimo-modelos-seed` sin errores
