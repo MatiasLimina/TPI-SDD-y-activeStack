@@ -4,9 +4,9 @@
 
 ## 1. Scaffolding y dependencias
 
-- [ ] 1.1 Crear `backend/app/__init__.py` con los paquetes `domain/`, `application/`, `infrastructure/db/`, `api/` (con `__init__.py`) y `backend/tests/{unit,integration}/`; verificar con `ls -R backend` que la estructura coincide con KB 08 §Estructura de directorios
-- [ ] 1.2 Crear `backend/pyproject.toml` (deps: fastapi, uvicorn, pydantic-settings, sqlalchemy>=2, alembic, psycopg[binary], tzdata; dev: pytest, httpx, ruff; config de ruff py313 y de pytest con marker `integration` y `--strict-markers`); verificar con `python -m venv .venv && pip install -e ".[dev]"` y `pytest --markers` mostrando `integration`
-- [ ] 1.3 Actualizar `.gitignore` (agregar `!.env.example`, `.venv/`, `__pycache__/`, `.pytest_cache/`, `.ruff_cache/`); verificar con `git check-ignore .env` (ignorado) y `git check-ignore .env.example` (no ignorado)
+- [x] 1.1 Crear `backend/app/__init__.py` con los paquetes `domain/`, `application/`, `infrastructure/db/`, `api/` (con `__init__.py`) y `backend/tests/{unit,integration}/`; verificar con `ls -R backend` que la estructura coincide con KB 08 §Estructura de directorios
+- [x] 1.2 Crear `backend/pyproject.toml` (deps: fastapi, uvicorn, pydantic-settings, sqlalchemy>=2, alembic, psycopg[binary], tzdata; dev: pytest, httpx, ruff; config de ruff py313 y de pytest con marker `integration` y `--strict-markers`); verificar con `python -m venv .venv && pip install -e ".[dev]"` y `pytest --markers` mostrando `integration`
+- [x] 1.3 Actualizar `.gitignore` (agregar `!.env.example`, `.venv/`, `__pycache__/`, `.pytest_cache/`, `.ruff_cache/`); verificar con `git check-ignore .env` (ignorado) y `git check-ignore .env.example` (no ignorado)
 
 ## 2. Utilidad de tiempo (datetime-handling)
 
