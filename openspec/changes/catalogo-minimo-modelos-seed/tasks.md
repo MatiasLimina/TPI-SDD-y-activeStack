@@ -4,8 +4,8 @@
 
 ## 1. Preparación
 
-- [ ] 1.1 Verificar que C-01 está aplicado (`alembic upgrade head` llega a la 001 y `pytest -m integration` está verde) y registrar el baseline de tests pasando; anotar el revision id real de la 001 y la ubicación de `Base`/fixtures
-- [ ] 1.2 Asegurar `MetaData(naming_convention=...)` en la `Base` declarativa (reutilizar la de C-01 si existe) y verificar con un test que un constraint de prueba recibe nombre determinista o, si ya existe, que los tests de C-01 siguen verdes
+- [x] 1.1 Verificar que C-01 está aplicado (`alembic upgrade head` llega a la 001 y `pytest -m integration` está verde) y registrar el baseline de tests pasando; anotar el revision id real de la 001 y la ubicación de `Base`/fixtures
+- [x] 1.2 Asegurar `MetaData(naming_convention=...)` en la `Base` declarativa (reutilizar la de C-01 si existe) y verificar con un test que un constraint de prueba recibe nombre determinista o, si ya existe, que los tests de C-01 siguen verdes
 
 ## 2. Migración 002 y modelos ORM
 
