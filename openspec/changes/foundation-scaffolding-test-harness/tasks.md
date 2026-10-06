@@ -16,8 +16,8 @@
 
 ## 3. Configuración (app-configuration)
 
-- [ ] 3.1 RED: escribir `tests/unit/test_config.py` (valores del entorno vía `monkeypatch`, defaults `APP_TIMEZONE`/`JWT_EXPIRE_MINUTES`, falta `DATABASE_URL` → error que la menciona, `APP_TIMEZONE=Mars/Olympus` → error); verificar que falla
-- [ ] 3.2 GREEN: implementar `app/config.py` (`Settings` con pydantic-settings, validador de zona, `get_settings()` cacheado); verificar `pytest tests/unit/test_config.py` en verde
+- [x] 3.1 RED: escribir `tests/unit/test_config.py` (valores del entorno vía `monkeypatch`, defaults `APP_TIMEZONE`/`JWT_EXPIRE_MINUTES`, falta `DATABASE_URL` → error que la menciona, `APP_TIMEZONE=Mars/Olympus` → error); verificar que falla
+- [x] 3.2 GREEN: implementar `app/config.py` (`Settings` con pydantic-settings, validador de zona, `get_settings()` cacheado); verificar `pytest tests/unit/test_config.py` en verde
 - [ ] 3.3 Crear `.env.example` en la raíz con todas las variables (incluyendo `TEST_DATABASE_URL`, `POSTGRES_USER/PASSWORD/DB/PORT`) y placeholders ficticios (`JWT_SECRET=change-me`); verificar con un test unitario `tests/unit/test_env_example.py` que parsea el archivo y comprueba que contiene cada campo de `Settings` y que `JWT_SECRET` es placeholder
 
 ## 4. Infraestructura local (Docker Compose)
