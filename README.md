@@ -37,6 +37,10 @@ pip install -e ".[dev]"
 # 4. Migraciones
 alembic upgrade head
 
+# 4b. (opcional, solo desarrollo) Datos ficticios: 2 profesionales, 2 sillones, 4 prestaciones, 4 pacientes.
+# Idempotente: se puede correr varias veces sin duplicar ni pisar cambios.
+python -m app.infrastructure.db.seed
+
 # 5. Tests y lint
 pytest                             # todo (requiere la base levantada)
 pytest -m "not integration"        # solo unitarios, sin Docker
