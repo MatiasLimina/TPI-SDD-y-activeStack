@@ -31,7 +31,7 @@ docker compose up -d db
 cd backend
 python -m venv .venv
 source .venv/bin/activate          # Linux/macOS
-# .venvScriptsctivate          # Windows (cmd/PowerShell)
+# .venv\Scriptsctivate          # Windows (cmd/PowerShell)
 pip install -e ".[dev]"
 
 # 4. Migraciones
