@@ -22,9 +22,9 @@
 
 ## 4. Infraestructura local (Docker Compose)
 
-- [ ] 4.1 Crear `docker-compose.yml` con `db` (postgres:16, healthcheck `pg_isready`, volumen, puerto `${POSTGRES_PORT:-5432}`), `redis` (redis:7) y `api` (build `backend/`, depende de `db` healthy); verificar con `docker compose config` sin errores
-- [ ] 4.2 Crear `docker/postgres/init/01-create-test-db.sql` que crea la BD `turnos_test`; verificar con `docker compose up -d db` y `docker compose exec db psql -U <user> -lqt` listando `turnos` y `turnos_test`
-- [ ] 4.3 Crear `backend/Dockerfile` (python:3.13-slim, `pip install .`, `uvicorn app.main:app --host 0.0.0.0`); verificar con `docker compose build api` exitoso
+- [x] 4.1 Crear `docker-compose.yml` con `db` (postgres:16, healthcheck `pg_isready`, volumen, puerto `${POSTGRES_PORT:-5432}`), `redis` (redis:7) y `api` (build `backend/`, depende de `db` healthy); verificar con `docker compose config` sin errores
+- [x] 4.2 Crear `docker/postgres/init/01-create-test-db.sql` que crea la BD `turnos_test`; verificar con `docker compose up -d db` y `docker compose exec db psql -U <user> -lqt` listando `turnos` y `turnos_test`
+- [x] 4.3 Crear `backend/Dockerfile` (python:3.13-slim, `pip install .`, `uvicorn app.main:app --host 0.0.0.0`); verificar con `docker compose build api` exitoso
 
 ## 5. Base de datos y harness (database-baseline)
 
