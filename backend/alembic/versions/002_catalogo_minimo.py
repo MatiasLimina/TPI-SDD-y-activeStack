@@ -73,7 +73,7 @@ def upgrade() -> None:
         sa.Column("requiere_sillon", sa.Boolean(), server_default=sa.text("true"), nullable=False),
         _activo("activa"),
         *_timestamps(),
-        sa.CheckConstraint("duracion_min > 0", name="duracion_min_positiva"),
+        sa.CheckConstraint("duracion_min > 0", name=op.f("ck_prestacion_duracion_min_positiva")),
         sa.PrimaryKeyConstraint("id", name=op.f("pk_prestacion")),
         sa.UniqueConstraint("nombre", name=op.f("uq_prestacion_nombre")),
     )

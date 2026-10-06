@@ -15,12 +15,12 @@
 
 ## 3. Integridad del catálogo (spec `catalogo-consultorio`)
 
-- [ ] 3.1 RED→GREEN: tests de duración — 45 aceptada; 0 y -15 rechazadas con `IntegrityError` del CHECK `ck_prestacion_duracion_min_positiva`; verificar `pytest tests/integration/test_catalogo_constraints.py -k duracion` en verde
-- [ ] 3.2 RED→GREEN: tests de `requiere_sillon` — default `true` sin informar, `false` explícito persiste; verificar en verde
-- [ ] 3.3 RED→GREEN: test de actividad por defecto en las cuatro tablas (insert sin `activo`/`activa` → `true`); verificar en verde
-- [ ] 3.4 RED→GREEN: tests de unicidad — sillón duplicado y documento duplicado rechazados; dos profesionales sin matrícula aceptados (usar savepoints para los casos de error); verificar en verde
-- [ ] 3.5 RED→GREEN: tests de obligatoriedad — paciente sin documento rechazado por NOT NULL; paciente sin email aceptado; verificar en verde
-- [ ] 3.6 RED→GREEN: test de marcas de tiempo — `creado_en`/`actualizado_en` completados por la BD y con zona horaria (`tzinfo` no nulo); verificar en verde
+- [x] 3.1 RED→GREEN: tests de duración — 45 aceptada; 0 y -15 rechazadas con `IntegrityError` del CHECK `ck_prestacion_duracion_min_positiva`; verificar `pytest tests/integration/test_catalogo_constraints.py -k duracion` en verde
+- [x] 3.2 RED→GREEN: tests de `requiere_sillon` — default `true` sin informar, `false` explícito persiste; verificar en verde
+- [x] 3.3 RED→GREEN: test de actividad por defecto en las cuatro tablas (insert sin `activo`/`activa` → `true`); verificar en verde
+- [x] 3.4 RED→GREEN: tests de unicidad — sillón duplicado y documento duplicado rechazados; dos profesionales sin matrícula aceptados (usar savepoints para los casos de error); verificar en verde
+- [x] 3.5 RED→GREEN: tests de obligatoriedad — paciente sin documento rechazado por NOT NULL; paciente sin email aceptado; verificar en verde
+- [x] 3.6 RED→GREEN: test de marcas de tiempo — `creado_en`/`actualizado_en` completados por la BD y con zona horaria (`tzinfo` no nulo); verificar en verde
 
 ## 4. Seed de desarrollo (spec `datos-semilla`)
 
