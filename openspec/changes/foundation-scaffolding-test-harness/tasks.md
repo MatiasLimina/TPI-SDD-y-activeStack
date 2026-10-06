@@ -10,9 +10,9 @@
 
 ## 2. Utilidad de tiempo (datetime-handling)
 
-- [ ] 2.1 RED: escribir `tests/unit/test_time.py` con los escenarios del spec (BA→UTC, UTC→UTC, UTC→BA, cambio de día, naive al normalizar, naive al presentar); verificar que `pytest tests/unit/test_time.py` falla por import inexistente
-- [ ] 2.2 GREEN: implementar `app/domain/time.py` (`to_utc`, `to_local`, `NaiveDatetimeError`) usando `zoneinfo`; verificar `pytest tests/unit/test_time.py` en verde
-- [ ] 2.3 REFACTOR: constante `DEFAULT_TIMEZONE`, type hints completos; verificar tests verdes y ruff limpio
+- [x] 2.1 RED: escribir `tests/unit/test_time.py` con los escenarios del spec (BA→UTC, UTC→UTC, UTC→BA, cambio de día, naive al normalizar, naive al presentar); verificar que `pytest tests/unit/test_time.py` falla por import inexistente
+- [x] 2.2 GREEN: implementar `app/domain/time.py` (`to_utc`, `to_local`, `NaiveDatetimeError`) usando `zoneinfo`; verificar `pytest tests/unit/test_time.py` en verde
+- [x] 2.3 REFACTOR: constante `DEFAULT_TIMEZONE`, type hints completos; verificar tests verdes y ruff limpio
 
 ## 3. Configuración (app-configuration)
 
