@@ -127,7 +127,7 @@ C-04, C-07, C-09 y C-12 son obligatorios para el MVP pero cuelgan del camino cr�
   - `knowledge-base/01_vision_y_objetivos.md`
 
 ### [C-02] `catalogo-minimo-modelos-seed`
-- **Estado**: `[ ]` pendiente
+- **Estado**: `[x]` completado
 - **Scope** (change pequeño; sin endpoints):
   - Modelos SQLAlchemy: `Profesional`, `Sillon`, `Prestacion` (`duracion_min > 0`, `requiere_sillon` default true), `Paciente`
   - Migración 002 con las cuatro tablas
