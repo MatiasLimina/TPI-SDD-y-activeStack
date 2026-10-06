@@ -28,8 +28,8 @@
 
 ## 5. Base de datos y harness (database-baseline)
 
-- [ ] 5.1 Implementar `app/infrastructure/db/session.py` (engine síncrono psycopg, `sessionmaker`, `get_session()` generador para `Depends`); verificar ruff limpio (se ejercita en 5.3)
-- [ ] 5.2 Inicializar Alembic en `backend/` (`alembic.ini`, `alembic/env.py` que toma la URL de `Settings` u override `-x db_url`); verificar `alembic current` contra la BD de dev sin error
+- [x] 5.1 Implementar `app/infrastructure/db/session.py` (engine síncrono psycopg, `sessionmaker`, `get_session()` generador para `Depends`); verificar ruff limpio (se ejercita en 5.3)
+- [x] 5.2 Inicializar Alembic en `backend/` (`alembic.ini`, `alembic/env.py` que toma la URL de `Settings` u override `-x db_url`); verificar `alembic current` contra la BD de dev sin error
 - [ ] 5.3 RED: escribir `tests/conftest.py` (fixtures `engine` session-scope que corre `alembic upgrade head` sobre `TEST_DATABASE_URL` y falla con mensaje claro si la BD no responde; `db_session` con savepoint + rollback) y `tests/integration/test_database.py` (SELECT 1 + `version()` contiene PostgreSQL; `btree_gist` en `pg_extension`; aislamiento: test A inserta en una tabla creada por el test, test B no la ve); verificar que el test de `btree_gist` falla sin la migración
 - [ ] 5.4 GREEN: crear migración `alembic/versions/001_enable_btree_gist.py` (revision `"001"`, upgrade `CREATE EXTENSION IF NOT EXISTS btree_gist`, downgrade `DROP EXTENSION IF EXISTS btree_gist`); verificar `pytest -m integration tests/integration/test_database.py` en verde
 - [ ] 5.5 Agregar test de integración de migraciones (upgrade→`current` = `001`, upgrade repetido sin cambios, downgrade base elimina `btree_gist`, re-upgrade); verificar en verde
