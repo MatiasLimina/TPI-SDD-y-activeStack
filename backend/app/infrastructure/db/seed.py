@@ -11,6 +11,7 @@ from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.orm import Session
 
 from app.infrastructure.db.models import Paciente, Prestacion, Profesional, Sillon
+from app.infrastructure.db.session import get_engine
 
 Registro = dict[str, Any]
 
@@ -106,3 +107,14 @@ def seed_catalogo(session: Session) -> None:
         (Paciente, PACIENTES),
     ):
         session.execute(insert(modelo).values(registros).on_conflict_do_nothing())
+
+
+def main() -> None:
+    """Punto de entrada: python -m app.infrastructure.db.seed (tras alembic upgrade head)."""
+    with Session(get_engine()) as session:
+        seed_catalogo(session)
+        session.commit()
+
+
+if __name__ == "__main__":
+    main()
