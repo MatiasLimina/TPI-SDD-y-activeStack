@@ -7,15 +7,16 @@ from pathlib import Path
 import pytest
 from alembic import command
 from alembic.config import Config
-from app.main import create_app
 from dotenv import dotenv_values
 from fastapi.testclient import TestClient
 from sqlalchemy import Engine, create_engine, text
+from sqlalchemy.engine import make_url
 from sqlalchemy.exc import OperationalError
 from sqlalchemy.orm import Session
 
 from app.config import REPO_ROOT
 from app.infrastructure.db.session import get_session
+from app.main import create_app
 
 BACKEND_DIR = Path(__file__).resolve().parents[1]
 DB_HINT = "Levantá la base de test con: docker compose up -d db (y copiá .env.example a .env)."
@@ -79,3 +80,19 @@ def client(db_session: Session) -> Iterator[TestClient]:
     app.dependency_overrides[get_session] = lambda: db_session
     with TestClient(app) as test_client:
         yield test_client
+
+
+SCRATCH_DB = "turnos_migrations_scratch"
+
+
+@pytest.fixture
+def scratch_url(engine: Engine) -> Iterator[str]:
+    """Base vacia y descartable, para no interferir con la base de test compartida."""
+    admin = engine.execution_options(isolation_level="AUTOCOMMIT")
+    with admin.connect() as connection:
+        connection.execute(text(f"DROP DATABASE IF EXISTS {SCRATCH_DB}"))
+        connection.execute(text(f"CREATE DATABASE {SCRATCH_DB}"))
+    url = make_url(engine.url.render_as_string(hide_password=False)).set(database=SCRATCH_DB)
+    yield url.render_as_string(hide_password=False)
+    with admin.connect() as connection:
+        connection.execute(text(f"DROP DATABASE IF EXISTS {SCRATCH_DB}"))

@@ -10,7 +10,10 @@ config = context.config
 if config.config_file_name is not None:
     fileConfig(config.config_file_name, disable_existing_loggers=False)
 
-target_metadata = None
+import app.infrastructure.db.models  # noqa: E402,F401  registra las tablas en Base.metadata
+from app.infrastructure.db.base import Base  # noqa: E402
+
+target_metadata = Base.metadata
 
 
 def get_url() -> str:

@@ -9,9 +9,9 @@
 
 ## 2. Migración 002 y modelos ORM
 
-- [ ] 2.1 RED: `tests/integration/test_migracion_002.py` — tras `upgrade head` existen las tablas `profesional`, `sillon`, `prestacion`, `paciente` con sus columnas, y `downgrade` a 001 las elimina; verificar que falla
-- [ ] 2.2 GREEN: escribir `backend/alembic/versions/002_catalogo_minimo.py` (uuid PK `gen_random_uuid()`, NOT NULL, UNIQUE, CHECK `duracion_min > 0`, defaults en BD, `timestamptz` con `now()`) y verificar que 2.1 pasa
-- [ ] 2.3 Crear los modelos SQLAlchemy 2.0 en `backend/app/infrastructure/db/models/` (type hints completos, `server_default`, re-export en `__init__.py`, incluidos en `target_metadata`) y verificar con un test que el autogenerate de Alembic contra la BD migrada no detecta diferencias
+- [x] 2.1 RED: `tests/integration/test_migracion_002.py` — tras `upgrade head` existen las tablas `profesional`, `sillon`, `prestacion`, `paciente` con sus columnas, y `downgrade` a 001 las elimina; verificar que falla
+- [x] 2.2 GREEN: escribir `backend/alembic/versions/002_catalogo_minimo.py` (uuid PK `gen_random_uuid()`, NOT NULL, UNIQUE, CHECK `duracion_min > 0`, defaults en BD, `timestamptz` con `now()`) y verificar que 2.1 pasa
+- [x] 2.3 Crear los modelos SQLAlchemy 2.0 en `backend/app/infrastructure/db/models/` (type hints completos, `server_default`, re-export en `__init__.py`, incluidos en `target_metadata`) y verificar con un test que el autogenerate de Alembic contra la BD migrada no detecta diferencias
 
 ## 3. Integridad del catálogo (spec `catalogo-consultorio`)
 
