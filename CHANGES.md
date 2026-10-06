@@ -111,7 +111,7 @@ C-04, C-07, C-09 y C-12 son obligatorios para el MVP pero cuelgan del camino cr�
 ## FASE 0 — Fundaciones mínimas
 
 ### [C-01] `foundation-scaffolding-test-harness`
-- **Estado**: `[ ]` pendiente
+- **Estado**: `[x]` completado
 - **Scope**:
   - Estructura `backend/app/{domain,application,infrastructure,api}` + `backend/tests/`, `pyproject.toml` (FastAPI, SQLAlchemy 2, Alembic, psycopg, pytest, httpx)
   - `docker-compose.yml` con `db` (PostgreSQL), `redis` y `api`; `.env.example` (DATABASE_URL, REDIS_URL, JWT_SECRET placeholder, APP_TIMEZONE, etc.); `.env` en `.gitignore`
