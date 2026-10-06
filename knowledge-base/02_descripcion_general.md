@@ -12,7 +12,7 @@
 | Frontend | React + TypeScript + Vite | Agenda diaria/semanal |
 | Infra | Docker / Docker Compose | api, db, redis, worker, frontend |
 
-Versiones mínimas: no definidas en las fuentes (ver `10_preguntas_abiertas.md`).
+Versiones mínimas (DD-17): Python ≥ 3.13, PostgreSQL 16, Node 22 LTS (a confirmar en C-14). Migraciones Alembic lineales, numeradas `NNN_nombre.py`, con `downgrade`.
 
 ## Tipo de sistema
 Aplicación web (SPA + API REST), monotenant (un consultorio por despliegue), escala de equipo: 1-5 profesionales, 1-4 sillones, pocos usuarios internos. Sin acceso público de pacientes en el MVP.

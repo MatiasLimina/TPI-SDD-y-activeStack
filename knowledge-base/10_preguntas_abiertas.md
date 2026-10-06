@@ -18,16 +18,7 @@ El resumen de §7 del informe decía "siete fuentes comprobadas" mientras la tab
 
 ## Preguntas abiertas (priorizadas)
 
-| Prioridad | Pregunta | Bloquea | Decisor |
-|-----------|----------|---------|---------|
-| Alta | ¿Con cuánta **anticipación** se envía el recordatorio (24 h, 48 h)? Parametrizado en `REMINDER_LEAD_HOURS` | Worker de recordatorios | Producto |
-| Alta | ¿**Anticipación mínima para cancelar** y tratamiento de la cancelación tardía (cobro, marca, bloqueo)? Hoy sin política | Flujo de cancelación | Producto |
-| Media | ¿Duración mínima/máxima o múltiplos (granularidad de la grilla, p. ej. 15 min)? | Agenda UI y RN-AG-04 | Producto |
-| Media | ¿Quién crea/da de baja usuarios (seed/CLI vs UI)? (SU-06) | Auth | Equipo técnico |
-| Media | Versiones mínimas del stack (Python, PostgreSQL, Node) y política de migraciones | Setup | Equipo técnico |
-| Media | ¿Cómo se realizan los tests de concurrencia en CI (PostgreSQL real vs mock)? | Calidad | Equipo técnico |
-| Baja | ¿Cuáles son los datos mínimos del paciente (documento, teléfono, email)? | Modelo | Producto |
-| Baja | ¿Reintentos y política de fallo del adaptador de notificación? | Worker | Equipo técnico |
+Ninguna abierta al 2026-10-06. Las ocho preguntas pendientes se resolvieron (ver "Preguntas resueltas (2026-10-06)" más abajo).
 
 ## Datos de competidores "No evidenciado" (de la investigación)
 
@@ -43,8 +34,8 @@ El resumen de §7 del informe decía "siete fuentes comprobadas" mientras la tab
 | Baja | Evidencia de cumplimiento Ley 25.326 / 26.529 en competidores | Solo declaraciones, sin certificaciones |
 
 ## Incertidumbres de [DISCOVERY] (state.kb.discovery)
-- [DISCOVERY] `system_type` se infirmó como `web_app` (SPA + API REST); no figura en las fuentes de forma explícita. Confirmar.
-- [DISCOVERY] `scale` se infirmó como `team` (1-5 profesionales, un consultorio por despliegue) a partir de `usuarios` y del segmento objetivo; confirmar que no habrá multitenant.
+- [DISCOVERY] `system_type` se infirmó como `web_app` (SPA + API REST); no figura en las fuentes de forma explícita. **Confirmado** por el equipo (2026-10-06).
+- [DISCOVERY] `scale` se infirmó como `team` (1-5 profesionales, un consultorio por despliegue) a partir de `usuarios` y del segmento objetivo. **Confirmado** por el equipo (2026-10-06): monotenant, sin multitenant (SU-07).
 - [DISCOVERY] `domain`: `dental_scheduling` (dato de Discovery; sin discrepancia).
 - Sin discrepancias entre `discovery` del estado y `docs/discovery/discovery.md`.
 
@@ -56,3 +47,16 @@ El resumen de §7 del informe decía "siete fuentes comprobadas" mientras la tab
 | ¿Un turno puede **no requerir sillón** (p. ej. consulta)? Hoy sillón obligatorio (RN-AG-10, SU-04); el DDL ya tolera `sillon_id` nulo | Resuelta: depende de la prestación (DD-09, RN-AG-10) |
 | ¿Crear un bloqueo sobre turnos existentes se rechaza o los afecta? (RN-HB-03) | Resuelta: se rechaza con 409 (DD-12, RN-HB-03) |
 | ¿Se permiten turnos en el pasado o retroactivos (carga de lo ya atendido)? (RN-AG-12) | Resuelta: no (DD-11, RN-AG-12) |
+
+## Preguntas resueltas (2026-10-06)
+
+| Pregunta | Resolución |
+|---|---|
+| ¿Con cuánta **anticipación** se envía el recordatorio (24 h, 48 h)? | Resuelta: 24 h antes; si el turno se crea con menos de 24 h no se programa recordatorio (DD-13, RN-NO-03) |
+| ¿**Anticipación mínima para cancelar** y tratamiento de la cancelación tardía? | Resuelta: sin política de cancelación tardía; se cancela hasta el inicio del turno, iniciado o pasado -> 409 (DD-14, RN-AG-13) |
+| ¿Duración mínima/máxima o múltiplos (granularidad de la grilla)? | Resuelta: múltiplo de 5 min, máximo 480 min, inicio alineado a 5 min; violación -> 422 (DD-15, RN-AG-04) |
+| ¿Quién crea/da de baja usuarios (seed/CLI vs UI)? (SU-06) | Resuelta: seed más comando CLI de alta y desactivación; sin UI ni endpoint; baja = `activo = false` (DD-16) |
+| Versiones mínimas del stack y política de migraciones | Resuelta: Python ≥ 3.13, PostgreSQL 16, Node 22 LTS; migraciones Alembic lineales con `downgrade` (DD-17) |
+| ¿Cómo se realizan los tests de concurrencia en CI? | Resuelta: siempre contra PostgreSQL real en contenedor; si hay CI, service `postgres:16` (DD-18) |
+| ¿Cuáles son los datos mínimos del paciente? | Resuelta con lo ya modelado: nombre, apellido, documento único, teléfono obligatorio, email opcional (ver 04, entidad Paciente); no requirió DD |
+| ¿Reintentos y política de fallo del adaptador de notificación? | Resuelta: 3 intentos con backoff exponencial; agotados, `fallido`; sin reintento manual (DD-19, RN-NO-05) |

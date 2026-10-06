@@ -8,7 +8,7 @@ Solo el alcance D.4. Lo diferido está en `01_vision_y_objetivos.md` (Fuera de a
 **Como** recepcionista **quiero** dar de alta/editar/desactivar profesionales, sillones y prestaciones (con duración por defecto) **para** poder agendar turnos.
 
 **Criterios de aceptación**:
-- [ ] Una prestación exige `duracion_min` > 0 e indica si requiere sillón (`requiere_sillon`).
+- [ ] Una prestación exige `duracion_min` > 0, múltiplo de 5 y ≤ 480 (CHECK en BD; DD-15) e indica si requiere sillón (`requiere_sillon`).
 - [ ] Un recurso desactivado no admite turnos nuevos pero conserva su historial.
 - [ ] El odontólogo solo puede leer estos recursos.
 
@@ -40,6 +40,7 @@ Solo el alcance D.4. Lo diferido está en `01_vision_y_objetivos.md` (Fuera de a
 
 **Criterios de aceptación**:
 - [ ] La duración toma por defecto la de la prestación y puede ajustarse.
+- [ ] Duración que no es múltiplo de 5 min o mayor a 480 min, o inicio no alineado a 5 min -> 422.
 - [ ] Solape con otro turno del mismo profesional o del mismo sillón -> 409.
 - [ ] Un turno que empieza exactamente cuando termina otro es aceptado.
 - [ ] Dos creaciones concurrentes sobre el mismo horario: una se acepta y la otra recibe 409 (garantía en BD).
@@ -51,7 +52,7 @@ Solo el alcance D.4. Lo diferido está en `01_vision_y_objetivos.md` (Fuera de a
 **Como** recepcionista **quiero** mover un turno a otro horario/profesional/sillón con la misma validación **para** mantener la agenda consistente.
 
 **Criterios de aceptación**:
-- [ ] Se aplican las mismas validaciones que al crear, excluyendo al propio turno.
+- [ ] Se aplican las mismas validaciones que al crear (incluida la duración y la grilla de 5 min, 422), excluyendo al propio turno.
 - [ ] Si falla, el turno original queda intacto.
 - [ ] Se audita (valores previos y nuevos) y se reprograma el recordatorio.
 
@@ -64,8 +65,9 @@ Solo el alcance D.4. Lo diferido está en `01_vision_y_objetivos.md` (Fuera de a
 - [ ] El turno pasa a `cancelado` (no se borra) y deja de contar para solapamientos.
 - [ ] El horario puede reservarse inmediatamente después.
 - [ ] Se audita y se cancela el recordatorio pendiente.
+- [ ] Se puede cancelar hasta el inicio del turno; cancelar un turno ya iniciado o pasado -> 409. Sin política de cancelación tardía (DD-14).
 
-**Reglas relacionadas**: RN-AG-07, RN-NO-02, RN-CU-01
+**Reglas relacionadas**: RN-AG-07, RN-AG-13, RN-NO-02, RN-CU-01
 
 ### US-007 — Consultar disponibilidad
 **Como** recepcionista **quiero** ver los huecos libres de un profesional/sillón para una prestación **para** elegir horario rápido. (**Suposición**: derivada de la necesidad de crear turnos; no figura como caso de uso explícito.)
@@ -125,6 +127,8 @@ Solo el alcance D.4. Lo diferido está en `01_vision_y_objetivos.md` (Fuera de a
 **Criterios de aceptación**:
 - [ ] El recordatorio se encola en Redis y lo procesa un worker mediante el puerto de notificación (adaptador mock).
 - [ ] Cancelar/reprogramar el turno ajusta el recordatorio.
-- [ ] La anticipación es configurable (valor por defecto a definir; ver 10).
+- [ ] La anticipación es configurable (`REMINDER_LEAD_HOURS`, 24 por defecto; DD-13).
+- [ ] Si el turno se crea o reprograma con menos de 24 h de anticipación, no se programa recordatorio.
+- [ ] El envío fallido se reintenta 3 veces con backoff exponencial; agotados, el recordatorio queda `fallido` (DD-19).
 
-**Reglas relacionadas**: RN-NO-01, RN-NO-02, RN-NO-03, RN-NO-04
+**Reglas relacionadas**: RN-NO-01, RN-NO-02, RN-NO-03, RN-NO-04, RN-NO-05

@@ -49,6 +49,27 @@
 ### DD-12 — Un bloqueo no puede pisar turnos activos (decisión del equipo, 2026-10-02)
 **Decisión**: se rechaza con 409 y se informan los turnos afectados. **Alternativas descartadas**: crear el bloqueo y marcar los turnos "a reprogramar" (agrega un estado nuevo) y cancelarlos automáticamente (riesgoso para el paciente si nadie le avisa).
 
+### DD-13 — Recordatorio 24 h antes (decisión del equipo, 2026-10-06)
+**Decisión**: el recordatorio se envía 24 h antes del turno (`REMINDER_LEAD_HOURS=24`). Si el turno se crea (o reprograma) con menos de 24 h de anticipación, **no** se programa recordatorio. **Alternativas descartadas**: 48 h (muchos turnos de un consultorio chico se dan con menos de 48 h y quedarían sin aviso) y enviar de inmediato cuando faltan menos de 24 h (el paciente acaba de reservar y suma una rama al worker). **Consecuencia**: RN-NO-03 y US-012 quedan cerrados; el worker no necesita lógica de envío inmediato.
+
+### DD-14 — Sin política de cancelación tardía en el MVP (decisión del equipo, 2026-10-06)
+**Decisión**: se puede cancelar hasta el inicio del turno; cancelar un turno ya iniciado o pasado se rechaza con 409. Cobros, marcas y penalidades quedan en el backlog. **Alternativas descartadas**: marca informativa `cancelacion_tardia` (no la consume nadie en el MVP, que no tiene reportes) y rechazo de cancelaciones con menos de N horas (contraproducente: si el paciente avisa, la recepcionista necesita liberar el horario; además genera turnos fantasma). **Consecuencia**: RN-AG-13.
+
+### DD-15 — Duración y grilla de 5 minutos (decisión del equipo, 2026-10-06)
+**Decisión**: la duración efectiva del turno debe ser múltiplo de 5 min y ≤ 480 min (además de > 0); el inicio debe estar alineado a 5 min (minutos % 5 == 0, segundos y microsegundos en 0, evaluado en hora local `America/Argentina/Buenos_Aires`). La violación se rechaza con 422. Aplica al crear (C-03), al reprogramar (C-05) y a `Prestacion.duracion_min` en el CRUD de catálogo (C-08, con CHECK en BD); el CHECK `> 0` de C-02 sigue vigente. **Alternativas descartadas**: grilla de 15 min (prestaciones de 20 o 40 min pierden capacidad, contra el diferencial de duración propia) y sin restricción (datos raros y sin tope ante errores de tipeo, como 600 por 60). **Consecuencia**: RN-AG-04 reescrita.
+
+### DD-16 — Alta de usuarios por seed y CLI (decisión del equipo, 2026-10-06)
+**Decisión**: los usuarios se crean por seed (usuarios ficticios) y por un comando CLI de alta y desactivación; sin UI ni endpoint. La baja es `activo = false`, nunca borrado, porque la auditoría referencia al usuario. **Alternativas descartadas**: solo seed (empuja credenciales al repo) y endpoint para la recepcionista (amplía el alcance en un dominio CRÍTICO y contradice DD-05, que no tiene rol administrador). **Consecuencia**: resuelve SU-06; el comando se implementa en C-06.
+
+### DD-17 — Versiones mínimas y política de migraciones (decisión del equipo, 2026-10-06)
+**Decisión**: Python ≥ 3.13 (ya en `backend/pyproject.toml`), PostgreSQL 16 (ya en `docker-compose.yml`) y Node 22 LTS (a confirmar en C-14). Migraciones Alembic lineales, numeradas `NNN_nombre.py`, una por change y siempre con `downgrade`.
+
+### DD-18 — Tests de concurrencia contra PostgreSQL real (decisión del equipo, 2026-10-06)
+**Decisión**: los tests de concurrencia corren siempre contra PostgreSQL real en contenedor (ya es regla dura del proyecto). Hoy no hay CI; si se agrega, levanta un service `postgres:16`.
+
+### DD-19 — Reintentos del adaptador de notificación (decisión del equipo, 2026-10-06)
+**Decisión**: 3 intentos con backoff exponencial; agotados, el recordatorio queda en `estado = fallido`. Sin reintento manual en el MVP. **Consecuencia**: precisa los "reintentos acotados" del Flujo 6.
+
 ## Supuestos inferidos
 
 ### SU-01 — Los recordatorios reducen el ausentismo
@@ -67,7 +88,7 @@
 **Resuelto** por DD-10.
 
 ### SU-06 — Alta de usuarios fuera de la UI
-**Supuesto**: usuarios del sistema se crean por seed/CLI en el MVP; las fuentes no prevén gestión de usuarios. **Validar**: con el equipo.
+**Resuelto** por DD-16.
 
 ### SU-07 — Un único consultorio por despliegue
 **Supuesto**: monotenant, sin multisede (fuera de alcance).

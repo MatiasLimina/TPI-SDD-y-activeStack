@@ -26,7 +26,7 @@ C = crear, R = leer, U = actualizar, D = eliminar/cancelar.
 | Turnos | C, R (todos), U (reprogramar), D (cancelar) | R solo propios |
 | Recordatorios (estado) | R | R propios |
 | Auditoría de turnos | R | — |
-| Usuarios | Alta/baja (**Suposición**: por seed/CLI en el MVP) | — |
+| Usuarios | Alta/baja (por seed y comando CLI en el MVP; DD-16) | — |
 
 Control de acceso por rol exigido por Ley 25.326 / 26.529 (datos de salud). La autorización se verifica en el backend, nunca solo en la UI. Cada usuario `odontologo` se vincula a un `Profesional`.
 

@@ -152,10 +152,11 @@ C-04, C-07, C-09 y C-12 son obligatorios para el MVP pero cuelgan del camino cr�
   - Constraints en BD: `turno_fin_mayor CHECK (fin > inicio)`, `turno_sin_solape_profesional` y `turno_sin_solape_sillon` (`EXCLUDE USING gist ... tstzrange(inicio, fin, '[)')` parciales `estado <> 'cancelado'`) — RN-AG-09
   - Dominio puro: cálculo de `fin = inicio + duración efectiva` (por defecto `Prestacion.duracion_min`, ajustable; RN-AG-04) y regla de solape semiabierto (RN-AG-03)
   - Regla del sillón según la prestación: requerido si `requiere_sillon` (falta -> 422), no ocupa sillón si no lo requiere (RN-AG-10)
+  - Validación de duración y grilla (DD-15): duración efectiva múltiplo de 5 min y ≤ 480 min, inicio alineado a 5 min en hora local -> 422 (RN-AG-04)
   - Rechazo de inicio en el pasado -> 422 (RN-AG-12); recursos inactivos -> 422; sin sobreturnos (RN-AG-11)
   - `POST /turnos` -> 201; solape (profesional o sillón) -> 409 indicando el recurso, traducción de SQLSTATE `23P01`
   - Puntos de extensión (hooks) en el caso de uso para auditoría, validaciones de horario/bloqueo y recordatorio, sin implementarlos
-  - Tests (uno por escenario): solape por profesional; solape por sillón; contiguo (fin = inicio siguiente) aceptado; mismo horario en distinto profesional y distinto sillón aceptado; duración por defecto y ajustada; prestación sin sillón no genera conflicto de sillón; sillón faltante con prestación que lo requiere -> 422; inicio pasado -> 422; concurrencia (N inserciones simultáneas del mismo horario, exactamente 1 éxito); unit tests del dominio sin BD
+  - Tests (uno por escenario): solape por profesional; solape por sillón; contiguo (fin = inicio siguiente) aceptado; mismo horario en distinto profesional y distinto sillón aceptado; duración por defecto y ajustada; prestación sin sillón no genera conflicto de sillón; sillón faltante con prestación que lo requiere -> 422; inicio pasado -> 422; duración no múltiplo de 5, mayor a 480 o inicio no alineado -> 422; concurrencia (N inserciones simultáneas del mismo horario, exactamente 1 éxito); unit tests del dominio sin BD
   - Fuera de este change: auth, auditoría, recordatorio, horario de atención, bloqueos, reprogramar, cancelar
 - **Dependencias**: `C-02`
 - **Governance**: MEDIO
@@ -172,7 +173,8 @@ C-04, C-07, C-09 y C-12 son obligatorios para el MVP pero cuelgan del camino cr�
   - `POST /turnos/{id}/cancelar` (motivo opcional): `estado = cancelado`, `motivo_cancelacion`; no se borra
   - El horario se puede reservar de inmediato (el índice parcial ignora cancelados; RN-AG-07)
   - Cancelar un turno ya cancelado -> 409 (Suposición documentada); inexistente -> 404
-  - Tests: cancelar libera el horario y permite crear otro turno en el mismo intervalo; el cancelado no cuenta para solapes
+  - Cancelar un turno ya iniciado o pasado -> 409; se cancela hasta el inicio, sin política de cancelación tardía (RN-AG-13, DD-14)
+  - Tests: cancelar libera el horario y permite crear otro turno en el mismo intervalo; el cancelado no cuenta para solapes; turno iniciado -> 409
   - Auditoría y recordatorio se enchufan en C-07 y C-12
 - **Dependencias**: `C-03`
 - **Governance**: MEDIO
@@ -180,14 +182,14 @@ C-04, C-07, C-09 y C-12 son obligatorios para el MVP pero cuelgan del camino cr�
   - `knowledge-base/05_reglas_de_negocio.md` §RN-AG-07
   - `knowledge-base/07_flujos_principales.md` §Flujo 4
   - `knowledge-base/06_funcionalidades.md` §US-006
-  - `knowledge-base/10_preguntas_abiertas.md` (cancelación tardía: sin política en el MVP)
+  - `knowledge-base/09_decisiones_y_supuestos.md` §DD-14
 
 ### [C-05] `reprogramar-turno`
 - **Estado**: `[ ]` pendiente
 - **Scope** (US-005 parcial):
-  - `PATCH /turnos/{id}/reprogramar` (inicio, profesional, sillón, duración): mismas validaciones que crear excluyendo al propio turno (RN-AG-08), mismo inicio-no-pasado (RN-AG-12)
+  - `PATCH /turnos/{id}/reprogramar` (inicio, profesional, sillón, duración): mismas validaciones que crear excluyendo al propio turno (RN-AG-08), mismo inicio-no-pasado (RN-AG-12) y misma validación de duración y grilla de 5 min (RN-AG-04, DD-15; 422)
   - UPDATE de la misma fila dentro de una transacción; si falla (409/422) el turno original queda intacto
-  - Tests: reprogramar a hueco libre; a hueco ocupado -> 409 con original intacto; solaparse consigo mismo es válido; cambiar de profesional y de sillón; turno cancelado no reprogramable
+  - Tests: duración inválida o inicio no alineado -> 422 con original intacto; reprogramar a hueco libre; a hueco ocupado -> 409 con original intacto; solaparse consigo mismo es válido; cambiar de profesional y de sillón; turno cancelado no reprogramable
   - Auditoría y recordatorio se enchufan en C-07 y C-12
 - **Dependencias**: `C-03`
 - **Governance**: MEDIO
@@ -206,7 +208,8 @@ C-04, C-07, C-09 y C-12 son obligatorios para el MVP pero cuelgan del camino cr�
   - Modelo `Usuario` (email único, `password_hash` bcrypt/argon2, `rol` `recepcionista|odontologo`, `profesional_id` obligatorio si odontólogo, `activo`) + migración; seed de 1 recepcionista y 2 odontólogos (credenciales de desarrollo ficticias en `.env.example`/seed)
   - `POST /auth/login` -> JWT con `sub`, `rol`, `profesional_id`, expiración corta (`JWT_EXPIRE_MINUTES`); credenciales inválidas 401, token vencido 401, rol insuficiente 403
   - Dependencias FastAPI de RBAC; se protegen `POST /turnos`, cancelar y reprogramar (solo recepcionista); `creado_por` pasa a poblarse
-  - Tests: login válido/inválido, token expirado, acceso por rol a cada endpoint existente, `creado_por` registrado
+  - Comando CLI de alta y desactivación de usuarios (sin UI ni endpoint; la baja es `activo = false`, nunca borrado; DD-16)
+  - Tests: login válido/inválido, token expirado, acceso por rol a cada endpoint existente, `creado_por` registrado; CLI de alta y desactivación (un usuario desactivado no inicia sesión)
 - **Dependencias**: `C-03`
 - **Governance**: CRITICO
 - **Leer antes**:
@@ -237,7 +240,7 @@ C-04, C-07, C-09 y C-12 son obligatorios para el MVP pero cuelgan del camino cr�
 - **Estado**: `[ ]` pendiente
 - **Scope** (US-001):
   - CRUD de profesionales, sillones y prestaciones: `/profesionales`, `/sillones`, `/prestaciones` (alta, edición, desactivación lógica)
-  - Validaciones: `duracion_min > 0`, `requiere_sillon`; recurso desactivado no admite turnos nuevos pero conserva historial
+  - Validaciones: `duracion_min > 0`, múltiplo de 5 y ≤ 480 (con CHECK en BD; DD-15), `requiere_sillon`; recurso desactivado no admite turnos nuevos pero conserva historial
   - Escritura solo recepcionista; el odontólogo solo lee (RN-AU-03)
   - Tests: CRUD por rol, desactivación bloquea turnos nuevos (422) y conserva los existentes
 - **Dependencias**: `C-06`
@@ -300,8 +303,9 @@ C-04, C-07, C-09 y C-12 son obligatorios para el MVP pero cuelgan del camino cr�
   - Modelo `Recordatorio` (`turno_id`, `programado_para`, `estado`, `canal=mock`, `intentos`) + migración
   - Se crea en la misma transacción que el turno; cancelar lo cancela y reprogramar lo reprograma (RN-NO-02)
   - Cola Redis + worker con reintentos acotados; verifica que el turno siga activo; re-encola pendientes de BD al reiniciar
-  - Anticipación configurable (`REMINDER_LEAD_HOURS`, valor por defecto a definir); contenido sin datos clínicos (RN-NO-04)
-  - Tests: encolado al crear, ajuste al cancelar/reprogramar, worker invoca el puerto (mock), reintentos, turno cancelado no envía
+  - Anticipación de 24 h (`REMINDER_LEAD_HOURS=24`); si el turno se crea o reprograma con menos de 24 h, no se programa recordatorio (RN-NO-03, DD-13); contenido sin datos clínicos (RN-NO-04)
+  - Reintentos: 3 intentos con backoff exponencial; agotados, `estado = fallido`; sin reintento manual (RN-NO-05, DD-19)
+  - Tests: encolado al crear, sin recordatorio con menos de 24 h, ajuste al cancelar/reprogramar, worker invoca el puerto (mock), 3 reintentos y `fallido`, turno cancelado no envía
 - **Dependencias**: `C-04, C-05, C-01`
 - **Governance**: ALTO
 - **Leer antes**:
@@ -309,7 +313,7 @@ C-04, C-07, C-09 y C-12 son obligatorios para el MVP pero cuelgan del camino cr�
   - `knowledge-base/07_flujos_principales.md` §Flujo 6
   - `knowledge-base/04_modelo_de_datos.md` §Recordatorio
   - `knowledge-base/08_arquitectura_propuesta.md` §Patrones aplicados
-  - `knowledge-base/10_preguntas_abiertas.md` (anticipación del recordatorio)
+  - `knowledge-base/09_decisiones_y_supuestos.md` §DD-13, §DD-19
 
 ### [C-13] `agenda-diaria-semanal`
 - **Estado**: `[ ]` pendiente
@@ -411,5 +415,5 @@ Diferido por el Discovery (ver `docs/discovery/informe-discovery.md` §D.3 y §D
 - Obras sociales y prepagas
 - Panel de ausentismo y ocupación de sillones (no-show dashboard)
 - Multisede / multi-sucursal
-- Política de cancelación tardía (pregunta abierta en `knowledge-base/10_preguntas_abiertas.md`)
+- Política de cancelación tardía (decidido DD-14: sin política en el MVP)
 - Consulta de disponibilidad / huecos libres (US-007): no figura en D.4, es una suposición de la KB y se acopla naturalmente con el enlace público de reserva diferido (D.3)

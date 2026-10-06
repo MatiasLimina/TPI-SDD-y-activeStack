@@ -11,14 +11,14 @@ Códigos `RN-{DOMINIO}-{NN}`. Las reglas del Discovery (RN1-RN6) se conservan co
 | RN3 | RN-AG-03 | Intervalos semiabiertos `[inicio, fin)` |
 | RN4 | RN-AG-04 | Duración por prestación, ajustable |
 | RN5 | RN-AG-05, RN-AG-06 | Horario de atención y bloqueos |
-| RN6 | RN-AG-07 | Cancelación libera el horario |
+| RN6 | RN-AG-07, RN-AG-13 | Cancelación libera el horario (cancelable hasta el inicio) |
 
 ## Dominio: Agenda y turnos (RN-AG)
 
 - **RN-AG-01** (RN1): un profesional no puede tener dos turnos activos superpuestos.
 - **RN-AG-02** (RN2): un sillón no puede tener dos turnos activos superpuestos. Un turno ocupa **un** sillón y **un** profesional durante todo su intervalo.
 - **RN-AG-03** (RN3): los intervalos son semiabiertos `[inicio, fin)`. Dos turnos se solapan si `inicioA < finB` y `inicioB < finA`. **Caso borde:** un turno que empieza exactamente cuando termina otro (mismo profesional o mismo sillón) **es válido**.
-- **RN-AG-04** (RN4): la duración del turno es por defecto `Prestacion.duracion_min`; la recepcionista puede ajustarla al crearlo (y al reprogramar). `fin = inicio + duración efectiva`. La duración efectiva debe ser > 0. **Suposición:** sin tope máximo ni múltiplo mínimo de intervalo (ver 10).
+- **RN-AG-04** (RN4): la duración del turno es por defecto `Prestacion.duracion_min`; la recepcionista puede ajustarla al crearlo (y al reprogramar). `fin = inicio + duración efectiva`. La duración efectiva debe ser > 0, múltiplo de 5 minutos y ≤ 480 minutos, y el inicio debe estar alineado a 5 minutos (minutos múltiplo de 5, segundos y microsegundos en 0, evaluado en hora local `America/Argentina/Buenos_Aires`). Cualquier violación -> `422` (decisión del equipo, 2026-10-06, DD-15). Se aplica al crear, al reprogramar y a `Prestacion.duracion_min` del catálogo.
 - **RN-AG-05** (RN5): no se dan turnos fuera del horario de atención del profesional (el intervalo completo `[inicio, fin)` debe caber en una franja de `HorarioAtencion`).
 - **RN-AG-06** (RN5): no se dan turnos que se solapen con un bloqueo de agenda del profesional (mismo criterio de intervalos semiabiertos; un turno que empieza justo al terminar un bloqueo es válido).
 - **RN-AG-07** (RN6): un turno cancelado libera el horario (profesional y sillón) y **deja de contar** para la validación de solapamientos; el horario puede reasignarse de inmediato. El turno cancelado se conserva (no se borra) para auditoría.
@@ -27,6 +27,7 @@ Códigos `RN-{DOMINIO}-{NN}`. Las reglas del Discovery (RN1-RN6) se conservan co
 - **RN-AG-10** (decisión del equipo, 2026-10-02): un turno referencia obligatoriamente profesional, paciente y prestación. El sillón depende de la prestación: si `Prestacion.requiere_sillon` es verdadero, el turno **debe** tener sillón asignado (si falta → `422`); si es falso (por ejemplo, una consulta), el turno no ocupa sillón y solo se valida la agenda del profesional. Un turno sin sillón no participa de RN-AG-02.
 - **RN-AG-11** (decisión del equipo, 2026-10-02): no hay sobreturnos en el MVP; todo solape se rechaza. Bilog los evidencia como tipo de turno; quedan como extensión posterior (ver 01, fuera de alcance).
 - **RN-AG-12** (decisión del equipo, 2026-10-02): no se crean ni se reprograman turnos con inicio anterior al momento actual (→ `422`).
+- **RN-AG-13** (decisión del equipo, 2026-10-06, DD-14): un turno se puede cancelar hasta su inicio; cancelar un turno ya iniciado o pasado se rechaza con `409`. No hay política de cancelación tardía en el MVP (sin cobros, marcas ni penalidades; quedan en el backlog).
 
 ## Dominio: Horarios y bloqueos (RN-HB)
 
@@ -38,8 +39,9 @@ Códigos `RN-{DOMINIO}-{NN}`. Las reglas del Discovery (RN1-RN6) se conservan co
 
 - **RN-NO-01**: todo turno activo genera un recordatorio previo mediante el **puerto de notificación**; en el MVP el adaptador es **mock**, procesado asincrónicamente vía cola Redis.
 - **RN-NO-02**: cancelar un turno cancela su recordatorio pendiente; reprogramarlo lo reprograma.
-- **RN-NO-03**: la anticipación del recordatorio (24 h, 48 h) **no está definida** (ver 10). Debe ser configurable (variable de entorno).
+- **RN-NO-03** (decisión del equipo, 2026-10-06, DD-13): el recordatorio se programa 24 h antes del turno (`REMINDER_LEAD_HOURS=24`, configurable por variable de entorno). Si el turno se crea o reprograma con menos de 24 h de anticipación, **no** se programa recordatorio.
 - **RN-NO-04**: el contenido de los recordatorios no debe exponer datos clínicos (solo fecha, hora, consultorio) — **Suposición** por privacidad.
+- **RN-NO-05** (decisión del equipo, 2026-10-06, DD-19): el envío se reintenta hasta 3 veces con backoff exponencial; agotados los intentos, el recordatorio queda `fallido`. No hay reintento manual en el MVP.
 
 ## Dominio: Autenticación y autorización (RN-AU)
 

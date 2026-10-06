@@ -20,7 +20,7 @@ Sistema de agenda para consultorios odontológicos chicos de Argentina (1 a 5 pr
 | Infra | Docker / Docker Compose | api, db, redis, worker, frontend |
 | Tests | pytest | TDD estricto (ver `~/.claude/CLAUDE.md`) |
 
-Versiones mínimas: no definidas todavía (ver `knowledge-base/10_preguntas_abiertas.md`). Detalle completo: [knowledge-base/02_descripcion_general.md](knowledge-base/02_descripcion_general.md)
+Versiones mínimas (DD-17): Python ≥ 3.13, PostgreSQL 16, Node 22 LTS (a confirmar en C-14). Detalle completo: [knowledge-base/02_descripcion_general.md](knowledge-base/02_descripcion_general.md)
 
 ---
 
@@ -41,7 +41,7 @@ La fuente de verdad del dominio vive en `knowledge-base/`. **Leé el archivo rel
 | [09_decisiones_y_supuestos.md](knowledge-base/09_decisiones_y_supuestos.md) | Decisiones DD-xx y supuestos SU-xx |
 | [10_preguntas_abiertas.md](knowledge-base/10_preguntas_abiertas.md) | ⚠️ Preguntas abiertas e inconsistencias |
 
-> ⚠️ Antes de cada change, revisá las preguntas de prioridad **Alta** de `10_preguntas_abiertas.md`. Hoy quedan dos (anticipación del recordatorio y anticipación mínima para cancelar): no bloquean `C-03`, pero sí `C-04` y `C-12`.
+> ⚠️ Antes de cada change, revisá `10_preguntas_abiertas.md`. Al 2026-10-06 no quedan preguntas abiertas: todas se resolvieron en DD-13..DD-19 (`09_decisiones_y_supuestos.md`).
 
 ---
 

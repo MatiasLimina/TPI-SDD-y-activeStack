@@ -33,10 +33,11 @@ proyecto/
 │   │   ├── domain/            # entidades, reglas (intervalos, solapes), puertos
 │   │   ├── application/       # casos de uso (crear/reprogramar/cancelar turno)
 │   │   ├── infrastructure/
-│   │   │   ├── db/            # modelos SQLAlchemy, repositorios, migraciones
+│   │   │   ├── db/            # modelos SQLAlchemy, repositorios, migraciones (lineales NNN_nombre.py, con downgrade; DD-17)
 │   │   │   ├── notifications/ # MockSender (futuro WhatsAppSender)
 │   │   │   └── queue/         # cliente Redis, worker
-│   │   └── api/               # routers FastAPI, schemas, dependencias de auth
+│   │   ├── api/               # routers FastAPI, schemas, dependencias de auth
+│   │   └── cli/               # comando de alta y desactivación de usuarios (DD-16, C-06)
 │   └── tests/
 ├── frontend/
 │   └── src/
@@ -65,7 +66,7 @@ proyecto/
 | `REDIS_URL` | Conexión Redis | `redis://redis:6379/0` | No |
 | `JWT_SECRET` | Clave de firma | `change-me` (placeholder) | Sí |
 | `JWT_EXPIRE_MINUTES` | Vigencia del token | `60` | No |
-| `REMINDER_LEAD_HOURS` | Anticipación del recordatorio (valor por definir) | `24` | No |
+| `REMINDER_LEAD_HOURS` | Anticipación del recordatorio en horas (DD-13); si el turno se crea con menos, no hay recordatorio | `24` | No |
 | `APP_TIMEZONE` | Zona de presentación | `America/Argentina/Buenos_Aires` | No |
 | `NOTIFICATION_ADAPTER` | Adaptador activo | `mock` | No |
 | `CORS_ORIGINS` | Orígenes permitidos | `http://localhost:5173` | No |

@@ -29,6 +29,7 @@ Turno       1---* Recordatorio
 ### Usuario
 - `id` (uuid, PK), `email` (unique), `password_hash`, `rol` (enum: `recepcionista` | `odontologo`), `profesional_id` (FK nullable, obligatoria si rol = odontologo), `activo` (bool).
 - Sin contraseñas en claro; hash con bcrypt/argon2.
+- Alta por seed y por comando CLI (alta y desactivación); la baja es `activo = false`, nunca borrado, porque la auditoría referencia al usuario (DD-16).
 
 ### Profesional
 - `id`, `nombre`, `apellido`, `matricula` (opcional, ficticia), `activo`.
@@ -38,7 +39,7 @@ Turno       1---* Recordatorio
 - `id`, `nombre` (p. ej. "Sillón 1"), `activo`. Entre 1 y 4 en el segmento objetivo.
 
 ### Prestacion
-- `id`, `nombre`, `duracion_min` (int > 0, duración por defecto, RN4), `requiere_sillon` (bool, default `true`; RN-AG-10), `activa`.
+- `id`, `nombre`, `duracion_min` (int > 0, múltiplo de 5 y ≤ 480, duración por defecto, RN4; CHECK en BD en C-08, DD-15), `requiere_sillon` (bool, default `true`; RN-AG-10), `activa`.
 - Sin precios ni cobertura en el MVP (ARCA/caja fuera de alcance).
 
 ### HorarioAtencion
@@ -55,7 +56,7 @@ Turno       1---* Recordatorio
 
 ### Turno
 - `id`, `profesional_id`, `sillon_id` (nullable; requerido cuando `prestacion.requiere_sillon`, validado en el dominio, RN-AG-10), `paciente_id`, `prestacion_id`.
-- `inicio`, `fin` (timestamptz UTC; `fin = inicio + duración efectiva`), `duracion_min` (efectiva, ajustable, RN4).
+- `inicio`, `fin` (timestamptz UTC; `fin = inicio + duración efectiva`), `duracion_min` (efectiva, ajustable, RN4; > 0, múltiplo de 5 y ≤ 480; `inicio` alineado a 5 min en hora local; validado en el dominio, 422, DD-15).
 - `estado` (enum: `programado` | `cancelado`; **Suposición**: reprogramar actualiza el mismo turno y deja huella en auditoría, sin estado propio).
 - `motivo_cancelacion` (nullable), `creado_por`, `creado_en`, `actualizado_en`.
 - **Constraints (garantía a nivel de BD)** — requieren `CREATE EXTENSION btree_gist`:
@@ -76,7 +77,8 @@ Turno       1---* Recordatorio
 - Solo inserción (append-only). Exigido por Ley 25.326 / 26.529.
 
 ### Recordatorio
-- `id`, `turno_id`, `programado_para` (timestamptz), `estado` (`pendiente` | `enviado` | `fallido` | `cancelado`), `canal` (`mock`), `intentos`.
+- `id`, `turno_id`, `programado_para` (timestamptz), `estado` (`pendiente` | `enviado` | `fallido` | `cancelado`), `canal` (`mock`), `intentos` (máximo 3 con backoff exponencial; agotados -> `fallido`, DD-19).
+- Solo se crea si faltan 24 h o más para el turno (DD-13).
 - Al cancelar o reprogramar el turno, el recordatorio pendiente se cancela/reprograma.
 
 ## Seed data inicial (todo ficticio)
