@@ -28,10 +28,10 @@ def has_btree_gist(url: str) -> bool:
         scratch.dispose()
 
 
-def test_upgrade_on_empty_database_reaches_revision_002(scratch_url: str) -> None:
+def test_upgrade_on_empty_database_reaches_head_revision(scratch_url: str) -> None:
     command.upgrade(alembic_config(scratch_url), "head")
 
-    assert current_revision(scratch_url) == "002"
+    assert current_revision(scratch_url) == "003"
     assert has_btree_gist(scratch_url)
 
 
@@ -41,7 +41,7 @@ def test_upgrade_twice_is_idempotent(scratch_url: str) -> None:
 
     command.upgrade(config, "head")
 
-    assert current_revision(scratch_url) == "002"
+    assert current_revision(scratch_url) == "003"
     assert has_btree_gist(scratch_url)
 
 
@@ -58,5 +58,5 @@ def test_downgrade_to_base_removes_btree_gist_and_reupgrade_restores_it(
 
     command.upgrade(config, "head")
 
-    assert current_revision(scratch_url) == "002"
+    assert current_revision(scratch_url) == "003"
     assert has_btree_gist(scratch_url)

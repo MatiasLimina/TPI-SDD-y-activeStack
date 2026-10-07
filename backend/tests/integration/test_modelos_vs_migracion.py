@@ -4,13 +4,14 @@ from alembic.migration import MigrationContext
 from sqlalchemy import Engine
 
 from app.infrastructure.db.base import Base
-from app.infrastructure.db.models import Paciente, Prestacion, Profesional, Sillon
+from app.infrastructure.db.models import Paciente, Prestacion, Profesional, Sillon, Turno
 
 TABLAS_CATALOGO = {"profesional", "sillon", "prestacion", "paciente"}
+TABLAS = TABLAS_CATALOGO | {"turno"}
 
 
-def test_base_metadata_registers_the_four_catalog_tables() -> None:
-    assert TABLAS_CATALOGO <= set(Base.metadata.tables)
+def test_base_metadata_registers_catalog_and_turno_tables() -> None:
+    assert TABLAS <= set(Base.metadata.tables)
 
 
 @pytest.mark.parametrize(
@@ -20,6 +21,7 @@ def test_base_metadata_registers_the_four_catalog_tables() -> None:
         (Sillon, "sillon"),
         (Prestacion, "prestacion"),
         (Paciente, "paciente"),
+        (Turno, "turno"),
     ],
 )
 def test_model_maps_to_expected_table(modelo: type[Base], tabla: str) -> None:
