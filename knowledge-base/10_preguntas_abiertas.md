@@ -18,7 +18,7 @@ El resumen de §7 del informe decía "siete fuentes comprobadas" mientras la tab
 
 ## Preguntas abiertas (priorizadas)
 
-Ninguna abierta al 2026-10-06. Las ocho preguntas pendientes se resolvieron (ver "Preguntas resueltas (2026-10-06)" más abajo).
+Ninguna abierta al 2026-10-07. Las ocho preguntas pendientes se resolvieron (ver "Preguntas resueltas (2026-10-06)" más abajo) y las cinco surgidas al explorar C-03 también (ver "Preguntas resueltas (2026-10-07)").
 
 ## Datos de competidores "No evidenciado" (de la investigación)
 
@@ -60,3 +60,13 @@ Ninguna abierta al 2026-10-06. Las ocho preguntas pendientes se resolvieron (ver
 | ¿Cómo se realizan los tests de concurrencia en CI? | Resuelta: siempre contra PostgreSQL real en contenedor; si hay CI, service `postgres:16` (DD-18) |
 | ¿Cuáles son los datos mínimos del paciente? | Resuelta con lo ya modelado: nombre, apellido, documento único, teléfono obligatorio, email opcional (ver 04, entidad Paciente); no requirió DD |
 | ¿Reintentos y política de fallo del adaptador de notificación? | Resuelta: 3 intentos con backoff exponencial; agotados, `fallido`; sin reintento manual (DD-19, RN-NO-05) |
+
+## Preguntas resueltas (2026-10-07)
+
+| Pregunta | Resolución |
+|---|---|
+| ¿Un **paciente** puede tener dos turnos superpuestos con profesionales distintos? | Resuelta: no; sin solape por paciente, con tercera restricción de exclusión en BD (DD-20, RN-AG-14) |
+| ¿Qué pasa si el request trae `sillon_id` y la prestación **no requiere sillón**? | Resuelta: 422; no se ignora ni se guarda (DD-21, RN-AG-10) |
+| ¿Qué recurso informa el 409 por solape? | Resuelta: todos los recursos en conflicto (pre-chequeo en la aplicación) y, ante carreras, el deducido de `constraint_name` del `23P01` (DD-21) |
+| ¿Un ID inexistente en el body (profesional, paciente, prestación, sillón) da 404 o 422? | Resuelta: 422, igual que un recurso inactivo; 404 solo para recursos del path (DD-21) |
+| ¿Qué tipo tiene `Turno.estado`: enum nativo o texto? | Resuelta: `varchar` + `CHECK (estado IN ('programado','cancelado'))` (DD-21) |

@@ -3,7 +3,7 @@
 > Este archivo (y su copia `CLAUDE.md`) es lo PRIMERO que todo agente lee al entrar al repo.
 > Generado a partir de `knowledge-base/`, `CHANGES.md` y `.atl/skill-registry.md`. No editar a mano sin re-sincronizar ambos archivos.
 
-Sistema de agenda para consultorios odontológicos chicos de Argentina (1 a 5 profesionales, 1 a 4 sillones). El MVP ataca el vacío detectado en el Discovery: prestaciones con duración propia y sillones como recurso, con prevención de solapamientos por profesional y por sillón garantizada en la base de datos.
+Sistema de agenda para consultorios odontológicos chicos de Argentina (1 a 5 profesionales, 1 a 4 sillones). El MVP ataca el vacío detectado en el Discovery: prestaciones con duración propia y sillones como recurso, con prevención de solapamientos por profesional, por sillón y por paciente garantizada en la base de datos.
 
 ---
 
@@ -41,7 +41,7 @@ La fuente de verdad del dominio vive en `knowledge-base/`. **Leé el archivo rel
 | [09_decisiones_y_supuestos.md](knowledge-base/09_decisiones_y_supuestos.md) | Decisiones DD-xx y supuestos SU-xx |
 | [10_preguntas_abiertas.md](knowledge-base/10_preguntas_abiertas.md) | ⚠️ Preguntas abiertas e inconsistencias |
 
-> ⚠️ Antes de cada change, revisá `10_preguntas_abiertas.md`. Al 2026-10-06 no quedan preguntas abiertas: todas se resolvieron en DD-13..DD-19 (`09_decisiones_y_supuestos.md`).
+> ⚠️ Antes de cada change, revisá `10_preguntas_abiertas.md`. Al 2026-10-07 no quedan preguntas abiertas: todas se resolvieron en DD-13..DD-21 (`09_decisiones_y_supuestos.md`).
 
 ---
 
@@ -83,7 +83,7 @@ Son contrato; romperlas es un defecto.
 ### Datos y dominio
 - **NUNCA** usar datos reales de pacientes en código, seeds, tests, ejemplos ni capturas → solo datos ficticios (nombres, DNI, teléfonos y emails inventados).
 - **NUNCA** commitear claves, tokens ni credenciales → todo por variables de entorno, con `.env.example` versionado y `.env` ignorado.
-- **NUNCA** confiar solo en la validación de la aplicación para evitar solapamientos → la restricción de exclusión en PostgreSQL (`tstzrange '[)'` + `btree_gist`, por profesional y por sillón) es obligatoria, y va acompañada de un test de concurrencia.
+- **NUNCA** confiar solo en la validación de la aplicación para evitar solapamientos → la restricción de exclusión en PostgreSQL (`tstzrange '[)'` + `btree_gist`, por profesional, por sillón y por paciente) es obligatoria, y va acompañada de un test de concurrencia.
 - **NUNCA** usar datetimes sin zona horaria → persistir como `timestamptz` en UTC y presentar en `America/Argentina/Buenos_Aires`.
 - **NUNCA** incluir la prestación ni datos de salud en el contenido de un recordatorio → solo fecha, hora y consultorio.
 

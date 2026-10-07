@@ -8,6 +8,7 @@ Códigos `RN-{DOMINIO}-{NN}`. Las reglas del Discovery (RN1-RN6) se conservan co
 |-----------|----|------|
 | RN1 | RN-AG-01 | Sin solape por profesional |
 | RN2 | RN-AG-02 | Sin solape por sillón |
+| (equipo, DD-20) | RN-AG-14 | Sin solape por paciente (extensión de RN1/RN2; no figura en el Discovery) |
 | RN3 | RN-AG-03 | Intervalos semiabiertos `[inicio, fin)` |
 | RN4 | RN-AG-04 | Duración por prestación, ajustable |
 | RN5 | RN-AG-05, RN-AG-06 | Horario de atención y bloqueos |
@@ -22,12 +23,13 @@ Códigos `RN-{DOMINIO}-{NN}`. Las reglas del Discovery (RN1-RN6) se conservan co
 - **RN-AG-05** (RN5): no se dan turnos fuera del horario de atención del profesional (el intervalo completo `[inicio, fin)` debe caber en una franja de `HorarioAtencion`).
 - **RN-AG-06** (RN5): no se dan turnos que se solapen con un bloqueo de agenda del profesional (mismo criterio de intervalos semiabiertos; un turno que empieza justo al terminar un bloqueo es válido).
 - **RN-AG-07** (RN6): un turno cancelado libera el horario (profesional y sillón) y **deja de contar** para la validación de solapamientos; el horario puede reasignarse de inmediato. El turno cancelado se conserva (no se borra) para auditoría.
-- **RN-AG-08**: reprogramar un turno aplica **exactamente la misma validación** que crearlo (RN-AG-01..06), excluyendo al propio turno de la comprobación de solapamiento. Si la validación falla, el turno original no cambia (operación atómica).
-- **RN-AG-09**: la garantía de no superposición debe existir **a nivel de base de datos** (restricción de exclusión sobre `tstzrange(inicio, fin, '[)')` por profesional y por sillón, parcial sobre `estado <> 'cancelado'`), no solo como validación de aplicación; ante reservas concurrentes sobre el mismo horario una gana y la otra recibe conflicto (409). Ver 08 y 09.
-- **RN-AG-10** (decisión del equipo, 2026-10-02): un turno referencia obligatoriamente profesional, paciente y prestación. El sillón depende de la prestación: si `Prestacion.requiere_sillon` es verdadero, el turno **debe** tener sillón asignado (si falta → `422`); si es falso (por ejemplo, una consulta), el turno no ocupa sillón y solo se valida la agenda del profesional. Un turno sin sillón no participa de RN-AG-02.
+- **RN-AG-08**: reprogramar un turno aplica **exactamente la misma validación** que crearlo (RN-AG-01..06 y RN-AG-14), excluyendo al propio turno de la comprobación de solapamiento. Si la validación falla, el turno original no cambia (operación atómica).
+- **RN-AG-09**: la garantía de no superposición debe existir **a nivel de base de datos** (restricción de exclusión sobre `tstzrange(inicio, fin, '[)')` por profesional, por sillón **y por paciente**, parcial sobre `estado <> 'cancelado'`), no solo como validación de aplicación; ante reservas concurrentes sobre el mismo horario una gana y la otra recibe conflicto (409). Ver 08 y 09.
+- **RN-AG-10** (decisión del equipo, 2026-10-02): un turno referencia obligatoriamente profesional, paciente y prestación. El sillón depende de la prestación: si `Prestacion.requiere_sillon` es verdadero, el turno **debe** tener sillón asignado (si falta → `422`); si es falso (por ejemplo, una consulta), el turno no ocupa sillón y solo se valida la agenda del profesional. Un turno sin sillón no participa de RN-AG-02. Si la prestación **no** requiere sillón y el request trae `sillon_id`, se rechaza con `422` (no se ignora ni se guarda el sillón sobrante; decisión del equipo, 2026-10-07, DD-21).
 - **RN-AG-11** (decisión del equipo, 2026-10-02): no hay sobreturnos en el MVP; todo solape se rechaza. Bilog los evidencia como tipo de turno; quedan como extensión posterior (ver 01, fuera de alcance).
 - **RN-AG-12** (decisión del equipo, 2026-10-02): no se crean ni se reprograman turnos con inicio anterior al momento actual (→ `422`).
 - **RN-AG-13** (decisión del equipo, 2026-10-06, DD-14): un turno se puede cancelar hasta su inicio; cancelar un turno ya iniciado o pasado se rechaza con `409`. No hay política de cancelación tardía en el MVP (sin cobros, marcas ni penalidades; quedan en el backlog).
+- **RN-AG-14** (decisión del equipo, 2026-10-07, DD-20): un **paciente** no puede tener dos turnos activos superpuestos, aunque sean con profesionales distintos. Mismo criterio que RN-AG-01/02: intervalo semiabierto `[inicio, fin)` (RN-AG-03), los cancelados no cuentan (RN-AG-07) y un turno contiguo es válido. Al reprogramar se excluye el propio turno (RN-AG-08). Garantía en BD con una tercera restricción de exclusión (RN-AG-09).
 
 ## Dominio: Horarios y bloqueos (RN-HB)
 
@@ -57,6 +59,7 @@ Códigos `RN-{DOMINIO}-{NN}`. Las reglas del Discovery (RN1-RN6) se conservan co
 - **RN-CU-04**: horarios persistidos en UTC y presentados en `America/Argentina/Buenos_Aires`. Los horarios de atención (hora local) se convierten a UTC al evaluar disponibilidad. Argentina no usa horario de verano, lo que simplifica la conversión (**Suposición** a verificar).
 
 ## Excepciones globales
-- Cualquier violación de solapamiento -> `409 Conflict` con indicación del recurso en conflicto (profesional o sillón).
+- Cualquier violación de solapamiento -> `409 Conflict` con indicación de **todos** los recursos en conflicto (profesional, sillón y/o paciente): la aplicación hace un pre-chequeo que los lista a todos y, ante una carrera, la restricción de BD (SQLSTATE `23P01`) se traduce a 409 indicando el recurso deducido de `constraint_name` (decisión del equipo, 2026-10-07, DD-21).
+- Referencia inexistente en el body (profesional, paciente, prestación, sillón) -> `422 Unprocessable Entity`, igual que un recurso inactivo; `404` queda solo para recursos del path (decisión del equipo, 2026-10-07, DD-21).
 - Cualquier violación de horario/bloqueo -> `422 Unprocessable Entity`.
 - Las operaciones de crear/reprogramar/cancelar son atómicas junto con su registro de auditoría.

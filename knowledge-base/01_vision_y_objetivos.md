@@ -15,7 +15,7 @@ Competidores prioritarios para demo (D.1): DentalTec, Bilog, DentalCore, Odonthi
 |-------|--------------------|-----------------------|
 | Recepcionista | Dar, reprogramar y cancelar turnos de todos los profesionales sin dobles reservas | Configurar profesionales, sillones, prestaciones y horarios; registrar pacientes básicos |
 | Odontólogo | Ver su agenda diaria/semanal | Bloquear franjas propias para no recibir turnos cuando no atiende |
-| Sistema | Garantizar no superposición por profesional y por sillón | Generar recordatorio previo al turno (reducir ausentismo); auditar cambios de turnos |
+| Sistema | Garantizar no superposición por profesional, por sillón y por paciente | Generar recordatorio previo al turno (reducir ausentismo); auditar cambios de turnos |
 
 ## Alcance MVP v0.1 (decisión D.4, 2026-10-01)
 El MVP "imprescindible" del informe (D.3) se **recortó** al núcleo de agenda por ser el vacío real del mercado y lo alcanzable en el trabajo:
@@ -43,7 +43,7 @@ Pasan a *diferenciador* o *etapas posteriores* (D.3 y recortes D.4); **no** se i
 - Periodontograma, imágenes, consentimientos y firma digital, asistente IA, API pública, app móvil nativa, interoperabilidad HL7 FHIR.
 
 ## Métricas de éxito
-- 0 turnos superpuestos (por profesional y por sillón) aun bajo reservas concurrentes (verificable con tests de concurrencia).
+- 0 turnos superpuestos (por profesional, por sillón y por paciente) aun bajo reservas concurrentes (verificable con tests de concurrencia).
 - Cobertura de las reglas RN-AG-01..RN-AG-10 por escenarios de prueba.
 - Recordatorio generado y encolado para todo turno activo dentro de la ventana configurada.
 - **Hipótesis sin probar:** que los recordatorios reduzcan el ausentismo; las cifras de proveedores (p. ej. "40 % menos de ausentismo") son afirmaciones comerciales y no se toman como evidencia.

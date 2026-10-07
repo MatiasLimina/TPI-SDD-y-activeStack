@@ -41,12 +41,14 @@ Solo el alcance D.4. Lo diferido está en `01_vision_y_objetivos.md` (Fuera de a
 **Criterios de aceptación**:
 - [ ] La duración toma por defecto la de la prestación y puede ajustarse.
 - [ ] Duración que no es múltiplo de 5 min o mayor a 480 min, o inicio no alineado a 5 min -> 422.
-- [ ] Solape con otro turno del mismo profesional o del mismo sillón -> 409.
+- [ ] Solape con otro turno del mismo profesional, del mismo sillón o del mismo paciente (aunque sea con otro profesional) -> 409, que lista todos los recursos en conflicto.
+- [ ] `sillon_id` informado con una prestación que no requiere sillón -> 422.
+- [ ] Profesional, paciente, prestación o sillón inexistente en el body -> 422 (igual que un recurso inactivo).
 - [ ] Un turno que empieza exactamente cuando termina otro es aceptado.
 - [ ] Dos creaciones concurrentes sobre el mismo horario: una se acepta y la otra recibe 409 (garantía en BD).
 - [ ] Se registra auditoría y se genera el recordatorio.
 
-**Reglas relacionadas**: RN-AG-01, 02, 03, 04, 05, 06, 09, 10, RN-CU-01, RN-NO-01
+**Reglas relacionadas**: RN-AG-01, 02, 03, 04, 05, 06, 09, 10, 14, RN-CU-01, RN-NO-01
 
 ### US-005 — Reprogramar turno
 **Como** recepcionista **quiero** mover un turno a otro horario/profesional/sillón con la misma validación **para** mantener la agenda consistente.

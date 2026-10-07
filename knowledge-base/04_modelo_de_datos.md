@@ -19,7 +19,7 @@ Profesional 1---* Bloqueo
 Profesional 1---* Turno
 Sillon      1---* Turno          (sillon_id NULLABLE: obligatorio solo si la prestación requiere sillón, RN-AG-10)
 Prestacion  1---* Turno
-Paciente    1---* Turno
+Paciente    1---* Turno          (sin solape por paciente, RN-AG-14)
 Turno       1---* TurnoAuditoria
 Turno       1---* Recordatorio
 ```
@@ -57,7 +57,7 @@ Turno       1---* Recordatorio
 ### Turno
 - `id`, `profesional_id`, `sillon_id` (nullable; requerido cuando `prestacion.requiere_sillon`, validado en el dominio, RN-AG-10), `paciente_id`, `prestacion_id`.
 - `inicio`, `fin` (timestamptz UTC; `fin = inicio + duración efectiva`), `duracion_min` (efectiva, ajustable, RN4; > 0, múltiplo de 5 y ≤ 480; `inicio` alineado a 5 min en hora local; validado en el dominio, 422, DD-15).
-- `estado` (enum: `programado` | `cancelado`; **Suposición**: reprogramar actualiza el mismo turno y deja huella en auditoría, sin estado propio).
+- `estado` (`varchar` + `CHECK (estado IN ('programado','cancelado'))`, no enum nativo de PostgreSQL, DD-21; **Suposición**: reprogramar actualiza el mismo turno y deja huella en auditoría, sin estado propio).
 - `motivo_cancelacion` (nullable), `creado_por`, `creado_en`, `actualizado_en`.
 - **Constraints (garantía a nivel de BD)** — requieren `CREATE EXTENSION btree_gist`:
   ```sql
@@ -67,10 +67,14 @@ Turno       1---* Recordatorio
   ALTER TABLE turno ADD CONSTRAINT turno_sin_solape_sillon
     EXCLUDE USING gist (sillon_id WITH =, tstzrange(inicio, fin, '[)') WITH &&)
     WHERE (estado <> 'cancelado' AND sillon_id IS NOT NULL);
-  ALTER TABLE turno ADD CONSTRAINT turno_fin_mayor CHECK (fin > inicio);
+  ALTER TABLE turno ADD CONSTRAINT turno_sin_solape_paciente
+    EXCLUDE USING gist (paciente_id WITH =, tstzrange(inicio, fin, '[)') WITH &&)
+    WHERE (estado <> 'cancelado');
+  ALTER TABLE turno ADD CONSTRAINT ck_turno_estado_valido CHECK (estado IN ('programado','cancelado'));
+  ALTER TABLE turno ADD CONSTRAINT ck_turno_fin_mayor CHECK (fin > inicio);
   ```
-  `[)` implementa RN3: dos turnos contiguos (fin = inicio del siguiente) **no** se solapan. El `WHERE estado <> 'cancelado'` implementa RN6.
-- Índices: GiST (los de las constraints), `(profesional_id, inicio)`, `(sillon_id, inicio)`, `(paciente_id)`.
+  `turno_sin_solape_paciente` implementa RN-AG-14 (DD-20). `[)` implementa RN3: dos turnos contiguos (fin = inicio del siguiente) **no** se solapan. El `WHERE estado <> 'cancelado'` implementa RN6.
+- Índices: GiST (los de las constraints), `(profesional_id, inicio)`, `(sillon_id, inicio)`. El índice simple `(paciente_id)` ya no se crea: lo cubre el GiST de `turno_sin_solape_paciente`.
 
 ### TurnoAuditoria
 - `id`, `turno_id`, `usuario_id`, `accion` (`crear` | `reprogramar` | `cancelar`), `valores_previos` (jsonb), `valores_nuevos` (jsonb), `ocurrido_en` (timestamptz UTC).

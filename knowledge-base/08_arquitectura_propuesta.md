@@ -14,9 +14,9 @@
 ## Concurrencia y no superposición (riesgo técnico)
 Dos reservas simultáneas pueden pasar ambas la validación en aplicación (condición de carrera "comprobar y luego insertar"). Mitigación obligatoria a nivel de BD:
 
-1. **Principal:** restricción de exclusión de PostgreSQL con `btree_gist` y `tstzrange(inicio, fin, '[)')`, una por profesional y otra por sillón, parciales sobre `estado <> 'cancelado'` (ver DDL en 04). La BD rechaza el segundo INSERT/UPDATE con `exclusion_violation` (SQLSTATE `23P01`), que la API traduce a 409.
+1. **Principal:** restricción de exclusión de PostgreSQL con `btree_gist` y `tstzrange(inicio, fin, '[)')`, una por profesional, otra por sillón y otra por paciente (RN-AG-14), parciales sobre `estado <> 'cancelado'` (ver DDL en 04). La BD rechaza el segundo INSERT/UPDATE con `exclusion_violation` (SQLSTATE `23P01`), que la API traduce a 409.
 2. **Alternativa/complemento:** bloqueo pesimista (`SELECT ... FOR UPDATE` sobre la fila del profesional/sillón, o `pg_advisory_xact_lock` por recurso) dentro de la transacción antes de validar.
-3. La validación en aplicación (horario, bloqueo, solape) se mantiene solo para dar mensajes claros, no como garantía.
+3. La validación en aplicación (horario, bloqueo, solape) se mantiene solo para dar mensajes claros, no como garantía. En particular, el pre-chequeo de solape lista **todos** los recursos en conflicto (profesional, sillón, paciente) en el 409; si una carrera lo esquiva, `23P01` se traduce a 409 indicando el recurso deducido de `constraint_name` (DD-21).
 4. Pruebas: test de concurrencia que lance N inserciones simultáneas del mismo horario y verifique exactamente 1 éxito.
 
 Nota: las restricciones de exclusión no cubren horario de atención ni bloqueos; esas reglas se validan en aplicación dentro de la misma transacción (o con triggers, **Suposición** a decidir).

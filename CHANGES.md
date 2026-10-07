@@ -9,7 +9,7 @@
 
 ## Change recomendado para el ciclo OPSX: `C-03` `crear-turno-sin-solapamientos`
 
-- Es una única feature (no un módulo): un endpoint, una regla de dominio (intervalos `[inicio, fin)`) y una garantía en BD (`EXCLUDE USING gist`). Cubre RN-AG-01..04, 09, 10, 12.
+- Es una única feature (no un módulo): un endpoint, una regla de dominio (intervalos `[inicio, fin)`) y una garantía en BD (`EXCLUDE USING gist`). Cubre RN-AG-01..04, 09, 10, 12, 14.
 - Solo depende de C-01 (scaffolding + harness de tests) y C-02 (modelos mínimos + seed): está a 3 pasos de la raíz del grafo, sin auth ni CRUDs.
 - Cada escenario (solape por profesional, por sillón, contiguo válido, sin sillón si la prestación no lo requiere, concurrencia con 1 éxito, inicio en el pasado) se traduce directo en un test automatizado, ideal para un ciclo explore → propose → apply → verify → archive.
 
@@ -149,23 +149,26 @@ C-04, C-07, C-09 y C-12 son obligatorios para el MVP pero cuelgan del camino cr�
 - **Estado**: `[ ]` pendiente
 - **Scope** (US-004 parcial; una sola feature):
   - Modelo `Turno` + migración 003: `profesional_id`, `sillon_id` NULLABLE, `paciente_id`, `prestacion_id`, `inicio`, `fin`, `duracion_min`, `estado` (`programado|cancelado`), `creado_por` NULLABLE (se completa en C-06), timestamps
-  - Constraints en BD: `turno_fin_mayor CHECK (fin > inicio)`, `turno_sin_solape_profesional` y `turno_sin_solape_sillon` (`EXCLUDE USING gist ... tstzrange(inicio, fin, '[)')` parciales `estado <> 'cancelado'`) — RN-AG-09
+  - Constraints en BD: `ck_turno_fin_mayor CHECK (fin > inicio)`, `ck_turno_estado_valido`, `turno_sin_solape_profesional`, `turno_sin_solape_sillon` y `turno_sin_solape_paciente` (`EXCLUDE USING gist ... tstzrange(inicio, fin, '[)')` parciales `estado <> 'cancelado'`) — RN-AG-09, RN-AG-14 (DD-20)
+  - `estado` se persiste como `varchar` + `CHECK (estado IN ('programado','cancelado'))`, no enum nativo (DD-21)
   - Dominio puro: cálculo de `fin = inicio + duración efectiva` (por defecto `Prestacion.duracion_min`, ajustable; RN-AG-04) y regla de solape semiabierto (RN-AG-03)
   - Regla del sillón según la prestación: requerido si `requiere_sillon` (falta -> 422), no ocupa sillón si no lo requiere (RN-AG-10)
   - Validación de duración y grilla (DD-15): duración efectiva múltiplo de 5 min y ≤ 480 min, inicio alineado a 5 min en hora local -> 422 (RN-AG-04)
   - Rechazo de inicio en el pasado -> 422 (RN-AG-12); recursos inactivos -> 422; sin sobreturnos (RN-AG-11)
-  - `POST /turnos` -> 201; solape (profesional o sillón) -> 409 indicando el recurso, traducción de SQLSTATE `23P01`
+  - `POST /turnos` -> 201; solape (profesional, sillón o paciente) -> 409 que lista **todos** los recursos en conflicto (pre-chequeo en la aplicación) y, ante carreras, traducción de SQLSTATE `23P01` indicando el recurso deducido de `constraint_name` (DD-21)
+  - `sillon_id` informado con una prestación que no requiere sillón -> 422; referencia inexistente en el body (profesional, paciente, prestación, sillón) -> 422, igual que un recurso inactivo (DD-21)
   - Puntos de extensión (hooks) en el caso de uso para auditoría, validaciones de horario/bloqueo y recordatorio, sin implementarlos
-  - Tests (uno por escenario): solape por profesional; solape por sillón; contiguo (fin = inicio siguiente) aceptado; mismo horario en distinto profesional y distinto sillón aceptado; duración por defecto y ajustada; prestación sin sillón no genera conflicto de sillón; sillón faltante con prestación que lo requiere -> 422; inicio pasado -> 422; duración no múltiplo de 5, mayor a 480 o inicio no alineado -> 422; concurrencia (N inserciones simultáneas del mismo horario, exactamente 1 éxito); unit tests del dominio sin BD
+  - Tests (uno por escenario): solape por profesional; solape por sillón; contiguo (fin = inicio siguiente) aceptado; mismo horario en distinto profesional y distinto sillón aceptado; duración por defecto y ajustada; prestación sin sillón no genera conflicto de sillón; sillón faltante con prestación que lo requiere -> 422; solape por paciente con distinto profesional -> 409; mismo paciente en turnos contiguos aceptado; prestación sin sillón con `sillon_id` informado -> 422; ID inexistente en el body -> 422; 409 que lista varios recursos en conflicto; inicio pasado -> 422; duración no múltiplo de 5, mayor a 480 o inicio no alineado -> 422; concurrencia (N inserciones simultáneas del mismo horario, exactamente 1 éxito); unit tests del dominio sin BD
   - Fuera de este change: auth, auditoría, recordatorio, horario de atención, bloqueos, reprogramar, cancelar
 - **Dependencias**: `C-02`
 - **Governance**: MEDIO
 - **Leer antes**:
-  - `knowledge-base/05_reglas_de_negocio.md` §RN-AG-01..04, RN-AG-09..12, §Excepciones globales
+  - `knowledge-base/05_reglas_de_negocio.md` §RN-AG-01..04, RN-AG-09..12, RN-AG-14, §Excepciones globales
   - `knowledge-base/04_modelo_de_datos.md` §Turno (DDL de constraints)
   - `knowledge-base/07_flujos_principales.md` §Flujo 2
   - `knowledge-base/08_arquitectura_propuesta.md` §Concurrencia y no superposición
   - `knowledge-base/06_funcionalidades.md` §US-004
+  - `knowledge-base/09_decisiones_y_supuestos.md` §DD-20, §DD-21
 
 ### [C-04] `cancelar-turno`
 - **Estado**: `[ ]` pendiente
@@ -187,7 +190,7 @@ C-04, C-07, C-09 y C-12 son obligatorios para el MVP pero cuelgan del camino cr�
 ### [C-05] `reprogramar-turno`
 - **Estado**: `[ ]` pendiente
 - **Scope** (US-005 parcial):
-  - `PATCH /turnos/{id}/reprogramar` (inicio, profesional, sillón, duración): mismas validaciones que crear excluyendo al propio turno (RN-AG-08), mismo inicio-no-pasado (RN-AG-12) y misma validación de duración y grilla de 5 min (RN-AG-04, DD-15; 422)
+  - `PATCH /turnos/{id}/reprogramar` (inicio, profesional, sillón, duración): mismas validaciones que crear excluyendo al propio turno (RN-AG-08; la exclusión del propio turno aplica también al chequeo por paciente, RN-AG-14), mismo inicio-no-pasado (RN-AG-12) y misma validación de duración y grilla de 5 min (RN-AG-04, DD-15; 422)
   - UPDATE de la misma fila dentro de una transacción; si falla (409/422) el turno original queda intacto
   - Tests: duración inválida o inicio no alineado -> 422 con original intacto; reprogramar a hueco libre; a hueco ocupado -> 409 con original intacto; solaparse consigo mismo es válido; cambiar de profesional y de sillón; turno cancelado no reprogramable
   - Auditoría y recordatorio se enchufan en C-07 y C-12

@@ -14,8 +14,8 @@
 
 1. Selecciona paciente, prestación, profesional, sillón y hora de inicio (opcionalmente consulta `GET /disponibilidad`).
 2. API calcula `fin = inicio + duración` (por defecto `Prestacion.duracion_min`, o la ajustada; RN-AG-04).
-3. API valida duración y grilla de 5 min (RN-AG-04), horario de atención del profesional (RN-AG-05) y ausencia de bloqueo (RN-AG-06).
-4. API abre una transacción e inserta `Turno`; PostgreSQL verifica las restricciones de exclusión por profesional y por sillón (RN-AG-01/02/03/09).
+3. API valida que las referencias existan y estén activas, duración y grilla de 5 min (RN-AG-04), coherencia del sillón con la prestación (RN-AG-10), horario de atención del profesional (RN-AG-05) y ausencia de bloqueo (RN-AG-06); hace un pre-chequeo de solape por profesional, sillón y paciente (RN-AG-01/02/14) que reúne todos los recursos en conflicto.
+4. API abre una transacción e inserta `Turno`; PostgreSQL verifica las restricciones de exclusión por profesional, por sillón y por paciente (RN-AG-01/02/03/09/14).
 5. En la misma transacción inserta `TurnoAuditoria` (acción `crear`) y, si faltan 24 h o más para el turno, un `Recordatorio` pendiente (RN-NO-03); commit.
 6. API encola el recordatorio en Redis para su `programado_para`.
 
@@ -25,7 +25,7 @@ Recepcionista -> Frontend -> API -> PostgreSQL (INSERT + EXCLUDE)
                            <- 201 Turno
 ```
 
-**Errores**: solape -> 409 (indica profesional o sillón); fuera de horario / en bloqueo -> 422; duración inválida (no múltiplo de 5, mayor a 480) o inicio no alineado a 5 min -> 422; recurso inactivo -> 422. Si dos recepciones reservan a la vez el mismo hueco, una recibe 409 (la BD es la fuente de verdad, no la validación previa).
+**Errores**: solape -> 409 (lista todos los recursos en conflicto: profesional, sillón y/o paciente; DD-21); fuera de horario / en bloqueo -> 422; `sillon_id` con prestación que no requiere sillón -> 422; referencia inexistente en el body (profesional, paciente, prestación, sillón) -> 422; duración inválida (no múltiplo de 5, mayor a 480) o inicio no alineado a 5 min -> 422; recurso inactivo -> 422. Si dos recepciones reservan a la vez el mismo hueco, una recibe 409 (la BD es la fuente de verdad, no la validación previa).
 
 ## Flujo 3: Reprogramar turno
 **Disparador**: cambio de horario/profesional/sillón. **Actor**: recepcionista.

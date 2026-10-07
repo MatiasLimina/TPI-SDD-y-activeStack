@@ -70,6 +70,12 @@
 ### DD-19 — Reintentos del adaptador de notificación (decisión del equipo, 2026-10-06)
 **Decisión**: 3 intentos con backoff exponencial; agotados, el recordatorio queda en `estado = fallido`. Sin reintento manual en el MVP. **Consecuencia**: precisa los "reintentos acotados" del Flujo 6.
 
+### DD-20 — Sin solape por paciente (decisión del equipo, 2026-10-07)
+**Decisión**: un paciente no puede tener dos turnos activos superpuestos, aunque sean con profesionales distintos; mismo criterio semiabierto `[inicio, fin)`, cancelados no cuentan y contiguo es válido. **Alternativas descartadas**: permitirlo (riesgo de doble reserva del mismo paciente en el mismo horario, que la recepción no detectaría a simple vista). **Consecuencia**: RN-AG-14 y una tercera restricción de exclusión `turno_sin_solape_paciente` en BD (se suma a DD-02).
+
+### DD-21 — Contrato de errores al crear turno y `estado` como varchar + CHECK (decisión del equipo, 2026-10-07)
+**Decisión**: (a) si la prestación no requiere sillón y el request trae `sillon_id` -> 422; (b) el 409 por solape lista **todos** los recursos en conflicto (profesional, sillón, paciente) mediante un pre-chequeo en la aplicación, y la restricción de BD (SQLSTATE `23P01`) queda como garantía ante carreras, con el recurso deducido de `constraint_name`; (c) una referencia inexistente en el body (profesional, paciente, prestación, sillón) -> 422, igual que un recurso inactivo, y 404 queda solo para recursos del path; (d) `Turno.estado` se persiste como `varchar` + `CHECK (estado IN ('programado','cancelado'))`. **Alternativas descartadas**: ignorar o guardar el sillón sobrante; 409 solo desde la BD (informa un único recurso, el primero que dispare); 404 para referencias del body; enum nativo de PostgreSQL (migraciones más costosas al agregar estados). **Consecuencia**: precisa RN-AG-10 y las excepciones globales de 05; afecta C-03 y, por reuso de las validaciones, C-05.
+
 ## Supuestos inferidos
 
 ### SU-01 — Los recordatorios reducen el ausentismo
