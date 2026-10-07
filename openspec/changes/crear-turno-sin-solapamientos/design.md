@@ -78,7 +78,7 @@ WHERE estado <> 'cancelado'
 El repositorio devuelve las filas y el caso de uso arma el conjunto de recursos. Usa los mismos índices GiST de las restricciones. **Alternativa descartada**: tres consultas (más viajes, misma información).
 
 ### 7. Traducción de `23P01`
-Se captura `sqlalchemy.exc.IntegrityError`; si `orig.sqlstate == "23P01"`, `orig.diag.constraint_name` se mapea con un diccionario `{"turno_sin_solape_profesional": "profesional", "turno_sin_solape_sillon": "sillon", "turno_sin_solape_paciente": "paciente"}`; cualquier otra violación se relanza. Se hace `rollback` de la sesión antes de propagar.
+Se captura `sqlalchemy.exc.IntegrityError`; si `orig.sqlstate == "23P01"`, `orig.diag.constraint_name` se mapea con un diccionario `{"turno_sin_solape_profesional": "profesional", "turno_sin_solape_sillon": "sillon", "turno_sin_solape_paciente": "paciente"}`; cualquier otra violación se relanza. El INSERT se ejecuta dentro de un SAVEPOINT (`session.begin_nested()`): si falla, se revierte solo ese savepoint y la sesión sigue usable, en lugar de un `session.rollback()` completo. **Ajuste durante apply**: el rollback completo descartaba toda la transacción externa (incluida la del fixture `db_session`, que trabaja en modo savepoint); con el SAVEPOINT el comportamiento hacia el cliente es el mismo (409) y la transacción del request se cierra al terminar. `CrearTurno` sí hace `rollback()` si falla un observador, para que el alta no quede a medias.
 
 ### 8. Modelo y migración `003`
 - Tabla `turno`: `id uuid` (`gen_random_uuid()`), FKs `profesional_id`, `paciente_id`, `prestacion_id` (NOT NULL) y `sillon_id` (NULL) con `ON DELETE RESTRICT`, `inicio`/`fin` `timestamptz`, `duracion_min int`, `estado varchar(20) DEFAULT 'programado'`, `motivo_cancelacion varchar(255) NULL`, `creado_por uuid NULL` (sin FK hasta que exista `usuario` en C-06), `creado_en`/`actualizado_en`.
@@ -95,7 +95,7 @@ La API recibe `AwareDatetime`; el caso de uso normaliza con `to_utc`, valida ali
 
 ## Risks / Trade-offs
 
-- [`compare_metadata` podría reportar los índices GiST de las exclusiones o no comparar `ExcludeConstraint`] → declarar las exclusiones en el modelo; si Alembic igual las reporta, filtrarlas con `include_object` documentando el motivo, y cubrirlas con tests de restricción explícitos.
+- [`compare_metadata` podría reportar los índices GiST de las exclusiones o no comparar `ExcludeConstraint`] → declarar las exclusiones en el modelo; si Alembic igual las reporta, filtrarlas con `include_object` documentando el motivo, y cubrirlas con tests de restricción explícitos. **Resultado en apply**: `compare_metadata` no reporta diferencias con las `ExcludeConstraint` declaradas en el modelo, así que no hizo falta `include_object`.
 - [Pre-chequeo y alta no son atómicos (READ COMMITTED)] → aceptado: la BD es la garantía; en carrera el 409 informa un solo recurso (DD-21).
 - [Test de concurrencia con datos commiteados puede dejar basura si falla] → limpieza en `finally` de la fixture e identificadores únicos por ejecución.
 - [Observadores dentro de la transacción alargan el lock] → aceptado para C-07; el encolado en Redis de C-12 deberá ocurrir post-commit (decisión de ese change).
