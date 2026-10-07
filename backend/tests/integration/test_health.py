@@ -1,12 +1,12 @@
 from collections.abc import Iterator
 
 import pytest
-from app.main import create_app
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session
 
 from app.infrastructure.db.session import get_session
+from app.main import create_app
 
 UNREACHABLE_URL = "postgresql+psycopg://secret_user:secret_pass@127.0.0.1:1/secret_db"
 
@@ -58,6 +58,6 @@ def test_health_database_down_does_not_leak_connection_details(
     assert leaked not in response.text
 
 
-@pytest.mark.parametrize("path", ["/turnos", "/pacientes", "/"])
+@pytest.mark.parametrize("path", ["/agenda", "/pacientes", "/"])
 def test_unknown_route_returns_404(client: TestClient, path: str) -> None:
     assert client.get(path).status_code == 404
