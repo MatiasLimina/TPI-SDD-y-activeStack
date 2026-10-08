@@ -146,7 +146,7 @@ C-04, C-07, C-09 y C-12 son obligatorios para el MVP pero cuelgan del camino cr�
 ## FASE 1 — Núcleo de agenda (turnos)
 
 ### [C-03] `crear-turno-sin-solapamientos`  ★ RECOMENDADO PARA EL CICLO OPSX
-- **Estado**: `[ ]` pendiente
+- **Estado**: `[x]` completado
 - **Scope** (US-004 parcial; una sola feature):
   - Modelo `Turno` + migración 003: `profesional_id`, `sillon_id` NULLABLE, `paciente_id`, `prestacion_id`, `inicio`, `fin`, `duracion_min`, `estado` (`programado|cancelado`), `creado_por` NULLABLE (se completa en C-06), timestamps
   - Constraints en BD: `ck_turno_fin_mayor CHECK (fin > inicio)`, `ck_turno_estado_valido`, `turno_sin_solape_profesional`, `turno_sin_solape_sillon` y `turno_sin_solape_paciente` (`EXCLUDE USING gist ... tstzrange(inicio, fin, '[)')` parciales `estado <> 'cancelado'`) — RN-AG-09, RN-AG-14 (DD-20)
