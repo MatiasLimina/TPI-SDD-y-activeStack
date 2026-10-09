@@ -3,7 +3,7 @@
 # Informe de Discovery: sistemas de gestión de turnos y agenda para consultorios odontológicos en Argentina
 
 **Materia:** Metodología I, Tecnicatura Universitaria en Programación
-**Integrantes:** [completar]
+**Integrante:** Matias Limina
 **Fecha:** 2026-10-01
 
 ---
