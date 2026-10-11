@@ -173,7 +173,7 @@ C-04, C-07, C-09 y C-12 son obligatorios para el MVP pero cuelgan del camino cr�
   - `knowledge-base/09_decisiones_y_supuestos.md` §DD-20, §DD-21
 
 ### [C-04] `cancelar-turno`
-- **Estado**: `[ ]` pendiente
+- **Estado**: `[x]` completado
 - **Scope** (US-006 parcial):
   - `POST /turnos/{id}/cancelar` (motivo opcional): `estado = cancelado`, `motivo_cancelacion`; no se borra
   - El horario se puede reservar de inmediato (el índice parcial ignora cancelados; RN-AG-07)
