@@ -70,3 +70,9 @@ Ninguna abierta al 2026-10-07. Las ocho preguntas pendientes se resolvieron (ver
 | ¿Qué recurso informa el 409 por solape? | Resuelta: todos los recursos en conflicto (pre-chequeo en la aplicación) y, ante carreras, el deducido de `constraint_name` del `23P01` (DD-21) |
 | ¿Un ID inexistente en el body (profesional, paciente, prestación, sillón) da 404 o 422? | Resuelta: 422, igual que un recurso inactivo; 404 solo para recursos del path (DD-21) |
 | ¿Qué tipo tiene `Turno.estado`: enum nativo o texto? | Resuelta: `varchar` + `CHECK (estado IN ('programado','cancelado'))` (DD-21) |
+
+## Preguntas resueltas (2026-10-11)
+
+| Pregunta | Resolución |
+|---|---|
+| ¿Cancelar un turno **ya cancelado** da 409 o es idempotente? | Resuelta: 409 `turno_ya_cancelado`, sin modificar el turno ni su motivo (DD-22) |

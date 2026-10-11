@@ -44,7 +44,7 @@ Recepcionista -> Frontend -> API -> PostgreSQL (INSERT + EXCLUDE)
 3. Se registra auditoría (`cancelar`) y se cancela el recordatorio pendiente.
 4. El horario queda disponible de inmediato.
 
-**Errores**: turno ya cancelado -> 409/idempotente (**Suposición**); turno ya iniciado o pasado -> 409 (RN-AG-13). Sin política de cancelación tardía en el MVP (DD-14).
+**Errores**: turno ya cancelado -> 409, sin modificar el turno (DD-22); turno ya iniciado o pasado -> 409 (RN-AG-13). Sin política de cancelación tardía en el MVP (DD-14).
 
 ## Flujo 5: Bloquear franja (odontólogo)
 **Disparador**: el odontólogo no atiende en cierta franja. **Actor**: odontólogo.

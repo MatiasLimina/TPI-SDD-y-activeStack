@@ -76,6 +76,9 @@
 ### DD-21 — Contrato de errores al crear turno y `estado` como varchar + CHECK (decisión del equipo, 2026-10-07)
 **Decisión**: (a) si la prestación no requiere sillón y el request trae `sillon_id` -> 422; (b) el 409 por solape lista **todos** los recursos en conflicto (profesional, sillón, paciente) mediante un pre-chequeo en la aplicación, y la restricción de BD (SQLSTATE `23P01`) queda como garantía ante carreras, con el recurso deducido de `constraint_name`; (c) una referencia inexistente en el body (profesional, paciente, prestación, sillón) -> 422, igual que un recurso inactivo, y 404 queda solo para recursos del path; (d) `Turno.estado` se persiste como `varchar` + `CHECK (estado IN ('programado','cancelado'))`. **Alternativas descartadas**: ignorar o guardar el sillón sobrante; 409 solo desde la BD (informa un único recurso, el primero que dispare); 404 para referencias del body; enum nativo de PostgreSQL (migraciones más costosas al agregar estados). **Consecuencia**: precisa RN-AG-10 y las excepciones globales de 05; afecta C-03 y, por reuso de las validaciones, C-05.
 
+### DD-22 — Cancelar un turno ya cancelado -> 409, no idempotente (decisión del equipo, 2026-10-11)
+**Decisión**: una segunda cancelación del mismo turno se rechaza con `409 turno_ya_cancelado` y no modifica el turno (el motivo original se conserva). Si el turno está cancelado y además es pasado, se informa `turno_ya_cancelado` (el estado se evalúa antes que la hora). **Alternativas descartadas**: cancelación idempotente con 200 (oculta a la recepcionista que el turno ya estaba cancelado y obliga a decidir si el nuevo motivo pisa al anterior, lo que ensucia la auditoría de C-07). **Consecuencia**: resuelve la ambigüedad "409/idempotente" del Flujo 4; afecta C-04.
+
 ## Supuestos inferidos
 
 ### SU-01 — Los recordatorios reducen el ausentismo

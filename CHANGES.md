@@ -177,7 +177,7 @@ C-04, C-07, C-09 y C-12 son obligatorios para el MVP pero cuelgan del camino cr�
 - **Scope** (US-006 parcial):
   - `POST /turnos/{id}/cancelar` (motivo opcional): `estado = cancelado`, `motivo_cancelacion`; no se borra
   - El horario se puede reservar de inmediato (el índice parcial ignora cancelados; RN-AG-07)
-  - Cancelar un turno ya cancelado -> 409 (Suposición documentada); inexistente -> 404
+  - Cancelar un turno ya cancelado -> 409, sin modificar el turno (DD-22); inexistente -> 404
   - Cancelar un turno ya iniciado o pasado -> 409; se cancela hasta el inicio, sin política de cancelación tardía (RN-AG-13, DD-14)
   - Tests: cancelar libera el horario y permite crear otro turno en el mismo intervalo; el cancelado no cuenta para solapes; turno iniciado -> 409
   - Auditoría y recordatorio se enchufan en C-07 y C-12
