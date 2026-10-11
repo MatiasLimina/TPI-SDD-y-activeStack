@@ -12,10 +12,13 @@ from app.domain.turnos import (
     TurnoCreado,
     TurnoError,
     TurnoInvalidoError,
+    TurnoNoCancelableError,
     TurnoPropuesto,
     calcular_fin,
     duracion_efectiva,
+    normalizar_motivo,
     solapan,
+    validar_cancelable,
     validar_duracion_y_grilla,
     validar_inicio_futuro,
     validar_sillon,
@@ -241,3 +244,59 @@ def test_modulo_de_dominio_no_depende_de_sqlalchemy_ni_fastapi() -> None:
 
     assert "sqlalchemy" not in codigo
     assert "fastapi" not in codigo
+
+
+# --- C-04 cancelación ----------------------------------------------------------------------
+
+INICIO_CANCELABLE = datetime(2026, 10, 7, 10, 0, tzinfo=BA)
+
+
+def test_validar_cancelable_acepta_programado_un_minuto_antes_del_inicio() -> None:
+    validar_cancelable("programado", INICIO_CANCELABLE, datetime(2026, 10, 7, 9, 59, tzinfo=BA))
+
+
+@pytest.mark.parametrize(
+    "ahora",
+    [
+        datetime(2026, 10, 7, 10, 0, tzinfo=BA),  # límite exacto
+        datetime(2026, 10, 7, 10, 20, tzinfo=BA),  # en curso
+        datetime(2026, 10, 8, 9, 0, tzinfo=BA),  # pasado (día siguiente)
+    ],
+)
+def test_validar_cancelable_rechaza_turno_iniciado_o_pasado(ahora: datetime) -> None:
+    with pytest.raises(TurnoNoCancelableError) as info:
+        validar_cancelable("programado", INICIO_CANCELABLE, ahora)
+
+    assert info.value.codigo == "turno_ya_iniciado"
+
+
+@pytest.mark.parametrize(
+    "ahora",
+    [
+        datetime(2026, 10, 6, 9, 0, tzinfo=BA),  # inicio futuro
+        datetime(2026, 10, 8, 9, 0, tzinfo=BA),  # inicio pasado: el estado se informa primero
+    ],
+)
+def test_validar_cancelable_informa_turno_ya_cancelado_antes_que_el_tiempo(
+    ahora: datetime,
+) -> None:
+    with pytest.raises(TurnoNoCancelableError) as info:
+        validar_cancelable("cancelado", INICIO_CANCELABLE, ahora)
+
+    assert info.value.codigo == "turno_ya_cancelado"
+
+
+@pytest.mark.parametrize(
+    ("motivo", "esperado"),
+    [
+        (None, None),
+        ("", None),
+        ("   ", None),
+        ("  Viaje imprevisto  ", "Viaje imprevisto"),
+        ("Fiebre", "Fiebre"),
+    ],
+)
+def test_normalizar_motivo_recorta_y_convierte_vacio_en_none(
+    motivo: str | None, esperado: str | None
+) -> None:
+    assert normalizar_motivo(motivo) == esperado

@@ -29,6 +29,23 @@ class TurnoInvalidoError(TurnoError):
         self.mensaje = mensaje
 
 
+class TurnoInexistenteError(TurnoError):
+    """El turno pedido no existe (se traduce a 404)."""
+
+    def __init__(self, turno_id: UUID) -> None:
+        super().__init__(f"turno inexistente: {turno_id}")
+        self.turno_id = turno_id
+
+
+class TurnoNoCancelableError(TurnoError):
+    """El turno no admite cancelación: ya cancelado o ya iniciado (se traduce a 409)."""
+
+    def __init__(self, codigo: str, mensaje: str) -> None:
+        super().__init__(mensaje)
+        self.codigo = codigo
+        self.mensaje = mensaje
+
+
 @dataclass(frozen=True)
 class Intervalo:
     """Intervalo semiabierto [inicio, fin) entre dos instantes con zona horaria."""
@@ -101,6 +118,23 @@ class TurnoCreado:
         )
 
 
+@dataclass(frozen=True)
+class TurnoRegistrado:
+    """Estado persistido de un turno (lo que se lee y lo que reciben los observadores)."""
+
+    id: UUID
+    profesional_id: UUID
+    paciente_id: UUID
+    prestacion_id: UUID
+    sillon_id: UUID | None
+    inicio: datetime
+    fin: datetime
+    duracion_min: int
+    estado: str
+    motivo_cancelacion: str | None
+    creado_por: UUID | None = None
+
+
 def solapan(a: Intervalo, b: Intervalo) -> bool:
     """Dos intervalos semiabiertos se solapan solo si a.inicio < b.fin y b.inicio < a.fin."""
     return a.inicio < b.fin and b.inicio < a.fin
@@ -145,3 +179,21 @@ def validar_sillon(*, requiere_sillon: bool, sillon_informado: bool) -> None:
         raise TurnoInvalidoError(
             "sillon_no_corresponde", "la prestación no requiere sillón y se informó uno"
         )
+
+
+def validar_cancelable(estado: str, inicio: datetime, ahora: datetime) -> None:
+    """Solo se cancela un turno programado antes de su inicio (RN-AG-13, DD-22).
+
+    El estado se informa antes que el tiempo: un turno cancelado y pasado es "ya cancelado".
+    """
+    if estado == "cancelado":
+        raise TurnoNoCancelableError("turno_ya_cancelado", "el turno ya está cancelado")
+    if inicio <= ahora:
+        raise TurnoNoCancelableError("turno_ya_iniciado", "el turno ya inició o ya pasó")
+
+
+def normalizar_motivo(motivo: str | None) -> str | None:
+    """Motivo sin espacios en los extremos; ausente o en blanco queda nulo."""
+    if motivo is None:
+        return None
+    return motivo.strip() or None
