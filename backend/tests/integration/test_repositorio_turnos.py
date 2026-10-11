@@ -3,7 +3,7 @@ from datetime import UTC, datetime, timedelta
 from uuid import uuid4
 
 import pytest
-from sqlalchemy import event, func, select
+from sqlalchemy import event, func, select, text
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
@@ -288,3 +288,121 @@ def test_insertar_relanza_otras_violaciones_de_integridad(
 
     with pytest.raises(IntegrityError):
         RepositorioTurnos(db_session).insertar(invalido)
+
+
+# --- C-04 lectura con bloqueo y cancelación ------------------------------------------------
+
+
+def _turno_programado(session: Session, c: Catalogo, *, pac: int = 0) -> Turno:
+    turno = Turno(
+        profesional_id=c.profesionales[0].id,
+        sillon_id=c.sillones[0].id,
+        paciente_id=c.pacientes[pac].id,
+        prestacion_id=c.limpieza.id,
+        inicio=BASE,
+        fin=BASE + timedelta(minutes=45),
+        duracion_min=45,
+    )
+    session.add(turno)
+    session.flush()
+    session.expire(turno)
+    return turno
+
+
+def test_obtener_para_actualizar_devuelve_el_turno_registrado(
+    db_session: Session, catalogo: Catalogo
+) -> None:
+    turno = _turno_programado(db_session, catalogo)
+
+    registrado = RepositorioTurnos(db_session).obtener_para_actualizar(turno.id)
+
+    assert registrado is not None
+    assert registrado.id == turno.id
+    assert registrado.estado == "programado"
+    assert registrado.motivo_cancelacion is None
+    assert registrado.profesional_id == catalogo.profesionales[0].id
+    assert registrado.sillon_id == catalogo.sillones[0].id
+    assert registrado.inicio == BASE
+    assert registrado.inicio.utcoffset() == timedelta(0)
+    assert registrado.fin == BASE + timedelta(minutes=45)
+    assert registrado.duracion_min == 45
+
+
+def test_obtener_para_actualizar_devuelve_none_si_el_turno_no_existe(db_session: Session) -> None:
+    assert RepositorioTurnos(db_session).obtener_para_actualizar(uuid4()) is None
+
+
+def test_obtener_para_actualizar_bloquea_la_fila_con_for_update(
+    db_session: Session, catalogo: Catalogo
+) -> None:
+    turno_id = _turno_programado(db_session, catalogo).id
+    sentencias: list[str] = []
+
+    def capturar(_conn, _cursor, statement, *_resto) -> None:  # type: ignore[no-untyped-def]
+        sentencias.append(statement)
+
+    motor = db_session.get_bind()
+    event.listen(motor, "before_cursor_execute", capturar)
+    try:
+        RepositorioTurnos(db_session).obtener_para_actualizar(turno_id)
+    finally:
+        event.remove(motor, "before_cursor_execute", capturar)
+
+    lecturas = [sql for sql in sentencias if sql.lstrip().upper().startswith("SELECT")]
+    assert len(lecturas) == 1
+    assert lecturas[0].rstrip().upper().endswith("FOR UPDATE")
+
+
+@pytest.mark.parametrize("motivo", ["Viaje imprevisto", None])
+def test_marcar_cancelado_conserva_la_fila_y_sus_datos(
+    db_session: Session, catalogo: Catalogo, motivo: str | None
+) -> None:
+    turno_id = _turno_programado(db_session, catalogo).id
+    db_session.execute(
+        text("UPDATE turno SET actualizado_en = '2020-01-01T00:00:00+00' WHERE id = :id"),
+        {"id": turno_id},
+    )
+    repo = RepositorioTurnos(db_session)
+    repo.obtener_para_actualizar(turno_id)
+
+    cancelado = repo.marcar_cancelado(turno_id, motivo)
+
+    assert cancelado.estado == "cancelado"
+    assert cancelado.motivo_cancelacion == motivo
+    fila = db_session.execute(
+        text(
+            "SELECT estado, motivo_cancelacion, profesional_id, sillon_id, paciente_id, "
+            "prestacion_id, inicio, fin, actualizado_en FROM turno WHERE id = :id"
+        ),
+        {"id": turno_id},
+    ).one()
+    assert (fila.estado, fila.motivo_cancelacion) == ("cancelado", motivo)
+    assert fila.profesional_id == catalogo.profesionales[0].id
+    assert fila.sillon_id == catalogo.sillones[0].id
+    assert fila.paciente_id == catalogo.pacientes[0].id
+    assert fila.prestacion_id == catalogo.limpieza.id
+    assert (fila.inicio, fila.fin) == (BASE, BASE + timedelta(minutes=45))
+    assert fila.actualizado_en > datetime(2020, 1, 1, tzinfo=UTC)
+
+
+def test_marcar_cancelado_libera_el_horario_en_aplicacion_y_en_la_base(
+    db_session: Session, catalogo: Catalogo
+) -> None:
+    turno_id = _turno_programado(db_session, catalogo).id
+    repo = RepositorioTurnos(db_session)
+    assert _conflictos(db_session, catalogo, _iv(0, 45)) == {
+        "profesional",
+        "sillon",
+        "paciente",
+    }
+
+    repo.obtener_para_actualizar(turno_id)
+    repo.marcar_cancelado(turno_id, None)
+
+    assert _conflictos(db_session, catalogo, _iv(0, 45)) == set()
+    nuevo = repo.insertar(_propuesto(catalogo))
+    assert nuevo.id != turno_id
+    cantidad = db_session.scalar(
+        select(func.count()).select_from(Turno).where(Turno.profesional_id == nuevo.profesional_id)
+    )
+    assert cantidad == 2

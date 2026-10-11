@@ -14,7 +14,9 @@ from app.domain.turnos import (
     ReferenciaInvalidaError,
     SolapamientoError,
     TurnoCreado,
+    TurnoInexistenteError,
     TurnoPropuesto,
+    TurnoRegistrado,
 )
 from app.infrastructure.db.models import Paciente, Prestacion, Profesional, Sillon, Turno
 
@@ -123,6 +125,51 @@ class RepositorioTurnos:
                 raise
             raise SolapamientoError({recurso}) from error
         return TurnoCreado.desde_propuesto(propuesto, id=turno.id)
+
+    def obtener_para_actualizar(self, turno_id: UUID) -> TurnoRegistrado | None:
+        """Lee el turno bloqueando su fila (FOR UPDATE) hasta el fin de la transacción.
+
+        Serializa operaciones concurrentes sobre el mismo turno: la segunda espera al commit
+        de la primera y relee el estado ya actualizado.
+        """
+        turno = self._session.scalars(
+            select(Turno)
+            .where(Turno.id == turno_id)
+            .with_for_update()
+            .execution_options(populate_existing=True)
+        ).one_or_none()
+        return None if turno is None else _a_registrado(turno)
+
+    def marcar_cancelado(self, turno_id: UUID, motivo: str | None) -> TurnoRegistrado:
+        """Marca como cancelado un turno ya leído con `obtener_para_actualizar` (fila bloqueada).
+
+        La fila no se borra; al dejar de ser activa sale del WHERE de las tres exclusiones y el
+        horario queda libre. Sin SAVEPOINT: el valor de estado es fijo y válido.
+        """
+        turno = self._session.get(Turno, turno_id)
+        if turno is None:
+            raise TurnoInexistenteError(turno_id)
+        turno.estado = "cancelado"
+        turno.motivo_cancelacion = motivo
+        self._session.flush()
+        self._session.refresh(turno)
+        return _a_registrado(turno)
+
+
+def _a_registrado(turno: Turno) -> TurnoRegistrado:
+    return TurnoRegistrado(
+        id=turno.id,
+        profesional_id=turno.profesional_id,
+        paciente_id=turno.paciente_id,
+        prestacion_id=turno.prestacion_id,
+        sillon_id=turno.sillon_id,
+        inicio=to_utc(turno.inicio),
+        fin=to_utc(turno.fin),
+        duracion_min=turno.duracion_min,
+        estado=turno.estado,
+        motivo_cancelacion=turno.motivo_cancelacion,
+        creado_por=turno.creado_por,
+    )
 
 
 def _recurso_en_conflicto(error: IntegrityError) -> Recurso | None:
