@@ -13,6 +13,8 @@
 - Solo depende de C-01 (scaffolding + harness de tests) y C-02 (modelos mínimos + seed): está a 3 pasos de la raíz del grafo, sin auth ni CRUDs.
 - Cada escenario (solape por profesional, por sillón, contiguo válido, sin sillón si la prestación no lo requiere, concurrencia con 1 éxito, inicio en el pasado) se traduce directo en un test automatizado, ideal para un ciclo explore → propose → apply → verify → archive.
 
+**Change grabado para la defensa (video)**: `C-05` `reprogramar-turno`, con el ciclo OPSX completo desde cero (explore → propose → ajustar → apply → archive). C-03 se hizo antes, fuera de cámara, y es su base.
+
 **Decisión de prerrequisitos**: auth/JWT y los CRUDs de configuración quedan FUERA de la ruta previa a C-03. En C-02 se cargan por seed profesionales, sillones, prestaciones y pacientes; `POST /turnos` nace sin autenticación (`creado_por` nullable) y C-06 le agrega la protección por rol y C-07 la auditoría. Las validaciones de horario de atención y bloqueos (RN-AG-05/06) se incorporan en C-10 y C-11; el recordatorio en C-12.
 
 ---

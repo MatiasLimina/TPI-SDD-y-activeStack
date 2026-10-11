@@ -68,6 +68,7 @@ El plan de implementación completo está en [CHANGES.md](CHANGES.md). Resumen:
 - **Camino crítico** (12): `C-01 → C-02 → C-03 → C-05 → C-06 → C-08 → C-10 → C-11 → C-13 → C-14 → C-15 → C-16`.
 - **Primer change**: `C-01` (`foundation-scaffolding-test-harness`).
 - **Change elegido para el ciclo OPSX**: `C-03` (`crear-turno-sin-solapamientos`). Depende solo de C-01 y C-02. No incluye autenticación (llega en C-06) ni validación de horarios y bloqueos (llegan en C-10 y C-11): sus escenarios no deben cubrir esas reglas.
+- **Change grabado para la defensa**: `C-05` (`reprogramar-turno`), ciclo OPSX completo desde cero. Depende solo de C-03. No incluye autenticación (C-06), horarios ni bloqueos (C-10, C-11), auditoría (C-07) ni recordatorio (C-12): sus escenarios no deben cubrir esas reglas.
 - **Fuera de alcance**: ver la sección "Fuera de alcance / backlog" de `CHANGES.md`. Nada de eso se implementa sin un change nuevo.
 
 **Antes de cualquier `/opsx:propose`**: leé [CHANGES.md](CHANGES.md), identificá las dependencias del change y los archivos de "Leer antes".
