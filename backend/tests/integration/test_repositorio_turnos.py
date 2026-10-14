@@ -453,3 +453,106 @@ def test_marcar_cancelado_libera_el_horario_en_aplicacion_y_en_la_base(
         select(func.count()).select_from(Turno).where(Turno.profesional_id == nuevo.profesional_id)
     )
     assert cantidad == 2
+
+
+# --- C-05 actualizar (reprogramación) ------------------------------------------------------
+
+
+def _destino(
+    c: Catalogo, *, prof: int = 0, sillon: int | None = 0, desde: int = 0, minutos: int = 45
+) -> TurnoPropuesto:
+    return _propuesto(c, prof=prof, sillon=sillon, desde=desde, minutos=minutos)
+
+
+def test_actualizar_modifica_la_misma_fila_y_conserva_lo_que_no_cambia(
+    db_session: Session, catalogo: Catalogo
+) -> None:
+    turno_id = _turno_programado(db_session, catalogo).id
+    db_session.execute(
+        text("UPDATE turno SET actualizado_en = '2020-01-01T00:00:00+00' WHERE id = :id"),
+        {"id": turno_id},
+    )
+    repo = RepositorioTurnos(db_session)
+    repo.obtener_para_actualizar(turno_id)
+    destino = _destino(catalogo, prof=1, sillon=1, desde=120, minutos=60)
+
+    nuevo = repo.actualizar(turno_id, destino)
+
+    assert nuevo.id == turno_id
+    assert (nuevo.profesional_id, nuevo.sillon_id) == (
+        catalogo.profesionales[1].id,
+        catalogo.sillones[1].id,
+    )
+    assert (nuevo.inicio, nuevo.fin, nuevo.duracion_min) == (
+        destino.inicio,
+        destino.fin,
+        60,
+    )
+    assert nuevo.inicio.utcoffset() == timedelta(0)
+    assert db_session.scalar(select(func.count()).select_from(Turno)) == 1
+    fila = db_session.execute(
+        text(
+            "SELECT estado, paciente_id, prestacion_id, creado_por, actualizado_en, "
+            "profesional_id, inicio, fin, duracion_min FROM turno WHERE id = :id"
+        ),
+        {"id": turno_id},
+    ).one()
+    assert fila.estado == "programado"
+    assert fila.paciente_id == catalogo.pacientes[0].id
+    assert fila.prestacion_id == catalogo.limpieza.id
+    assert fila.creado_por is None
+    assert fila.profesional_id == catalogo.profesionales[1].id
+    assert (fila.inicio, fila.fin, fila.duracion_min) == (destino.inicio, destino.fin, 60)
+    assert fila.actualizado_en > datetime(2020, 1, 1, tzinfo=UTC)
+
+
+def test_actualizar_puede_dejar_el_turno_sin_sillon(
+    db_session: Session, catalogo: Catalogo
+) -> None:
+    turno_id = _turno_programado(db_session, catalogo).id
+    repo = RepositorioTurnos(db_session)
+    repo.obtener_para_actualizar(turno_id)
+
+    nuevo = repo.actualizar(turno_id, _destino(catalogo, sillon=None))
+
+    assert nuevo.sillon_id is None
+
+
+def test_actualizar_hacia_un_intervalo_que_solapa_el_anterior_no_viola_la_exclusion(
+    db_session: Session, catalogo: Catalogo
+) -> None:
+    turno_id = _turno_programado(db_session, catalogo).id  # 10:00-10:45 local
+    repo = RepositorioTurnos(db_session)
+    repo.obtener_para_actualizar(turno_id)
+
+    nuevo = repo.actualizar(turno_id, _destino(catalogo, desde=15))  # 10:15-11:00
+
+    assert nuevo.inicio == BASE + timedelta(minutes=15)
+    assert nuevo.fin == BASE + timedelta(minutes=60)
+
+
+@pytest.mark.parametrize(
+    ("destino", "recurso"),
+    [({"sillon": 1}, "profesional"), ({"prof": 1, "sillon": 0}, "sillon")],
+    ids=["profesional", "sillon"],
+)
+def test_actualizar_hacia_un_hueco_ocupado_traduce_la_exclusion_y_conserva_el_horario(
+    db_session: Session, catalogo: Catalogo, destino: dict[str, int], recurso: str
+) -> None:
+    repo = RepositorioTurnos(db_session)
+    turno_id = _turno_programado(db_session, catalogo, pac=1).id  # 10:00-10:45, paciente 1
+    # Ocupante a las 12:00 con el profesional 0, el sillón 0 y el paciente 0
+    repo.insertar(_propuesto(catalogo, desde=120, sillon=0, pac=0))
+    db_session.commit()
+    repo.obtener_para_actualizar(turno_id)
+
+    with pytest.raises(SolapamientoError) as excinfo:
+        repo.actualizar(turno_id, _propuesto(catalogo, desde=120, pac=1, **destino))
+
+    assert excinfo.value.recursos == (recurso,)
+    db_session.rollback()  # la transacción exterior la cierra el caso de uso
+    db_session.expire_all()
+    fila = db_session.get(Turno, turno_id)
+    assert fila is not None
+    assert (fila.inicio, fila.profesional_id) == (BASE, catalogo.profesionales[0].id)
+    assert fila.sillon_id == catalogo.sillones[0].id

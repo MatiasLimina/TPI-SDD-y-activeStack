@@ -1,5 +1,7 @@
 """Acceso a datos de turnos: carga de referencias, pre-chequeo de solape e inserción."""
 
+from collections.abc import Iterator
+from contextlib import contextmanager
 from dataclasses import dataclass
 from uuid import UUID
 
@@ -120,15 +122,9 @@ class RepositorioTurnos:
             fin=to_utc(propuesto.fin),
             duracion_min=propuesto.duracion_min,
         )
-        try:
-            with self._session.begin_nested():
-                self._session.add(turno)
-                self._session.flush()
-        except IntegrityError as error:
-            recurso = _recurso_en_conflicto(error)
-            if recurso is None:
-                raise
-            raise SolapamientoError({recurso}) from error
+        with self._flush_traduciendo_exclusion():
+            self._session.add(turno)
+            self._session.flush()
         return TurnoCreado.desde_propuesto(propuesto, id=turno.id)
 
     def obtener_para_actualizar(self, turno_id: UUID) -> TurnoRegistrado | None:
@@ -144,6 +140,38 @@ class RepositorioTurnos:
             .execution_options(populate_existing=True)
         ).one_or_none()
         return None if turno is None else _a_registrado(turno)
+
+    def actualizar(self, turno_id: UUID, propuesto: TurnoPropuesto) -> TurnoRegistrado:
+        """Mueve un turno ya leído con `obtener_para_actualizar` (fila bloqueada).
+
+        Actualiza la misma fila: profesional, sillón, horario (UTC) y duración. Paciente,
+        prestación, estado y autor no se tocan. El UPDATE corre en un SAVEPOINT y una
+        exclusión violada se traduce a 409; el horario original lo conserva el rollback exterior.
+        """
+        turno = self._session.get(Turno, turno_id)
+        if turno is None:
+            raise TurnoInexistenteError(turno_id)
+        with self._flush_traduciendo_exclusion():
+            turno.profesional_id = propuesto.profesional_id
+            turno.sillon_id = propuesto.sillon_id
+            turno.inicio = to_utc(propuesto.inicio)
+            turno.fin = to_utc(propuesto.fin)
+            turno.duracion_min = propuesto.duracion_min
+            self._session.flush()
+        self._session.refresh(turno)
+        return _a_registrado(turno)
+
+    @contextmanager
+    def _flush_traduciendo_exclusion(self) -> Iterator[None]:
+        """SAVEPOINT que traduce una exclusión violada (23P01) a `SolapamientoError`."""
+        try:
+            with self._session.begin_nested():
+                yield
+        except IntegrityError as error:
+            recurso = _recurso_en_conflicto(error)
+            if recurso is None:
+                raise
+            raise SolapamientoError({recurso}) from error
 
     def marcar_cancelado(self, turno_id: UUID, motivo: str | None) -> TurnoRegistrado:
         """Marca como cancelado un turno ya leído con `obtener_para_actualizar` (fila bloqueada).
