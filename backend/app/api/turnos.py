@@ -1,18 +1,24 @@
-"""POST /turnos, POST /turnos/{id}/cancelar y traducción de errores de dominio a HTTP."""
+"""POST /turnos, cancelar, PATCH reprogramar y traducción de errores de dominio a HTTP."""
 
 from datetime import UTC, datetime
-from typing import Annotated
+from typing import Annotated, Any
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, FastAPI, Request, status
 from fastapi.responses import JSONResponse
-from pydantic import AwareDatetime, BaseModel, Field
+from pydantic import AwareDatetime, BaseModel, Field, JsonValue, model_validator
 from sqlalchemy.orm import Session
 
 from app.application.cancelar_turno import CancelarTurno
 from app.application.crear_turno import CrearTurno, Reloj, SolicitudTurno
+from app.application.reprogramar_turno import (
+    OMITIDO,
+    ReprogramarTurno,
+    SolicitudReprogramacion,
+)
 from app.domain.time import to_local
 from app.domain.turnos import (
+    CampoNoEditableError,
     ReferenciaInvalidaError,
     SolapamientoError,
     TurnoCreado,
@@ -87,6 +93,41 @@ class CancelacionIn(BaseModel):
     motivo: str | None = Field(default=None, max_length=255)
 
 
+class ReprogramacionIn(BaseModel):
+    """PATCH parcial: lo omitido se conserva; `null` explícito solo vale para el sillón."""
+
+    inicio: AwareDatetime | None = None
+    profesional_id: UUID | None = None
+    sillon_id: UUID | None = None
+    duracion_min: int | None = None
+    # Solo se detecta su presencia: el paciente y la prestación no se pueden modificar
+    paciente_id: JsonValue = None
+    prestacion_id: JsonValue = None
+
+    @model_validator(mode="after")
+    def _sin_nulos_en_campos_obligatorios(self) -> "ReprogramacionIn":
+        for campo in ("inicio", "profesional_id", "duracion_min"):
+            if campo in self.model_fields_set and getattr(self, campo) is None:
+                raise ValueError(f"{campo} no admite null")
+        return self
+
+    def a_solicitud(self) -> SolicitudReprogramacion:
+        enviados = self.model_fields_set
+
+        def valor(campo: str) -> Any:
+            return getattr(self, campo) if campo in enviados else OMITIDO
+
+        return SolicitudReprogramacion(
+            inicio=valor("inicio"),
+            profesional_id=valor("profesional_id"),
+            sillon_id=valor("sillon_id"),
+            duracion_min=valor("duracion_min"),
+            campos_no_editables=tuple(
+                campo for campo in ("paciente_id", "prestacion_id") if campo in enviados
+            ),
+        )
+
+
 def get_reloj() -> Reloj:
     """Dependencia del reloj; los tests la sobreescriben con un reloj fijo."""
     return lambda: datetime.now(UTC)
@@ -106,6 +147,13 @@ def get_cancelar_turno(
     return CancelarTurno(RepositorioTurnos(session), reloj)
 
 
+def get_reprogramar_turno(
+    session: Annotated[Session, Depends(get_session)],
+    reloj: Annotated[Reloj, Depends(get_reloj)],
+) -> ReprogramarTurno:
+    return ReprogramarTurno(RepositorioTurnos(session), reloj)
+
+
 @router.post("", status_code=status.HTTP_201_CREATED, response_model=TurnoOut)
 def crear_turno(datos: TurnoIn, caso: Annotated[CrearTurno, Depends(get_crear_turno)]) -> TurnoOut:
     creado = caso.ejecutar(SolicitudTurno(**datos.model_dump()))
@@ -120,6 +168,16 @@ def cancelar_turno(
 ) -> TurnoOut:
     cancelado = caso.ejecutar(turno_id, None if datos is None else datos.motivo)
     return TurnoOut.desde_registrado(cancelado)
+
+
+@router.patch("/{turno_id}/reprogramar", response_model=TurnoOut)
+def reprogramar_turno(
+    turno_id: UUID,
+    datos: ReprogramacionIn,
+    caso: Annotated[ReprogramarTurno, Depends(get_reprogramar_turno)],
+) -> TurnoOut:
+    reprogramado = caso.ejecutar(turno_id, datos.a_solicitud())
+    return TurnoOut.desde_registrado(reprogramado)
 
 
 def registrar_manejadores(app: FastAPI) -> None:
@@ -139,6 +197,19 @@ def registrar_manejadores(app: FastAPI) -> None:
                     "codigo": "referencia_invalida",
                     "referencia": error.referencia,
                     "motivo": error.motivo,
+                }
+            },
+        )
+
+    @app.exception_handler(CampoNoEditableError)
+    def _campo_no_editable(_: Request, error: CampoNoEditableError) -> JSONResponse:
+        return JSONResponse(
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+            content={
+                "detail": {
+                    "codigo": "campo_no_editable",
+                    "campos": list(error.campos),
+                    "mensaje": error.mensaje,
                 }
             },
         )
