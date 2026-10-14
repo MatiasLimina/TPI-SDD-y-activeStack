@@ -46,6 +46,22 @@ class TurnoNoModificableError(TurnoError):
         self.mensaje = mensaje
 
 
+CAMPOS_NO_EDITABLES: tuple[str, ...] = ("paciente_id", "prestacion_id")
+
+
+class CampoNoEditableError(TurnoError):
+    """Se intentó modificar el paciente o la prestación de un turno (se traduce a 422)."""
+
+    def __init__(self, campos: Iterable[str]) -> None:
+        conjunto = set(campos)
+        self.campos: tuple[str, ...] = tuple(c for c in CAMPOS_NO_EDITABLES if c in conjunto)
+        self.mensaje = (
+            "El paciente y la prestación de un turno no se pueden modificar al reprogramar. "
+            "Para cambiarlos, cancelá este turno y creá uno nuevo."
+        )
+        super().__init__(self.mensaje)
+
+
 @dataclass(frozen=True)
 class Intervalo:
     """Intervalo semiabierto [inicio, fin) entre dos instantes con zona horaria."""
@@ -190,6 +206,13 @@ def validar_modificable(estado: str, inicio: datetime, ahora: datetime) -> None:
         raise TurnoNoModificableError("turno_ya_cancelado", "el turno ya está cancelado")
     if inicio <= ahora:
         raise TurnoNoModificableError("turno_ya_iniciado", "el turno ya inició o ya pasó")
+
+
+def validar_campos_editables(campos: Iterable[str]) -> None:
+    """Paciente y prestación no se reprograman: cancelar y crear otro turno (DD-23)."""
+    pedidos = tuple(campos)
+    if any(campo in CAMPOS_NO_EDITABLES for campo in pedidos):
+        raise CampoNoEditableError(pedidos)
 
 
 def normalizar_motivo(motivo: str | None) -> str | None:

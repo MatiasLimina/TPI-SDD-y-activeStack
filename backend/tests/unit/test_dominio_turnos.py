@@ -6,6 +6,7 @@ from uuid import uuid4
 import pytest
 
 from app.domain.turnos import (
+    CampoNoEditableError,
     Intervalo,
     ReferenciaInvalidaError,
     SolapamientoError,
@@ -18,6 +19,7 @@ from app.domain.turnos import (
     duracion_efectiva,
     normalizar_motivo,
     solapan,
+    validar_campos_editables,
     validar_duracion_y_grilla,
     validar_inicio_futuro,
     validar_modificable,
@@ -300,3 +302,36 @@ def test_normalizar_motivo_recorta_y_convierte_vacio_en_none(
     motivo: str | None, esperado: str | None
 ) -> None:
     assert normalizar_motivo(motivo) == esperado
+
+
+# --- C-05 reprogramación: campos no editables ----------------------------------------------
+
+
+def test_validar_campos_editables_sin_campos_no_falla() -> None:
+    validar_campos_editables(())
+
+
+@pytest.mark.parametrize(
+    ("recibidos", "esperados"),
+    [
+        (("paciente_id",), ("paciente_id",)),
+        (("prestacion_id",), ("prestacion_id",)),
+        (("prestacion_id", "paciente_id"), ("paciente_id", "prestacion_id")),
+    ],
+)
+def test_validar_campos_editables_lanza_con_los_campos_en_orden_fijo(
+    recibidos: tuple[str, ...], esperados: tuple[str, ...]
+) -> None:
+    with pytest.raises(CampoNoEditableError) as info:
+        validar_campos_editables(recibidos)
+
+    assert info.value.campos == esperados
+
+
+def test_campo_no_editable_indica_cancelar_y_crear_uno_nuevo() -> None:
+    with pytest.raises(CampoNoEditableError) as info:
+        validar_campos_editables(("paciente_id",))
+
+    assert "cancel" in info.value.mensaje
+    assert "nuevo" in info.value.mensaje
+    assert isinstance(info.value, TurnoError)
