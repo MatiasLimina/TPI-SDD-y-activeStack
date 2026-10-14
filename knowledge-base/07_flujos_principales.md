@@ -34,7 +34,7 @@ Recepcionista -> Frontend -> API -> PostgreSQL (INSERT + EXCLUDE)
 2. API recalcula `fin` y repite validaciones 3-4 del flujo 2 excluyendo el propio turno (se actualiza la misma fila, por lo que la restricción de exclusión no se auto-conflictúa).
 3. En la misma transacción: `UPDATE` del turno, `TurnoAuditoria` (`reprogramar`, valores previos y nuevos), reprogramación del recordatorio.
 
-**Errores**: solape -> 409 y el turno original queda intacto (RN-AG-08); duración inválida o inicio no alineado a 5 min -> 422 (RN-AG-04).
+**Errores**: solape -> 409 y el turno original queda intacto (RN-AG-08); duración inválida o inicio no alineado a 5 min -> 422 (RN-AG-04); `paciente_id` o `prestacion_id` en el request -> 422 `campo_no_editable`; turno cancelado -> 409 `turno_ya_cancelado`; turno ya iniciado o pasado -> 409 `turno_ya_iniciado` (DD-23). Los campos omitidos conservan su valor actual (DD-23).
 
 ## Flujo 4: Cancelar turno
 **Disparador**: el paciente avisa que no asistirá. **Actor**: recepcionista.

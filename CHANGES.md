@@ -193,6 +193,7 @@ C-04, C-07, C-09 y C-12 son obligatorios para el MVP pero cuelgan del camino cr�
 - **Estado**: `[ ]` pendiente
 - **Scope** (US-005 parcial):
   - `PATCH /turnos/{id}/reprogramar` (inicio, profesional, sillón, duración): mismas validaciones que crear excluyendo al propio turno (RN-AG-08; la exclusión del propio turno aplica también al chequeo por paciente, RN-AG-14), mismo inicio-no-pasado (RN-AG-12) y misma validación de duración y grilla de 5 min (RN-AG-04, DD-15; 422)
+  - PATCH parcial: lo omitido conserva el valor actual; `paciente_id`/`prestacion_id` -> 422; turno cancelado o ya iniciado -> 409 (DD-23)
   - UPDATE de la misma fila dentro de una transacción; si falla (409/422) el turno original queda intacto
   - Tests: duración inválida o inicio no alineado -> 422 con original intacto; reprogramar a hueco libre; a hueco ocupado -> 409 con original intacto; solaparse consigo mismo es válido; cambiar de profesional y de sillón; turno cancelado no reprogramable
   - Auditoría y recordatorio se enchufan en C-07 y C-12

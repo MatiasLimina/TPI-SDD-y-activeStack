@@ -76,3 +76,11 @@ Ninguna abierta al 2026-10-07. Las ocho preguntas pendientes se resolvieron (ver
 | Pregunta | Resolución |
 |---|---|
 | ¿Cancelar un turno **ya cancelado** da 409 o es idempotente? | Resuelta: 409 `turno_ya_cancelado`, sin modificar el turno ni su motivo (DD-22) |
+
+## Preguntas resueltas (2026-10-14)
+
+| Pregunta | Resolución |
+|---|---|
+| Al reprogramar, ¿un campo omitido conserva su valor o vuelve al default (duración de la prestación)? | Resuelta: conserva el valor actual, incluida la duración ajustada (DD-23) |
+| ¿Se puede cambiar el paciente o la prestación al reprogramar? | Resuelta: no; 422 `campo_no_editable` con mensaje para la recepcionista (DD-23) |
+| ¿Se puede reprogramar un turno cancelado o ya iniciado/pasado? | Resuelta: no; 409 `turno_ya_cancelado` / `turno_ya_iniciado`, estado antes que hora (DD-23) |
