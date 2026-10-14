@@ -12,15 +12,15 @@ from app.domain.turnos import (
     TurnoCreado,
     TurnoError,
     TurnoInvalidoError,
-    TurnoNoCancelableError,
+    TurnoNoModificableError,
     TurnoPropuesto,
     calcular_fin,
     duracion_efectiva,
     normalizar_motivo,
     solapan,
-    validar_cancelable,
     validar_duracion_y_grilla,
     validar_inicio_futuro,
+    validar_modificable,
     validar_sillon,
 )
 
@@ -251,8 +251,8 @@ def test_modulo_de_dominio_no_depende_de_sqlalchemy_ni_fastapi() -> None:
 INICIO_CANCELABLE = datetime(2026, 10, 7, 10, 0, tzinfo=BA)
 
 
-def test_validar_cancelable_acepta_programado_un_minuto_antes_del_inicio() -> None:
-    validar_cancelable("programado", INICIO_CANCELABLE, datetime(2026, 10, 7, 9, 59, tzinfo=BA))
+def test_validar_modificable_acepta_programado_un_minuto_antes_del_inicio() -> None:
+    validar_modificable("programado", INICIO_CANCELABLE, datetime(2026, 10, 7, 9, 59, tzinfo=BA))
 
 
 @pytest.mark.parametrize(
@@ -263,9 +263,9 @@ def test_validar_cancelable_acepta_programado_un_minuto_antes_del_inicio() -> No
         datetime(2026, 10, 8, 9, 0, tzinfo=BA),  # pasado (día siguiente)
     ],
 )
-def test_validar_cancelable_rechaza_turno_iniciado_o_pasado(ahora: datetime) -> None:
-    with pytest.raises(TurnoNoCancelableError) as info:
-        validar_cancelable("programado", INICIO_CANCELABLE, ahora)
+def test_validar_modificable_rechaza_turno_iniciado_o_pasado(ahora: datetime) -> None:
+    with pytest.raises(TurnoNoModificableError) as info:
+        validar_modificable("programado", INICIO_CANCELABLE, ahora)
 
     assert info.value.codigo == "turno_ya_iniciado"
 
@@ -277,11 +277,11 @@ def test_validar_cancelable_rechaza_turno_iniciado_o_pasado(ahora: datetime) -> 
         datetime(2026, 10, 8, 9, 0, tzinfo=BA),  # inicio pasado: el estado se informa primero
     ],
 )
-def test_validar_cancelable_informa_turno_ya_cancelado_antes_que_el_tiempo(
+def test_validar_modificable_informa_turno_ya_cancelado_antes_que_el_tiempo(
     ahora: datetime,
 ) -> None:
-    with pytest.raises(TurnoNoCancelableError) as info:
-        validar_cancelable("cancelado", INICIO_CANCELABLE, ahora)
+    with pytest.raises(TurnoNoModificableError) as info:
+        validar_modificable("cancelado", INICIO_CANCELABLE, ahora)
 
     assert info.value.codigo == "turno_ya_cancelado"
 

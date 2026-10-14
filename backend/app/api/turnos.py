@@ -18,7 +18,7 @@ from app.domain.turnos import (
     TurnoCreado,
     TurnoInexistenteError,
     TurnoInvalidoError,
-    TurnoNoCancelableError,
+    TurnoNoModificableError,
     TurnoRegistrado,
 )
 from app.infrastructure.db.repositorio_turnos import RepositorioTurnos
@@ -157,8 +157,8 @@ def registrar_manejadores(app: FastAPI) -> None:
             content={"detail": {"codigo": "turno_inexistente", "mensaje": str(error)}},
         )
 
-    @app.exception_handler(TurnoNoCancelableError)
-    def _turno_no_cancelable(_: Request, error: TurnoNoCancelableError) -> JSONResponse:
+    @app.exception_handler(TurnoNoModificableError)
+    def _turno_no_modificable(_: Request, error: TurnoNoModificableError) -> JSONResponse:
         return JSONResponse(
             status_code=status.HTTP_409_CONFLICT,
             content={"detail": {"codigo": error.codigo, "mensaje": error.mensaje}},

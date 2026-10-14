@@ -9,7 +9,7 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from app.application.cancelar_turno import CancelarTurno
 from app.application.crear_turno import CrearTurno, SolicitudTurno
-from app.domain.turnos import TurnoNoCancelableError, TurnoRegistrado
+from app.domain.turnos import TurnoNoModificableError, TurnoRegistrado
 from app.infrastructure.db.models import Turno
 from app.infrastructure.db.repositorio_turnos import RepositorioTurnos
 from tests.integration.factories import Catalogo
@@ -69,7 +69,7 @@ def test_cancelaciones_simultaneas_del_mismo_turno_dejan_exactamente_un_exito(
     rechazos = [
         r
         for r in resultados
-        if isinstance(r, TurnoNoCancelableError) and r.codigo == "turno_ya_cancelado"
+        if isinstance(r, TurnoNoModificableError) and r.codigo == "turno_ya_cancelado"
     ]
     inesperados = [r for r in resultados if r is None or r not in exitos + rechazos]
     assert inesperados == []

@@ -37,8 +37,8 @@ class TurnoInexistenteError(TurnoError):
         self.turno_id = turno_id
 
 
-class TurnoNoCancelableError(TurnoError):
-    """El turno no admite cancelación: ya cancelado o ya iniciado (se traduce a 409)."""
+class TurnoNoModificableError(TurnoError):
+    """El turno ya no admite cancelar ni reprogramar: ya cancelado o ya iniciado (409)."""
 
     def __init__(self, codigo: str, mensaje: str) -> None:
         super().__init__(mensaje)
@@ -181,15 +181,15 @@ def validar_sillon(*, requiere_sillon: bool, sillon_informado: bool) -> None:
         )
 
 
-def validar_cancelable(estado: str, inicio: datetime, ahora: datetime) -> None:
-    """Solo se cancela un turno programado antes de su inicio (RN-AG-13, DD-22).
+def validar_modificable(estado: str, inicio: datetime, ahora: datetime) -> None:
+    """Solo se cancela o reprograma un turno programado antes de su inicio (RN-AG-13, DD-22).
 
     El estado se informa antes que el tiempo: un turno cancelado y pasado es "ya cancelado".
     """
     if estado == "cancelado":
-        raise TurnoNoCancelableError("turno_ya_cancelado", "el turno ya está cancelado")
+        raise TurnoNoModificableError("turno_ya_cancelado", "el turno ya está cancelado")
     if inicio <= ahora:
-        raise TurnoNoCancelableError("turno_ya_iniciado", "el turno ya inició o ya pasó")
+        raise TurnoNoModificableError("turno_ya_iniciado", "el turno ya inició o ya pasó")
 
 
 def normalizar_motivo(motivo: str | None) -> str | None:

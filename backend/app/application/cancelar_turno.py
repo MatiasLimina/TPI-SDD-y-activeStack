@@ -9,7 +9,7 @@ from app.domain.turnos import (
     TurnoInexistenteError,
     TurnoRegistrado,
     normalizar_motivo,
-    validar_cancelable,
+    validar_modificable,
 )
 from app.infrastructure.db.repositorio_turnos import RepositorioTurnos
 
@@ -34,7 +34,7 @@ class CancelarTurno:
         if turno is None:
             raise TurnoInexistenteError(turno_id)
         try:
-            validar_cancelable(turno.estado, turno.inicio, to_utc(self._reloj()))
+            validar_modificable(turno.estado, turno.inicio, to_utc(self._reloj()))
         except Exception:
             self._repositorio.rollback()  # libera el bloqueo de la fila
             raise

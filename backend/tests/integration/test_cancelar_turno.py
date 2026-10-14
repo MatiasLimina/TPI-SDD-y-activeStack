@@ -10,7 +10,7 @@ from sqlalchemy.orm import Session
 
 from app.application.cancelar_turno import CancelarTurno, ObservadorCancelacion
 from app.application.crear_turno import CrearTurno, SolicitudTurno
-from app.domain.turnos import TurnoInexistenteError, TurnoNoCancelableError, TurnoRegistrado
+from app.domain.turnos import TurnoInexistenteError, TurnoNoModificableError, TurnoRegistrado
 from app.infrastructure.db.models import Turno
 from app.infrastructure.db.repositorio_turnos import RepositorioTurnos
 from tests.integration.factories import Catalogo, crear_catalogo
@@ -91,7 +91,7 @@ def test_cancelar_dos_veces_lanza_ya_cancelado_sin_cambiar_el_motivo(
     turno_id = _crear(db_session, catalogo).id
     _cancelar(db_session).ejecutar(turno_id, "Viaje imprevisto")
 
-    with pytest.raises(TurnoNoCancelableError) as info:
+    with pytest.raises(TurnoNoModificableError) as info:
         _cancelar(db_session).ejecutar(turno_id, "Otro motivo")
 
     assert info.value.codigo == "turno_ya_cancelado"
@@ -111,7 +111,7 @@ def test_cancelar_turno_iniciado_lanza_ya_iniciado_y_sigue_programado(
 ) -> None:
     turno_id = _crear(db_session, catalogo).id
 
-    with pytest.raises(TurnoNoCancelableError) as info:
+    with pytest.raises(TurnoNoModificableError) as info:
         _cancelar(db_session, ahora).ejecutar(turno_id, "Tarde")
 
     assert info.value.codigo == "turno_ya_iniciado"
