@@ -77,19 +77,24 @@ class RepositorioTurnos:
         profesional_id: UUID,
         sillon_id: UUID | None,
         paciente_id: UUID,
+        excluir_id: UUID | None = None,
     ) -> set[Recurso]:
-        """Pre-chequeo en una consulta: recursos que comparten un turno activo solapado."""
+        """Pre-chequeo en una consulta: recursos que comparten un turno activo solapado.
+
+        `excluir_id` deja afuera al propio turno cuando se está reprogramando.
+        """
         compartidos = [Turno.profesional_id == profesional_id, Turno.paciente_id == paciente_id]
         if sillon_id is not None:
             compartidos.append(Turno.sillon_id == sillon_id)
         solapa = func.tstzrange(Turno.inicio, Turno.fin, "[)").op("&&")(
             func.tstzrange(intervalo.inicio, intervalo.fin, "[)")
         )
-        filas = self._session.execute(
-            select(Turno.profesional_id, Turno.sillon_id, Turno.paciente_id).where(
-                Turno.estado != "cancelado", solapa, or_(*compartidos)
-            )
-        ).all()
+        consulta = select(Turno.profesional_id, Turno.sillon_id, Turno.paciente_id).where(
+            Turno.estado != "cancelado", solapa, or_(*compartidos)
+        )
+        if excluir_id is not None:
+            consulta = consulta.where(Turno.id != excluir_id)
+        filas = self._session.execute(consulta).all()
         recursos: set[Recurso] = set()
         for fila_profesional, fila_sillon, fila_paciente in filas:
             if fila_profesional == profesional_id:

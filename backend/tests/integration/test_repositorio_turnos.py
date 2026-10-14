@@ -1,6 +1,6 @@
 from collections.abc import Callable
 from datetime import UTC, datetime, timedelta
-from uuid import uuid4
+from uuid import UUID, uuid4
 
 import pytest
 from sqlalchemy import event, func, select, text
@@ -217,6 +217,53 @@ def test_buscar_conflictos_ejecuta_una_sola_consulta(
         event.remove(conexion, "before_cursor_execute", escuchar)
 
     assert len(sentencias) == 1
+
+
+def _existente_id(session: Session, c: Catalogo) -> UUID:
+    _existente(session, c)
+    return session.scalars(select(Turno.id)).one()
+
+
+@pytest.mark.parametrize(
+    ("usa_sillon", "esperado"),
+    [(True, {"profesional", "sillon", "paciente"}), (False, {"profesional", "paciente"})],
+    ids=["con_sillon", "sin_sillon"],
+)
+def test_buscar_conflictos_con_excluir_id_no_reporta_al_propio_turno(
+    db_session: Session, catalogo: Catalogo, usa_sillon: bool, esperado: set[str]
+) -> None:
+    turno_id = _existente_id(db_session, catalogo)
+    repo = RepositorioTurnos(db_session)
+    consulta = {
+        "profesional_id": catalogo.profesionales[0].id,
+        "sillon_id": catalogo.sillones[0].id if usa_sillon else None,
+        "paciente_id": catalogo.pacientes[0].id,
+    }
+
+    sin_exclusion = repo.buscar_conflictos(_iv(0, 45), **consulta)
+    con_exclusion = repo.buscar_conflictos(_iv(0, 45), **consulta, excluir_id=turno_id)
+
+    assert sin_exclusion == esperado
+    assert con_exclusion == set()
+
+
+def test_buscar_conflictos_con_excluir_id_sigue_reportando_a_otro_turno(
+    db_session: Session, catalogo: Catalogo
+) -> None:
+    turno_id = _existente_id(db_session, catalogo)
+    repo = RepositorioTurnos(db_session)
+    otro = _propuesto(catalogo, desde=60, minutos=30, sillon=1, pac=1)
+    repo.insertar(otro)
+
+    conflictos = repo.buscar_conflictos(
+        _iv(60, 45),
+        profesional_id=catalogo.profesionales[0].id,
+        sillon_id=None,
+        paciente_id=catalogo.pacientes[0].id,
+        excluir_id=turno_id,
+    )
+
+    assert conflictos == {"profesional"}
 
 
 # --- 4.3 insertar y traducción de 23P01 ---------------------------------------------------
