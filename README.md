@@ -8,13 +8,52 @@ Producto: sistema de gestión de turnos y agenda de pacientes para consultorios 
 
 - `desarrollo-active-stack.pdf` — consigna del trabajo.
 - `openspec/` — especificaciones y changes (OpenSpec).
-- `.opencode/` — skills y comandos del agente.
+- `knowledge-base/` — base de conocimiento del dominio (fuente de verdad).
+- `CHANGES.md` — roadmap de changes.
+- `.agents/skills/` — skills del proyecto, instaladas a nivel proyecto (no globales).
+- `skills-lock.json` — origen y hash de cada skill instalada.
+- `.atl/skill-registry.md` — índice de skills con sus reglas compactas; lo usa el orquestador al delegar.
+- `.claude/commands/opsx/` y `.opencode/commands/` — comandos `/opsx:*` para Claude Code y OpenCode.
+- `AGENTS.md` / `CLAUDE.md` — instrucciones del proyecto para los agentes.
 
 ## Requisitos
 
 - Git, Node, Go
 - CLI `openspec`
 - Agente de código (OpenCode o Claude Code)
+
+## Skills del proyecto
+
+Las skills viven en `.agents/skills/` y se versionan con el repo, así quien clona el proyecto
+trabaja con las mismas skills sin instalar nada global.
+
+| Skill | Fuente | Para qué |
+|---|---|---|
+| `tdd` | mattpocock/skills | Ciclo red-green-refactor (TDD estricto) |
+| `python-testing-patterns` | wshobson/agents | Tests con pytest: fixtures, parametrize, markers |
+| `fastapi-python` | mindrally/skills | API REST con FastAPI y Pydantic |
+| `supabase-postgres-best-practices` | supabase/agent-skills | Esquema, constraints e índices en PostgreSQL |
+| `auth-implementation-patterns` | wshobson/agents | JWT y control de acceso por rol (C-06) |
+| `openspec-*` | `openspec init` | Flujo OPSX: explore, propose, apply, archive, sync, update |
+
+Por qué se eligieron estas y no otras: [docs/fundacion/skills-seleccionadas.md](docs/fundacion/skills-seleccionadas.md).
+
+Para agregar o reinstalar una skill, desde la raíz del repo y **sin** `-g`:
+
+```bash
+npx skills add <repo> --skill <nombre>
+```
+
+El comando la deja en `.agents/skills/`, la registra en `skills-lock.json` y crea un enlace en
+`.claude/skills/` para Claude Code (ese enlace es local y no se versiona). Después de agregar o
+quitar skills hay que reconstruir `.atl/skill-registry.md` con `/active-orchestrator:registry`.
+
+Al clonar el repo, Claude Code no ve las skills hasta recrear esos enlaces: correr el comando de
+arriba para cada skill listada en `skills-lock.json` (fuente y nombre). OpenCode y los demás
+agentes compatibles leen `.agents/skills/` directamente.
+
+Si `openspec init` u `openspec update` vuelven a generar `.opencode/skills/openspec-*`, moverlas a
+`.agents/skills/` (reemplazando las anteriores) para no tener dos copias.
 
 ## Cómo correr el backend y los tests
 

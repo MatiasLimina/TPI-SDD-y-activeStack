@@ -54,6 +54,8 @@ La fuente de verdad del dominio vive en `knowledge-base/`. **Leé el archivo rel
 | **Frontend** | React + TypeScript + Vite (C-14..C-16) | Ninguna instalada todavía; reevaluar con `find-skill` al llegar a esos changes |
 | **Orquestación** | Fundación y ciclo OPSX | `active-orchestrator`, `kb-creator`, `roadmap-generator`, `skill-registry`, `agent-instruction`, skills `openspec-*` |
 
+Las skills de dominio y las `openspec-*` están instaladas **a nivel proyecto** en `.agents/skills/` (versionadas, con origen fijado en `skills-lock.json`); no dependen de instalaciones globales. Para agregar una: `npx skills add <repo> --skill <nombre>` **sin** `-g`, y después `/active-orchestrator:registry`. Las de orquestación (`active-orchestrator`, `kb-creator`, etc.) son del stack y siguen siendo globales.
+
 Cargá la skill correspondiente al contexto ANTES de escribir código. Justificación de qué se instaló y qué no: [docs/fundacion/skills-seleccionadas.md](docs/fundacion/skills-seleccionadas.md).
 
 > Los compact rules de cada skill los resuelve el orquestador desde `.atl/skill-registry.md` (generado por `skill-registry`). En este proyecto el registry **sí está versionado**, porque la consigna lo exige como entregable. Esta tabla solo mapea skill→rol.

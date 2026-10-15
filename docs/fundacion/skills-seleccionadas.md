@@ -5,7 +5,14 @@
 
 `find-skill` recomendó 8 skills a partir del stack de la knowledge-base (Python, FastAPI,
 SQLAlchemy, PostgreSQL, Redis, JWT, pytest, Docker). Solo recomienda: la elección de qué
-instalar fue del equipo. Se instalaron 5 de forma global.
+instalar fue del equipo. Se instalaron 5, a nivel proyecto en `.agents/skills/`.
+
+> **Rectificación (2026-10-15)**: en la fundación las 5 skills se instalaron de forma global
+> (`npx skills add … -g`), así que no quedaban en el repo y el registry apuntaba a rutas de la
+> máquina de un integrante. Se reinstalaron a nivel proyecto (`npx skills add <repo> --skill <nombre>`,
+> sin `-g`): ahora viven en `.agents/skills/`, se versionan con el repo y `skills-lock.json`
+> fija su origen. También se movieron ahí las skills `openspec-*`, que antes estaban en
+> `.opencode/skills/`. El registry (`.atl/skill-registry.md`) usa rutas relativas al proyecto.
 
 | Skill | Fuente | Instalada | Justificación |
 |---|---|---|---|
