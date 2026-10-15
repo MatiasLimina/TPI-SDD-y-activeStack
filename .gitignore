@@ -24,3 +24,7 @@ __pycache__/
 .pytest_cache/
 .ruff_cache/
 *.egg-info/
+
+# Skills: los enlaces de .claude/skills apuntan con ruta absoluta a .agents/skills
+# (los crea `npx skills add`); la copia versionada es .agents/skills
+.claude/skills/

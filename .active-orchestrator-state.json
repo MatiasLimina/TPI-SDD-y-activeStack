@@ -218,56 +218,56 @@
         "source": "mindrally/skills",
         "installs": 13400,
         "why": "FastAPI + Python patterns (routers, deps, Pydantic, async)",
-        "install": "npx skills add mindrally/skills --skill fastapi-python -g"
+        "install": "npx skills add mindrally/skills --skill fastapi-python"
       },
       {
         "name": "python-testing-patterns",
         "source": "wshobson/agents",
         "installs": 34200,
         "why": "pytest fixtures, parametrize, mocking for strict TDD",
-        "install": "npx skills add wshobson/agents --skill python-testing-patterns -g"
+        "install": "npx skills add wshobson/agents --skill python-testing-patterns"
       },
       {
         "name": "tdd",
         "source": "mattpocock/skills",
         "installs": 1000000,
         "why": "Red-green-refactor workflow, reinforces strict TDD",
-        "install": "npx skills add mattpocock/skills --skill tdd -g"
+        "install": "npx skills add mattpocock/skills --skill tdd"
       },
       {
         "name": "supabase-postgres-best-practices",
         "source": "supabase/agent-skills",
         "installs": 426500,
         "why": "PostgreSQL indexing, constraints, schema/query best practices",
-        "install": "npx skills add supabase/agent-skills --skill supabase-postgres-best-practices -g"
+        "install": "npx skills add supabase/agent-skills --skill supabase-postgres-best-practices"
       },
       {
         "name": "sqlalchemy-alembic-expert-best-practices-code-review",
         "source": "wispbit-ai/skills",
         "installs": 1800,
         "why": "SQLAlchemy models/sessions and Alembic migrations review",
-        "install": "npx skills add wispbit-ai/skills --skill sqlalchemy-alembic-expert-best-practices-code-review -g"
+        "install": "npx skills add wispbit-ai/skills --skill sqlalchemy-alembic-expert-best-practices-code-review"
       },
       {
         "name": "auth-implementation-patterns",
         "source": "wshobson/agents",
         "installs": 17000,
         "why": "JWT/auth flows, token handling patterns",
-        "install": "npx skills add wshobson/agents --skill auth-implementation-patterns -g"
+        "install": "npx skills add wshobson/agents --skill auth-implementation-patterns"
       },
       {
         "name": "docker-patterns",
         "source": "affaan-m/ecc",
         "installs": 12600,
         "why": "Dockerfile and Compose patterns for API+Postgres+Redis",
-        "install": "npx skills add affaan-m/ecc --skill docker-patterns -g"
+        "install": "npx skills add affaan-m/ecc --skill docker-patterns"
       },
       {
         "name": "async-python-patterns",
         "source": "wshobson/agents",
         "installs": 17100,
         "why": "Async Python/asyncio patterns for async FastAPI/SQLAlchemy",
-        "install": "npx skills add wshobson/agents --skill async-python-patterns -g"
+        "install": "npx skills add wshobson/agents --skill async-python-patterns"
       }
     ],
     "installed": [
@@ -326,7 +326,12 @@
         "installed": false,
         "reason": "No instalada: no está decidido que FastAPI y SQLAlchemy corran en modo async; se reevalúa si se adopta."
       }
-    ]
+    ],
+    "scope": "project",
+    "path": ".agents/skills",
+    "lockfile": "skills-lock.json",
+    "rectified_at": "2026-10-15",
+    "rectification": "Reinstaladas a nivel proyecto (sin -g) en .agents/skills; las openspec-* se movieron desde .opencode/skills. Las copias globales previas no se tocaron."
   },
   "registry": {
     "created_by": "skill-registry",
@@ -343,7 +348,8 @@
       "CHANGES.md",
       "openspec/config.yaml"
     ],
-    "generated_at": "2026-10-02"
+    "generated_at": "2026-10-15",
+    "skills_path": ".agents/skills"
   },
   "agents": {
     "created_by": "agent-instruction",
