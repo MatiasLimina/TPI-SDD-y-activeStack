@@ -15,6 +15,8 @@ Producto: sistema de gestión de turnos y agenda de pacientes para consultorios 
 - `.atl/skill-registry.md` — índice de skills con sus reglas compactas; lo usa el orquestador al delegar.
 - `.claude/commands/opsx/` y `.opencode/commands/` — comandos `/opsx:*` para Claude Code y OpenCode.
 - `AGENTS.md` / `CLAUDE.md` — instrucciones del proyecto para los agentes.
+- `.mcp.json` — servidores MCP del proyecto (Context7), sin secretos.
+- `docs/skills-mcp/` — investigación, configuración y evidencias de la skill propia y del MCP.
 
 ## Requisitos
 
@@ -35,6 +37,8 @@ trabaja con las mismas skills sin instalar nada global.
 | `supabase-postgres-best-practices` | supabase/agent-skills | Esquema, constraints e índices en PostgreSQL |
 | `auth-implementation-patterns` | wshobson/agents | JWT y control de acceso por rol (C-06) |
 | `openspec-*` | `openspec init` | Flujo OPSX: explore, propose, apply, archive, sync, update |
+| `skill-creator` | anthropics/skills | Crear y evaluar skills (con ella se hizo `revisar-escenarios`) |
+| `revisar-escenarios` | **propia** (este repo) | Revisa los escenarios de un change contra la KB antes de Apply |
 
 Por qué se eligieron estas y no otras: [docs/fundacion/skills-seleccionadas.md](docs/fundacion/skills-seleccionadas.md).
 
@@ -46,7 +50,8 @@ npx skills add <repo> --skill <nombre>
 
 El comando la deja en `.agents/skills/`, la registra en `skills-lock.json` y crea un enlace en
 `.claude/skills/` para Claude Code (ese enlace es local y no se versiona). Después de agregar o
-quitar skills hay que reconstruir `.atl/skill-registry.md` con `/active-orchestrator:registry`.
+quitar skills hay que reconstruir `.atl/skill-registry.md` con `/active-orchestrator:registry`
+(excepción: la fila de `revisar-escenarios` se agregó a mano; ver `docs/fundacion/skills-seleccionadas.md`).
 
 Al clonar el repo, Claude Code no ve las skills hasta recrear esos enlaces: correr el comando de
 arriba para cada skill listada en `skills-lock.json` (fuente y nombre). OpenCode y los demás
@@ -54,6 +59,37 @@ agentes compatibles leen `.agents/skills/` directamente.
 
 Si `openspec init` u `openspec update` vuelven a generar `.opencode/skills/openspec-*`, moverlas a
 `.agents/skills/` (reemplazando las anteriores) para no tener dos copias.
+
+### Skill propia `revisar-escenarios`
+
+No viene de un repositorio externo, así que no está en `skills-lock.json` y `npx skills add` no la
+reinstala: su fuente versionada es `.agents/skills/revisar-escenarios/`. Para que Claude Code la vea
+después de clonar, crear el enlace a mano desde la raíz del repo:
+
+```bash
+mkdir -p .claude/skills
+```
+
+```bash
+cmd //c "mklink /J .claude\\skills\\revisar-escenarios .agents\\skills\\revisar-escenarios"
+```
+
+`.claude/skills/` no se versiona, por eso el `mkdir -p`. Esos son los comandos para Git Bash en Windows; en cmd es `mklink /J .claude\skills\revisar-escenarios .agents\skills\revisar-escenarios`.
+En Linux/macOS: `ln -s ../../.agents/skills/revisar-escenarios .claude/skills/revisar-escenarios`.
+
+Se usa una *junction* porque en Windows `ln -s` falla sin modo desarrollador
+("Operation not permitted"). Se comprueba abriendo una sesión nueva de Claude Code en la raíz y pidiendo
+"qué skills tenés disponibles": `revisar-escenarios` debe figurar en la lista. Uso, entradas y criterios de
+revisión: sección "Skill propia" de [AGENTS.md](AGENTS.md). Evidencia de las pruebas:
+[docs/skills-mcp/evidencias/skill-evals/](docs/skills-mcp/evidencias/skill-evals/iteration-1/resumen.md).
+
+## MCP del proyecto
+
+El repo versiona [`.mcp.json`](.mcp.json) con el servidor **Context7** (documentación actualizada de las
+librerías del stack), remoto y sin secretos. Al abrir Claude Code en la raíz hay que aprobarlo una vez y
+después comprobarlo con `claude mcp list`. Requisitos, API key opcional (fuera del repo), prueba de una
+herramienta, solución del aviso "defined in multiple scopes" y límites de uso:
+[docs/skills-mcp/mcp.md](docs/skills-mcp/mcp.md).
 
 ## Cómo correr el backend y los tests
 

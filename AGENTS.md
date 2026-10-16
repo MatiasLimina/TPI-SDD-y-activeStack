@@ -53,12 +53,32 @@ La fuente de verdad del dominio vive en `knowledge-base/`. **Leé el archivo rel
 | **Backend Seguridad** | JWT, roles, auditoría (C-06, C-07) | `auth-implementation-patterns`, `python-testing-patterns` |
 | **Frontend** | React + TypeScript + Vite (C-14..C-16) | Ninguna instalada todavía; reevaluar con `find-skill` al llegar a esos changes |
 | **Orquestación** | Fundación y ciclo OPSX | `active-orchestrator`, `kb-creator`, `roadmap-generator`, `skill-registry`, `agent-instruction`, skills `openspec-*` |
+| **Revisión de specs** | Control de escenarios entre Propose y Apply | `revisar-escenarios` (skill propia), `skill-creator` (para mantenerla) |
 
 Las skills de dominio y las `openspec-*` están instaladas **a nivel proyecto** en `.agents/skills/` (versionadas, con origen fijado en `skills-lock.json`); no dependen de instalaciones globales. Para agregar una: `npx skills add <repo> --skill <nombre>` **sin** `-g`, y después `/active-orchestrator:registry`. Las de orquestación (`active-orchestrator`, `kb-creator`, etc.) son del stack y siguen siendo globales.
 
 Cargá la skill correspondiente al contexto ANTES de escribir código. Justificación de qué se instaló y qué no: [docs/fundacion/skills-seleccionadas.md](docs/fundacion/skills-seleccionadas.md).
 
 > Los compact rules de cada skill los resuelve el orquestador desde `.atl/skill-registry.md` (generado por `skill-registry`). En este proyecto el registry **sí está versionado**, porque la consigna lo exige como entregable. Esta tabla solo mapea skill→rol.
+
+### Skill propia: `revisar-escenarios`
+
+Skill del proyecto, creada con `skill-creator` (anthropics/skills). Vive en `.agents/skills/revisar-escenarios/`, y Claude Code la ve por la unión de directorios `.claude/skills/revisar-escenarios` (ver README).
+
+- **Cuándo usarla**: después de cada `/opsx:propose` o `/opsx:update` y **antes** de `/opsx:apply`, o cuando se pida revisar, validar o chequear los escenarios de un change.
+- **Qué necesita**: el nombre del change, con sus delta specs ya escritos en `openspec/changes/<change>/specs/`. Lee por su cuenta `CHANGES.md` y la KB.
+- **Qué produce**: `openspec/changes/<change>/revision-escenarios.md`, con un veredicto, una tabla de cobertura y hallazgos con severidad y fuente. **Solo reporta**: las correcciones se hacen con `/opsx:update`.
+- **Cómo revisar su resultado**: cada hallazgo BLOQUEANTE o MAYOR cita una regla RN/DD que existe y dice eso. Ningún escenario sugerido introduce una regla que no esté en la KB (si la introduce, debe figurar como pregunta abierta). Nada de lo que marca como faltante pertenece a otro change.
+
+---
+
+## Integraciones MCP
+
+Los MCP son **integraciones**, no skills: no se registran en `.atl/skill-registry.md`. Configuración, comprobación y solución de problemas: [docs/skills-mcp/mcp.md](docs/skills-mcp/mcp.md).
+
+| Servidor | Configuración | Propósito | Herramientas | Cuándo | Límites |
+|----------|---------------|-----------|--------------|--------|---------|
+| `context7` (Upstash, remoto) | `.mcp.json` (ámbito project, sin secretos) | Documentación actual y versionada de las librerías del stack (FastAPI, PyJWT, pwdlib, SQLAlchemy, redis-py…) | `resolve-library-id`, `query-docs` | Al explorar o diseñar un change que elige o usa una librería, y antes de fijar en `design.md` una API de terceros | Solo lectura de documentación pública. En `query` van preguntas genéricas: nunca datos de pacientes, secretos, contenido de `.env` ni código del proyecto. No es fuente de verdad del dominio: ante un conflicto con la KB, prevalece la KB y la diferencia se registra en el design |
 
 ---
 
@@ -106,11 +126,12 @@ Son contrato; romperlas es un defecto.
 ```
 1. Leer la KB relevante (knowledge-base/)        → entender el dominio
 2. Identificar el change en CHANGES.md           → respetar dependencias
-3. /opsx:explore C-NN-nombre (opcional)          → relevar antes de proponer
+3. /opsx:explore C-NN-nombre (opcional)          → relevar antes de proponer (Context7 para docs del stack)
 4. /opsx:propose C-NN-nombre                     → proposal + design + specs + tasks
-5. /opsx:apply C-NN-nombre (cargando skills)     → TDD estricto, respetando las reglas duras
-6. Verificar: pytest en verde por cada escenario → nada se archiva en rojo
-7. /opsx:archive C-NN-nombre + marcar [x]        → cerrar el change
+5. revisar-escenarios C-NN-nombre                → informe; si hay BLOQUEANTE/MAYOR, /opsx:update
+6. /opsx:apply C-NN-nombre (cargando skills)     → TDD estricto, respetando las reglas duras
+7. Verificar: pytest en verde por cada escenario → nada se archiva en rojo
+8. /opsx:archive C-NN-nombre + marcar [x]        → cerrar el change
 ```
 
 Aplicar TODAS las reglas duras en cada paso. Ante conflicto entre la KB y este archivo, las reglas duras prevalecen.

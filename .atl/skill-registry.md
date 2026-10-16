@@ -13,10 +13,17 @@ See `_shared/skill-resolver.md` for the full resolution protocol.
 | FastAPI APIs, routers, Pydantic, async operations | fastapi-python | .agents/skills/fastapi-python/SKILL.md |
 | Any Postgres schema/migration/index/constraint/query/RLS work | supabase-postgres-best-practices | .agents/skills/supabase-postgres-best-practices/SKILL.md |
 | Auth systems, JWT, RBAC, session mgmt, securing APIs | auth-implementation-patterns | .agents/skills/auth-implementation-patterns/SKILL.md |
+| Review/validate a change's spec scenarios against the KB, after propose/update and before apply | revisar-escenarios | .agents/skills/revisar-escenarios/SKILL.md |
 
-All skills are installed **at project level** in `.agents/skills/` (versioned, pinned in `skills-lock.json`; `npx skills add <repo> --skill <name>` without `-g`). Paths above are relative to the project root.
+All skills are installed **at project level** in `.agents/skills/` (versioned; third-party ones pinned in `skills-lock.json`; `npx skills add <repo> --skill <name>` without `-g`). Paths above are relative to the project root.
 
-(The `openspec-*` skills also live in `.agents/skills/` but are workflow skills, not coding skills, so they are excluded from this table, as are the global foundation skills: active-orchestrator, kb-creator, roadmap-generator, find-skill, agent-instruction, discovery-research, web-scraper, skill-creator.)
+`revisar-escenarios` is the project's **own** skill (authored 2026-10-16 with `skill-creator`, not installed from a repo, so it has no entry in `skills-lock.json`). Purpose: report-only review of a change's GIVEN/WHEN/THEN scenarios against RN/DD/SU rules and the change scope in `CHANGES.md`; output goes to `openspec/changes/<change>/revision-escenarios.md`. Usage evidence: `docs/skills-mcp/evidencias/skill-evals/`.
+
+`skill-creator` (anthropics/skills, pinned in `skills-lock.json`) is also installed in `.agents/skills/`; it is an authoring tool, not a coding skill, so it is excluded from the table.
+
+MCP servers are integrations, not skills, and are not registered here: see `docs/skills-mcp/mcp.md` (Context7, configured in `.mcp.json`).
+
+(The `openspec-*` skills also live in `.agents/skills/` but are workflow skills, not coding skills, so they are excluded from this table, as are the global foundation skills: active-orchestrator, kb-creator, roadmap-generator, find-skill, agent-instruction, discovery-research, web-scraper.)
 
 ## Compact Rules
 
@@ -66,6 +73,14 @@ Pre-digested rules per skill. Delegators copy matching blocks into sub-agent pro
 - Rate-limit auth endpoints; log security events (logins, failed auth); validate all input.
 - Secure password reset: expiring single-use tokens. HTTPS everywhere. CSRF protection for cookie/session auth.
 - Secrets only from env vars, never in repo.
+
+### revisar-escenarios
+- Report only: never edit specs; corrections go back through `/opsx:update` or Propose (hard rule: Apply implements only the approved spec).
+- Inputs: change name; reads its delta specs, proposal/design/tasks, its `CHANGES.md` block, the KB "Leer antes" files plus 05, 09, 10.
+- Build the applicable rule list (RN/DD/SU) first; every BLOQUEANTE/MAYOR finding must cite a source, otherwise it is a SUGERENCIA.
+- Controls C1-C9 (`references/controles.md`): min. expected + business-error + edge scenario; KB traceability; change scope; HTTP contract (409/422/404, 401 vs 403; source: 05 §Excepciones globales); verifiability; time/UTC/fixed clock; ambiguity; hard rules; tasks per scenario.
+- Never invent domain rules: missing decisions become open questions for `10_preguntas_abiertas.md`.
+- Output: `openspec/changes/<change>/revision-escenarios.md` (append a new "Revisión N" section if it exists) + chat summary with verdict and BLOQUEANTE findings.
 
 ## Project Conventions
 

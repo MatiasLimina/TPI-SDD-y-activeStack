@@ -27,3 +27,18 @@ instalar fue del equipo. Se instalaron 5, a nivel proyecto en `.agents/skills/`.
 
 **Sin cobertura**: no se encontraron skills específicas para Redis ni para restricciones de
 exclusión de PostgreSQL (`btree_gist`); se resuelven con la documentación oficial.
+
+## Ampliación (2026-10-16) — skill propia y MCP
+
+Para el TP de skills y MCP se agregaron, **sin re-ejecutar** las etapas de la fundación
+(`find-skill` no se volvió a correr; `.active-orchestrator-state.json` no se tocó):
+
+| Incorporación | Tipo | Ubicación | Motivo |
+|---|---|---|---|
+| `skill-creator` (anthropics/skills) | Skill instalada | `.agents/skills/skill-creator/`, fijada en `skills-lock.json` | Herramienta para crear y evaluar la skill propia |
+| `revisar-escenarios` | Skill **propia** | `.agents/skills/revisar-escenarios/` | Revisar los escenarios de un change contra la KB antes de Apply; primer uso: C-06 |
+| Context7 (Upstash) | Servidor MCP (integración, no skill) | `.mcp.json` | Documentación actualizada de PyJWT, pwdlib y FastAPI para el design de C-06 |
+
+El registry (`.atl/skill-registry.md`) se actualizó a mano (fila y compact rules de
+`revisar-escenarios`), sin regenerarlo con `/active-orchestrator:registry`, para no reescribir las reglas
+compactas existentes. Investigación y comparación: [docs/skills-mcp/investigacion.md](../skills-mcp/investigacion.md).
