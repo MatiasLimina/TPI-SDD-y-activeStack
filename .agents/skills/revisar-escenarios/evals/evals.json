@@ -1,0 +1,42 @@
+{
+  "skill_name": "revisar-escenarios",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "Revisá los escenarios del spec de C-06 (auth-jwt-roles) que está en evals/files/c06-con-defectos/spec.md antes de pasar a apply. Guardá el informe en el directorio de salida que te indiquen en vez de en openspec/changes.",
+      "expected_output": "Informe con veredicto CORREGIR ANTES DE APPLY. Detecta: escenario de auditoría fuera de scope (C-07); 401 en lugar de 403 por rol insuficiente; THEN no verificable en expiración y sin reloj fijo; 400 por usuario inactivo sin fuente (el Flujo 1 solo define 401/403); 'deberían' sin SHALL/MUST; falta credenciales inválidas -> 401.",
+      "files": ["evals/files/c06-con-defectos/spec.md"],
+      "assertions": [
+        "Marca el escenario de turno_auditoria como fuera de scope citando C-07",
+        "Señala que rol insuficiente debe ser 403 y no 401",
+        "Marca el escenario de expiración como no verificable (BLOQUEANTE)",
+        "Cuestiona el 400 por usuario inactivo y lo deriva a pregunta abierta o al contrato 401, sin inventar una regla",
+        "Señala que falta el escenario de credenciales inválidas -> 401",
+        "Veredicto: CORREGIR ANTES DE APPLY"
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "chequeame el spec de cancelar turno (evals/files/c04-sin-borde/spec.md, es el change cancelar-turno / C-04), quiero saber si le faltan escenarios. guardá el informe en el directorio de salida.",
+      "expected_output": "Detecta que falta el error de negocio y el borde de RN-AG-13/DD-14 (cancelar turno ya iniciado -> 409) y DD-22 (cancelar ya cancelado -> 409); falta 'liberar el horario' verificable (reasignar el hueco). El 404 de path es correcto según DD-21.",
+      "files": ["evals/files/c04-sin-borde/spec.md"],
+      "assertions": [
+        "Señala que falta un escenario de error de negocio (BLOQUEANTE por C1)",
+        "Propone turno ya iniciado o pasado -> 409 citando RN-AG-13 o DD-14",
+        "Propone cancelar un turno ya cancelado -> 409 citando DD-22",
+        "No marca el 404 de path como error (es coherente con DD-21)"
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "Pasale la revisión de escenarios al spec ya archivado de reprogramar-turno (openspec/changes/archive/2026-10-14-reprogramar-turno/specs) a ver si la skill encuentra algo o lo da por bueno. Informe al directorio de salida.",
+      "expected_output": "Spec maduro y archivado: el veredicto debería ser LISTO o tener solo hallazgos MENOR/SUGERENCIA, sin inventar faltantes que pertenecen a C-07, C-10, C-11 o C-12.",
+      "files": [],
+      "assertions": [
+        "No reporta como faltantes horarios, bloqueos, auditoría o recordatorios (son de otros changes)",
+        "No tiene hallazgos BLOQUEANTE sin una fuente RN/DD verificable",
+        "Incluye la tabla de cobertura con los tres tipos de escenario"
+      ]
+    }
+  ]
+}
