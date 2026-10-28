@@ -25,7 +25,7 @@
 
 ## 5. Dominio de usuarios (sin BD)
 
-- [ ] 5.1 RED→GREEN: `tests/unit/test_dominio_usuarios.py` — `normalizar_email` (espacios y mayúsculas → minúsculas sin espacios); `validar_forma_email` acepta `a@b` y rechaza `""`, `sin-arroba`, `a@`, `@b`, `a@@b`, `a b@c`, espacio interno con tabulación (`a	@b`) y un carácter de control (`a\x00@b`); `validar_alta` acepta recepcionista sin profesional y odontólogo con profesional, y lanza `AltaUsuarioInvalidaError` con código propio para odontólogo sin profesional, recepcionista con profesional y rol desconocido; verificar en verde y que el módulo no importa SQLAlchemy ni FastAPI
+- [x] 5.1 RED→GREEN: `tests/unit/test_dominio_usuarios.py` — `normalizar_email` (espacios y mayúsculas → minúsculas sin espacios); `validar_forma_email` acepta `a@b` y rechaza `""`, `sin-arroba`, `a@`, `@b`, `a@@b`, `a b@c`, espacio interno con tabulación (`a	@b`) y un carácter de control (`a\x00@b`); `validar_alta` acepta recepcionista sin profesional y odontólogo con profesional, y lanza `AltaUsuarioInvalidaError` con código propio para odontólogo sin profesional, recepcionista con profesional y rol desconocido; verificar en verde y que el módulo no importa SQLAlchemy ni FastAPI
 
 ## 6. Login `POST /auth/login`
 
