@@ -427,4 +427,5 @@ Diferido por el Discovery (ver `docs/discovery/informe-discovery.md` §D.3 y §D
 - Reactivación de usuarios: el email de un usuario desactivado queda tomado y no se puede volver a dar de alta (limitación aceptada en DD-24)
 - Rate limiting del login y registro de eventos de seguridad (intentos fallidos) (DD-24)
 - Validación del largo mínimo de `JWT_SECRET` al arrancar (DD-24; hoy PyJWT solo advierte)
+- Ocultar el campo `input` de los `422` de validación (hoy un login incompleto devuelve la contraseña enviada al propio cliente; requiere un manejador global)
 - Consulta de disponibilidad / huecos libres (US-007): no figura en D.4, es una suposición de la KB y se acopla naturalmente con el enlace público de reserva diferido (D.3)

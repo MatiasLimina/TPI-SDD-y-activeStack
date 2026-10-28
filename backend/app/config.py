@@ -4,7 +4,7 @@ from functools import lru_cache
 from pathlib import Path
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
-from pydantic import field_validator
+from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 from app.domain.time import DEFAULT_TIMEZONE
@@ -23,7 +23,7 @@ class Settings(BaseSettings):
     DATABASE_URL: str
     JWT_SECRET: str
     REDIS_URL: str = "redis://localhost:6379/0"
-    JWT_EXPIRE_MINUTES: int = 60
+    JWT_EXPIRE_MINUTES: int = Field(default=60, gt=0)
     APP_TIMEZONE: str = DEFAULT_TIMEZONE
     NOTIFICATION_ADAPTER: str = "mock"
     CORS_ORIGINS: str = "http://localhost:5173"

@@ -13,6 +13,10 @@ class Rol(StrEnum):
 _ROLES_VALIDOS = frozenset(r.value for r in Rol)
 
 
+class CredencialesInvalidasError(Exception):
+    """Email desconocido, contraseña incorrecta o usuario inactivo (indistinguibles, DD-24)."""
+
+
 class AltaUsuarioInvalidaError(Exception):
     """Un alta de usuario viola una regla de dominio (el CLI la traduce a código de salida 1)."""
 

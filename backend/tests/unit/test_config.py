@@ -84,3 +84,26 @@ def test_get_settings_is_cached(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("JWT_SECRET", "test-secret")
 
     assert get_settings() is get_settings()
+
+
+@pytest.mark.parametrize("valor", ["0", "-5", "abc", "1.5", ""])
+def test_settings_jwt_expire_minutes_invalid_names_variable(
+    monkeypatch: pytest.MonkeyPatch, valor: str
+) -> None:
+    monkeypatch.setenv("DATABASE_URL", DB_URL)
+    monkeypatch.setenv("JWT_SECRET", "test-secret")
+    monkeypatch.setenv("JWT_EXPIRE_MINUTES", valor)
+
+    with pytest.raises(ValidationError, match="JWT_EXPIRE_MINUTES"):
+        load()
+
+
+@pytest.mark.parametrize("valor", [1, 15, 1440])
+def test_settings_jwt_expire_minutes_accepts_positive_integers(
+    monkeypatch: pytest.MonkeyPatch, valor: int
+) -> None:
+    monkeypatch.setenv("DATABASE_URL", DB_URL)
+    monkeypatch.setenv("JWT_SECRET", "test-secret")
+    monkeypatch.setenv("JWT_EXPIRE_MINUTES", str(valor))
+
+    assert load().JWT_EXPIRE_MINUTES == valor
