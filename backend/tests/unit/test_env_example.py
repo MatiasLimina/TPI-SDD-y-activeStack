@@ -32,3 +32,24 @@ def test_env_example_declares_infrastructure_variables(field: str) -> None:
 
 def test_env_example_jwt_secret_is_placeholder() -> None:
     assert parse_env(ENV_EXAMPLE)["JWT_SECRET"] == "change-me"
+
+
+@pytest.mark.parametrize(
+    "field",
+    [
+        "SEED_RECEPCIONISTA_PASSWORD",
+        "SEED_ODONTOLOGO_1_PASSWORD",
+        "SEED_ODONTOLOGO_2_PASSWORD",
+    ],
+)
+def test_env_example_declares_seed_passwords_as_fictitious_dev_values(field: str) -> None:
+    valores = parse_env(ENV_EXAMPLE)
+
+    assert field in valores
+    assert valores[field] != ""
+    assert "dev" in valores[field]
+    assert "ficticia" in valores[field]
+
+
+def test_env_example_does_not_declare_generic_usuario_password() -> None:
+    assert "USUARIO_PASSWORD" not in parse_env(ENV_EXAMPLE)
