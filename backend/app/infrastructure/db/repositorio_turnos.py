@@ -1,12 +1,11 @@
 """Acceso a datos de turnos: carga de referencias, pre-chequeo de solape e inserción."""
 
-from collections.abc import Iterator
-from contextlib import contextmanager
+from collections.abc import Callable
 from dataclasses import dataclass
 from uuid import UUID
 
 from sqlalchemy import func, or_, select
-from sqlalchemy.exc import IntegrityError
+from sqlalchemy.exc import IntegrityError, OperationalError
 from sqlalchemy.orm import Session
 
 from app.domain.time import to_utc
@@ -23,6 +22,10 @@ from app.domain.turnos import (
 from app.infrastructure.db.models import Paciente, Prestacion, Profesional, Sillon, Turno
 
 SQLSTATE_EXCLUSION = "23P01"
+SQLSTATE_DEADLOCK = "40P01"
+# Dos escrituras que chocan en una exclusión pueden esperarse mutuamente (el índice GiST inserta
+# y después chequea): PostgreSQL aborta a una con 40P01 en vez de 23P01. Se reintenta el SAVEPOINT.
+INTENTOS_ANTE_DEADLOCK = 3
 # El nombre de cada exclusión (migración 003) es contrato: de él se deduce el recurso.
 RECURSO_POR_CONSTRAINT: dict[str, Recurso] = {
     "turno_sin_solape_profesional": "profesional",
@@ -113,20 +116,26 @@ class RepositorioTurnos:
         El INSERT corre en un SAVEPOINT: si la base lo rechaza solo se deshace ese alta y la
         sesión sigue utilizable; la transacción exterior la cierra quien la abrió.
         """
-        turno = Turno(
-            profesional_id=propuesto.profesional_id,
-            paciente_id=propuesto.paciente_id,
-            prestacion_id=propuesto.prestacion_id,
-            sillon_id=propuesto.sillon_id,
-            inicio=to_utc(propuesto.inicio),
-            fin=to_utc(propuesto.fin),
-            duracion_min=propuesto.duracion_min,
-            creado_por=creado_por,
-        )
-        with self._flush_traduciendo_exclusion():
+        # Uno por intento; los de intentos fallidos quedan transitorios y no se usan.
+        turnos: list[Turno] = []
+
+        def agregar() -> None:
+            # Un objeto nuevo por intento: el SAVEPOINT revertido saca de la sesión al anterior.
+            turno = Turno(
+                profesional_id=propuesto.profesional_id,
+                paciente_id=propuesto.paciente_id,
+                prestacion_id=propuesto.prestacion_id,
+                sillon_id=propuesto.sillon_id,
+                inicio=to_utc(propuesto.inicio),
+                fin=to_utc(propuesto.fin),
+                duracion_min=propuesto.duracion_min,
+                creado_por=creado_por,
+            )
             self._session.add(turno)
-            self._session.flush()
-        return TurnoCreado.desde_propuesto(propuesto, id=turno.id, creado_por=creado_por)
+            turnos.append(turno)
+
+        self._escribir_traduciendo_exclusion(agregar)
+        return TurnoCreado.desde_propuesto(propuesto, id=turnos[-1].id, creado_por=creado_por)
 
     def obtener_para_actualizar(self, turno_id: UUID) -> TurnoRegistrado | None:
         """Lee el turno bloqueando su fila (FOR UPDATE) hasta el fin de la transacción.
@@ -152,27 +161,42 @@ class RepositorioTurnos:
         turno = self._session.get(Turno, turno_id)
         if turno is None:
             raise TurnoInexistenteError(turno_id)
-        with self._flush_traduciendo_exclusion():
+
+        def mover() -> None:
+            # Se reasigna en cada intento: el SAVEPOINT revertido expira los valores escritos.
             turno.profesional_id = propuesto.profesional_id
             turno.sillon_id = propuesto.sillon_id
             turno.inicio = to_utc(propuesto.inicio)
             turno.fin = to_utc(propuesto.fin)
             turno.duracion_min = propuesto.duracion_min
-            self._session.flush()
+
+        self._escribir_traduciendo_exclusion(mover)
         self._session.refresh(turno)
         return _a_registrado(turno)
 
-    @contextmanager
-    def _flush_traduciendo_exclusion(self) -> Iterator[None]:
-        """SAVEPOINT que traduce una exclusión violada (23P01) a `SolapamientoError`."""
-        try:
-            with self._session.begin_nested():
-                yield
-        except IntegrityError as error:
-            recurso = _recurso_en_conflicto(error)
-            if recurso is None:
-                raise
-            raise SolapamientoError({recurso}) from error
+    def _escribir_traduciendo_exclusion(self, escribir: Callable[[], None]) -> None:
+        """Aplica `escribir` y hace flush en un SAVEPOINT, traduciendo la exclusión a 409.
+
+        Una exclusión violada (23P01) se traduce a `SolapamientoError`. Un deadlock (40P01)
+        revierte solo el SAVEPOINT y se reintenta: la otra transacción ya puede seguir, y el
+        reintento la espera y termina con éxito o con el 23P01 que corresponde.
+        """
+        for intento in range(1, INTENTOS_ANTE_DEADLOCK + 1):
+            try:
+                with self._session.begin_nested():
+                    escribir()
+                    self._session.flush()
+                return
+            except IntegrityError as error:
+                recurso = _recurso_en_conflicto(error)
+                if recurso is None:
+                    raise
+                raise SolapamientoError({recurso}) from error
+            except OperationalError as error:
+                # Agotados los reintentos se relanza (500): no se sabe qué recurso chocó, así que
+                # un SolapamientoError inventaría el dato, y un error nuevo exige cambiar el spec.
+                if not _es_deadlock(error) or intento == INTENTOS_ANTE_DEADLOCK:
+                    raise
 
     def marcar_cancelado(self, turno_id: UUID, motivo: str | None) -> TurnoRegistrado:
         """Marca como cancelado un turno ya leído con `obtener_para_actualizar` (fila bloqueada).
@@ -204,6 +228,10 @@ def _a_registrado(turno: Turno) -> TurnoRegistrado:
         motivo_cancelacion=turno.motivo_cancelacion,
         creado_por=turno.creado_por,
     )
+
+
+def _es_deadlock(error: OperationalError) -> bool:
+    return getattr(error.orig, "sqlstate", None) == SQLSTATE_DEADLOCK
 
 
 def _recurso_en_conflicto(error: IntegrityError) -> Recurso | None:

@@ -4,7 +4,7 @@ from uuid import UUID, uuid4
 
 import pytest
 from sqlalchemy import event, func, select, text
-from sqlalchemy.exc import IntegrityError
+from sqlalchemy.exc import IntegrityError, OperationalError
 from sqlalchemy.orm import Session
 
 from app.domain.turnos import (
@@ -15,7 +15,7 @@ from app.domain.turnos import (
     TurnoPropuesto,
 )
 from app.infrastructure.db.models import Turno, Usuario
-from app.infrastructure.db.repositorio_turnos import RepositorioTurnos
+from app.infrastructure.db.repositorio_turnos import INTENTOS_ANTE_DEADLOCK, RepositorioTurnos
 from tests.integration.factories import Catalogo, crear_catalogo
 
 
@@ -576,3 +576,170 @@ def test_actualizar_hacia_un_hueco_ocupado_traduce_la_exclusion_y_conserva_el_ho
     assert fila is not None
     assert (fila.inicio, fila.profesional_id) == (BASE, catalogo.profesionales[0].id)
     assert fila.sillon_id == catalogo.sillones[0].id
+
+
+# --- deadlock al chequear la exclusión (40P01): reintento del SAVEPOINT ---------------------
+
+
+@pytest.fixture
+def deadlocks_simulados(db_session: Session) -> Callable[..., Callable[[], int]]:
+    """Hace que PostgreSQL aborte con `sqlstate` (40P01) las primeras `n` escrituras de `turno`.
+
+    Un deadlock real entre dos chequeos de exclusión depende del timing; acá la base lanza el
+    mismo SQLSTATE desde un trigger. Cuenta con una secuencia porque `nextval` no se deshace al
+    revertir el SAVEPOINT. Todo vive en la transacción del test y se revierte con ella.
+    Devuelve una función que informa cuántas escrituras llegaron a intentarse.
+    """
+
+    def configurar(n: int, sqlstate: str = "40P01") -> Callable[[], int]:
+        db_session.execute(text("CREATE SEQUENCE deadlock_simulado_seq"))
+        db_session.execute(
+            text(
+                "CREATE FUNCTION deadlock_simulado() RETURNS trigger LANGUAGE plpgsql AS $$ "
+                "BEGIN IF nextval('deadlock_simulado_seq') <= "
+                f"{int(n)} THEN RAISE EXCEPTION 'error simulado' USING ERRCODE = '{sqlstate}'; "
+                "END IF; RETURN NEW; END $$"
+            )
+        )
+        db_session.execute(
+            text(
+                "CREATE TRIGGER deadlock_simulado BEFORE INSERT OR UPDATE OF inicio ON turno "
+                "FOR EACH ROW EXECUTE FUNCTION deadlock_simulado()"
+            )
+        )
+        return lambda: int(
+            db_session.scalar(
+                text(
+                    "SELECT CASE WHEN is_called THEN last_value ELSE 0 END "
+                    "FROM deadlock_simulado_seq"
+                )
+            )
+            or 0
+        )
+
+    return configurar
+
+
+def test_insertar_reintenta_si_la_base_aborta_por_deadlock(
+    db_session: Session,
+    catalogo: Catalogo,
+    deadlocks_simulados: Callable[..., Callable[[], int]],
+) -> None:
+    intentos = deadlocks_simulados(1)
+
+    creado = RepositorioTurnos(db_session).insertar(_propuesto(catalogo))
+
+    assert intentos() == 2
+    assert db_session.scalar(select(func.count()).select_from(Turno)) == 1
+    assert db_session.get(Turno, creado.id) is not None
+
+
+def test_insertar_tras_un_deadlock_traduce_la_exclusion_del_ganador(
+    db_session: Session,
+    catalogo: Catalogo,
+    deadlocks_simulados: Callable[..., Callable[[], int]],
+) -> None:
+    repo = RepositorioTurnos(db_session)
+    repo.insertar(_propuesto(catalogo))  # el turno de la transacción que ganó la carrera
+    deadlocks_simulados(1)
+
+    with pytest.raises(SolapamientoError) as excinfo:
+        repo.insertar(_propuesto(catalogo, desde=15, minutos=30, sillon=1, pac=1))
+
+    assert excinfo.value.recursos == ("profesional",)
+    assert db_session.scalar(select(func.count()).select_from(Turno)) == 1
+
+
+def test_actualizar_reintenta_si_la_base_aborta_por_deadlock(
+    db_session: Session,
+    catalogo: Catalogo,
+    deadlocks_simulados: Callable[..., Callable[[], int]],
+) -> None:
+    turno_id = _turno_programado(db_session, catalogo).id
+    repo = RepositorioTurnos(db_session)
+    repo.obtener_para_actualizar(turno_id)
+    intentos = deadlocks_simulados(1)
+
+    nuevo = repo.actualizar(turno_id, _destino(catalogo, prof=1, sillon=1, desde=120))
+
+    assert intentos() == 2
+    assert (nuevo.inicio, nuevo.profesional_id) == (
+        BASE + timedelta(minutes=120),
+        catalogo.profesionales[1].id,
+    )
+    db_session.expire_all()
+    fila = db_session.get(Turno, turno_id)
+    assert fila is not None
+    assert (fila.inicio, fila.sillon_id) == (BASE + timedelta(minutes=120), catalogo.sillones[1].id)
+
+
+def test_insertar_relanza_el_deadlock_si_se_agotan_los_reintentos(
+    db_session: Session,
+    catalogo: Catalogo,
+    deadlocks_simulados: Callable[..., Callable[[], int]],
+) -> None:
+    intentos = deadlocks_simulados(INTENTOS_ANTE_DEADLOCK)
+
+    with pytest.raises(OperationalError) as excinfo:
+        RepositorioTurnos(db_session).insertar(_propuesto(catalogo))
+
+    assert getattr(excinfo.value.orig, "sqlstate", None) == "40P01"
+    assert intentos() == INTENTOS_ANTE_DEADLOCK
+    assert db_session.scalar(select(func.count()).select_from(Turno)) == 0
+
+
+def test_insertar_no_reintenta_otros_errores_operacionales(
+    db_session: Session,
+    catalogo: Catalogo,
+    deadlocks_simulados: Callable[..., Callable[[], int]],
+) -> None:
+    intentos = deadlocks_simulados(1, sqlstate="40001")  # serialization_failure
+
+    with pytest.raises(OperationalError) as excinfo:
+        RepositorioTurnos(db_session).insertar(_propuesto(catalogo))
+
+    assert getattr(excinfo.value.orig, "sqlstate", None) == "40001"
+    assert intentos() == 1
+
+
+def test_actualizar_tras_un_deadlock_traduce_la_exclusion_y_conserva_el_horario(
+    db_session: Session,
+    catalogo: Catalogo,
+    deadlocks_simulados: Callable[..., Callable[[], int]],
+) -> None:
+    repo = RepositorioTurnos(db_session)
+    turno_id = _turno_programado(db_session, catalogo, pac=1).id  # 10:00-10:45, paciente 1
+    repo.insertar(_propuesto(catalogo, desde=120, sillon=0, pac=0))  # ocupante de las 12:00
+    repo.obtener_para_actualizar(turno_id)
+    intentos = deadlocks_simulados(1)
+
+    with pytest.raises(SolapamientoError) as excinfo:
+        repo.actualizar(turno_id, _propuesto(catalogo, desde=120, sillon=1, pac=1))
+
+    assert excinfo.value.recursos == ("profesional",)
+    assert intentos() == 2
+    db_session.expire_all()
+    fila = db_session.get(Turno, turno_id)
+    assert fila is not None
+    assert (fila.inicio, fila.sillon_id) == (BASE, catalogo.sillones[0].id)
+
+
+def test_actualizar_relanza_el_deadlock_si_se_agotan_los_reintentos(
+    db_session: Session,
+    catalogo: Catalogo,
+    deadlocks_simulados: Callable[..., Callable[[], int]],
+) -> None:
+    turno_id = _turno_programado(db_session, catalogo).id
+    repo = RepositorioTurnos(db_session)
+    repo.obtener_para_actualizar(turno_id)
+    intentos = deadlocks_simulados(INTENTOS_ANTE_DEADLOCK)
+
+    with pytest.raises(OperationalError) as excinfo:
+        repo.actualizar(turno_id, _destino(catalogo, desde=120))
+
+    assert getattr(excinfo.value.orig, "sqlstate", None) == "40P01"
+    assert intentos() == INTENTOS_ANTE_DEADLOCK
+    db_session.expire_all()
+    fila = db_session.get(Turno, turno_id)
+    assert fila is not None
+    assert fila.inicio == BASE
