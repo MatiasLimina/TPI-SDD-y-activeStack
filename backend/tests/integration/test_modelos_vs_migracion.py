@@ -4,13 +4,20 @@ from alembic.migration import MigrationContext
 from sqlalchemy import Engine
 
 from app.infrastructure.db.base import Base
-from app.infrastructure.db.models import Paciente, Prestacion, Profesional, Sillon, Turno
+from app.infrastructure.db.models import (
+    Paciente,
+    Prestacion,
+    Profesional,
+    Sillon,
+    Turno,
+    Usuario,
+)
 
 TABLAS_CATALOGO = {"profesional", "sillon", "prestacion", "paciente"}
-TABLAS = TABLAS_CATALOGO | {"turno"}
+TABLAS = TABLAS_CATALOGO | {"turno", "usuario"}
 
 
-def test_base_metadata_registers_catalog_and_turno_tables() -> None:
+def test_base_metadata_registers_catalog_turno_and_usuario_tables() -> None:
     assert TABLAS <= set(Base.metadata.tables)
 
 
@@ -22,6 +29,7 @@ def test_base_metadata_registers_catalog_and_turno_tables() -> None:
         (Prestacion, "prestacion"),
         (Paciente, "paciente"),
         (Turno, "turno"),
+        (Usuario, "usuario"),
     ],
 )
 def test_model_maps_to_expected_table(modelo: type[Base], tabla: str) -> None:

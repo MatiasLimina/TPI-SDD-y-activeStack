@@ -55,7 +55,7 @@ def _inspeccionar(url: str) -> dict[str, object]:
 def test_upgrade_head_creates_turno_with_columns_fks_checks_and_exclusions(
     scratch_url: str,
 ) -> None:
-    command.upgrade(alembic_config(scratch_url), "head")
+    command.upgrade(alembic_config(scratch_url), "003")
 
     esquema = _inspeccionar(scratch_url)
 
@@ -72,7 +72,7 @@ def test_upgrade_head_creates_turno_with_columns_fks_checks_and_exclusions(
 
 
 def test_exclusion_de_sillon_ignora_turnos_sin_sillon(scratch_url: str) -> None:
-    command.upgrade(alembic_config(scratch_url), "head")
+    command.upgrade(alembic_config(scratch_url), "003")
     engine = create_engine(scratch_url)
     try:
         with engine.connect() as connection:
@@ -91,12 +91,12 @@ def test_exclusion_de_sillon_ignora_turnos_sin_sillon(scratch_url: str) -> None:
 
 def test_downgrade_drops_turno_and_reupgrade_restores_it(scratch_url: str) -> None:
     config = alembic_config(scratch_url)
-    command.upgrade(config, "head")
+    command.upgrade(config, "003")
 
     command.downgrade(config, "002")
 
     assert _inspeccionar(scratch_url) == {}
 
-    command.upgrade(config, "head")
+    command.upgrade(config, "003")
 
     assert _inspeccionar(scratch_url)["columnas"] == COLUMNAS_TURNO
