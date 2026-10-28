@@ -209,7 +209,7 @@ C-04, C-07, C-09 y C-12 son obligatorios para el MVP pero cuelgan del camino cr�
 ## FASE 2 — Seguridad y cumplimiento
 
 ### [C-06] `auth-jwt-roles`
-- **Estado**: `[ ]` pendiente
+- **Estado**: `[x]` completado
 - **Scope** (US-010):
   - Modelo `Usuario` (email único, `password_hash` bcrypt/argon2, `rol` `recepcionista|odontologo`, `profesional_id` obligatorio si odontólogo, `activo`) + migración; seed de 1 recepcionista y 2 odontólogos (credenciales de desarrollo ficticias en `.env.example`/seed)
   - `POST /auth/login` -> JWT con `sub`, `rol`, `profesional_id`, expiración corta (`JWT_EXPIRE_MINUTES`); credenciales inválidas 401, token vencido 401, rol insuficiente 403
