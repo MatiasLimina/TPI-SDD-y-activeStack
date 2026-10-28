@@ -107,7 +107,7 @@ class RepositorioTurnos:
                 recursos.add("paciente")
         return recursos
 
-    def insertar(self, propuesto: TurnoPropuesto) -> TurnoCreado:
+    def insertar(self, propuesto: TurnoPropuesto, *, creado_por: UUID | None = None) -> TurnoCreado:
         """Persiste el turno (instantes en UTC). Una exclusión violada se traduce a 409.
 
         El INSERT corre en un SAVEPOINT: si la base lo rechaza solo se deshace ese alta y la
@@ -121,11 +121,12 @@ class RepositorioTurnos:
             inicio=to_utc(propuesto.inicio),
             fin=to_utc(propuesto.fin),
             duracion_min=propuesto.duracion_min,
+            creado_por=creado_por,
         )
         with self._flush_traduciendo_exclusion():
             self._session.add(turno)
             self._session.flush()
-        return TurnoCreado.desde_propuesto(propuesto, id=turno.id)
+        return TurnoCreado.desde_propuesto(propuesto, id=turno.id, creado_por=creado_por)
 
     def obtener_para_actualizar(self, turno_id: UUID) -> TurnoRegistrado | None:
         """Lee el turno bloqueando su fila (FOR UPDATE) hasta el fin de la transacción.

@@ -19,7 +19,7 @@ from sqlalchemy.orm import Session
 
 from app.api.auth import get_emisor_tokens, get_hasher
 from app.config import REPO_ROOT
-from app.infrastructure.db.models import Usuario
+from app.infrastructure.db.models import Profesional, Usuario
 from app.infrastructure.db.session import get_session
 from app.infrastructure.security.contrasenas import Hasher
 from app.infrastructure.security.tokens import EmisorTokens
@@ -102,6 +102,23 @@ def recepcionista(db_session: Session, hasher_test: Hasher) -> Usuario:
         email="recepcion@example.com",
         password_hash=hasher_test.hash(CONTRASENA_RECEPCIONISTA),
         rol="recepcionista",
+    )
+    db_session.add(usuario)
+    db_session.flush()
+    return usuario
+
+
+@pytest.fixture
+def odontologo(db_session: Session, hasher_test: Hasher) -> Usuario:
+    """Odontólogo ficticio con su propio profesional, creado en la sesión de test."""
+    profesional = Profesional(nombre="Olga", apellido="Ficticia")
+    db_session.add(profesional)
+    db_session.flush()
+    usuario = Usuario(
+        email="odontologa@example.com",
+        password_hash=hasher_test.hash("clave-ficticia-odontologa"),
+        rol="odontologo",
+        profesional_id=profesional.id,
     )
     db_session.add(usuario)
     db_session.flush()

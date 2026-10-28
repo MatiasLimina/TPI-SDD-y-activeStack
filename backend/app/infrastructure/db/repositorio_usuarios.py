@@ -16,6 +16,10 @@ class RepositorioUsuarios:
         """Busca por email ya normalizado (activo o inactivo)."""
         return self._session.scalars(select(Usuario).where(Usuario.email == email)).one_or_none()
 
+    def por_id(self, usuario_id: UUID) -> Usuario | None:
+        """Busca por id (activo o inactivo); `None` si no existe."""
+        return self._session.get(Usuario, usuario_id)
+
     def actualizar_hash(self, usuario_id: UUID, password_hash: str) -> None:
         self._session.execute(
             update(Usuario).where(Usuario.id == usuario_id).values(password_hash=password_hash)

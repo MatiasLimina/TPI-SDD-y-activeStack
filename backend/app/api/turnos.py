@@ -9,6 +9,7 @@ from fastapi.responses import JSONResponse
 from pydantic import AwareDatetime, BaseModel, Field, JsonValue, model_validator
 from sqlalchemy.orm import Session
 
+from app.api.auth import requiere_rol
 from app.application.cancelar_turno import CancelarTurno
 from app.application.crear_turno import CrearTurno, Reloj, SolicitudTurno
 from app.application.reprogramar_turno import (
@@ -27,10 +28,13 @@ from app.domain.turnos import (
     TurnoNoModificableError,
     TurnoRegistrado,
 )
+from app.domain.usuarios import Rol, UsuarioAutenticado
 from app.infrastructure.db.repositorio_turnos import RepositorioTurnos
 from app.infrastructure.db.session import get_session
 
 router = APIRouter(prefix="/turnos", tags=["turnos"])
+
+RecepcionistaAutenticada = Annotated[UsuarioAutenticado, Depends(requiere_rol(Rol.RECEPCIONISTA))]
 
 
 class TurnoIn(BaseModel):
@@ -155,13 +159,19 @@ def get_reprogramar_turno(
 
 
 @router.post("", status_code=status.HTTP_201_CREATED, response_model=TurnoOut)
-def crear_turno(datos: TurnoIn, caso: Annotated[CrearTurno, Depends(get_crear_turno)]) -> TurnoOut:
-    creado = caso.ejecutar(SolicitudTurno(**datos.model_dump()))
+def crear_turno(
+    # Primer parámetro: FastAPI autentica antes de validar path y body (401/403 ganan a 404/422)
+    usuario: RecepcionistaAutenticada,
+    datos: TurnoIn,
+    caso: Annotated[CrearTurno, Depends(get_crear_turno)],
+) -> TurnoOut:
+    creado = caso.ejecutar(SolicitudTurno(**datos.model_dump()), creado_por=usuario.id)
     return TurnoOut.desde_dominio(creado)
 
 
 @router.post("/{turno_id}/cancelar", response_model=TurnoOut)
 def cancelar_turno(
+    usuario: RecepcionistaAutenticada,
     turno_id: UUID,
     caso: Annotated[CancelarTurno, Depends(get_cancelar_turno)],
     datos: CancelacionIn | None = None,
@@ -172,6 +182,7 @@ def cancelar_turno(
 
 @router.patch("/{turno_id}/reprogramar", response_model=TurnoOut)
 def reprogramar_turno(
+    usuario: RecepcionistaAutenticada,
     turno_id: UUID,
     datos: ReprogramacionIn,
     caso: Annotated[ReprogramarTurno, Depends(get_reprogramar_turno)],

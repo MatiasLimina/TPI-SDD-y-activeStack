@@ -1,6 +1,7 @@
 """Caso de uso: crear un turno validando reglas de dominio y no superposición."""
 
 from collections.abc import Callable, Sequence
+from uuid import UUID
 
 from app.application.validacion_turno import (
     Reloj,
@@ -31,14 +32,14 @@ class CrearTurno:
         self._validadores = validadores
         self._observadores = observadores
 
-    def ejecutar(self, solicitud: SolicitudTurno) -> TurnoCreado:
+    def ejecutar(self, solicitud: SolicitudTurno, *, creado_por: UUID | None = None) -> TurnoCreado:
         propuesto = validar_solicitud_turno(
             self._repositorio,
             solicitud,
             ahora=to_utc(self._reloj()),
             validadores=self._validadores,
         )
-        creado = self._repositorio.insertar(propuesto)
+        creado = self._repositorio.insertar(propuesto, creado_por=creado_por)
         try:
             for observador in self._observadores:
                 observador(creado)

@@ -17,7 +17,7 @@ from app.domain.turnos import (
     TurnoInvalidoError,
     TurnoPropuesto,
 )
-from app.infrastructure.db.models import Turno
+from app.infrastructure.db.models import Turno, Usuario
 from app.infrastructure.db.repositorio_turnos import RepositorioTurnos
 from tests.integration.factories import Catalogo, crear_catalogo
 
@@ -255,6 +255,45 @@ def test_con_listas_vacias_por_defecto_el_alta_funciona(
     caso_de_uso: CrearTurno, catalogo: Catalogo
 ) -> None:
     assert caso_de_uso.ejecutar(_solicitud(catalogo)).estado == "programado"
+
+
+# --- 7.3 creado_por ----------------------------------------------------------------------
+
+
+def test_alta_con_creado_por_lo_persiste_y_lo_devuelve(
+    db_session: Session, caso_de_uso: CrearTurno, catalogo: Catalogo, recepcionista: Usuario
+) -> None:
+    creado = caso_de_uso.ejecutar(_solicitud(catalogo), creado_por=recepcionista.id)
+
+    assert creado.creado_por == recepcionista.id
+    fila = db_session.get(Turno, creado.id)
+    assert fila is not None
+    assert fila.creado_por == recepcionista.id
+
+
+def test_alta_con_creado_por_de_un_odontologo_conserva_ese_autor(
+    caso_de_uso: CrearTurno, catalogo: Catalogo, recepcionista: Usuario, odontologo: Usuario
+) -> None:
+    primero = caso_de_uso.ejecutar(_solicitud(catalogo), creado_por=odontologo.id)
+    segundo = caso_de_uso.ejecutar(_solicitud(catalogo, desde=120), creado_por=recepcionista.id)
+
+    assert (primero.creado_por, segundo.creado_por) == (odontologo.id, recepcionista.id)
+
+
+def test_el_observador_recibe_el_turno_creado_con_su_autor(
+    db_session: Session, catalogo: Catalogo, recepcionista: Usuario
+) -> None:
+    recibidos: list[TurnoCreado] = []
+    caso = CrearTurno(RepositorioTurnos(db_session), lambda: AHORA, observadores=[recibidos.append])
+
+    creado = caso.ejecutar(_solicitud(catalogo), creado_por=recepcionista.id)
+
+    assert recibidos[0].creado_por == recepcionista.id
+    assert recibidos == [creado]
+
+
+def test_alta_sin_creado_por_sigue_siendo_none(caso_de_uso: CrearTurno, catalogo: Catalogo) -> None:
+    assert caso_de_uso.ejecutar(_solicitud(catalogo)).creado_por is None
 
 
 # --- 5.5 carrera que esquiva el pre-chequeo ----------------------------------------------

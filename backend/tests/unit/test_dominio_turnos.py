@@ -241,6 +241,14 @@ def test_turno_creado_es_inmutable_y_arranca_programado_sin_autor() -> None:
         creado.estado = "cancelado"  # type: ignore[misc]
 
 
+def test_turno_creado_lleva_el_autor_cuando_se_lo_pasan() -> None:
+    autor = uuid4()
+
+    creado = TurnoCreado.desde_propuesto(_propuesto(), id=uuid4(), creado_por=autor)
+
+    assert creado.creado_por == autor
+
+
 def test_modulo_de_dominio_no_depende_de_sqlalchemy_ni_fastapi() -> None:
     codigo = (Path(__file__).parents[2] / "app" / "domain" / "turnos.py").read_text("utf-8")
 

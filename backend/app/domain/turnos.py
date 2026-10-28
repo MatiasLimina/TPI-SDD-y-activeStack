@@ -121,7 +121,9 @@ class TurnoCreado:
     creado_por: UUID | None = None
 
     @classmethod
-    def desde_propuesto(cls, propuesto: TurnoPropuesto, *, id: UUID) -> Self:
+    def desde_propuesto(
+        cls, propuesto: TurnoPropuesto, *, id: UUID, creado_por: UUID | None = None
+    ) -> Self:
         return cls(
             id=id,
             profesional_id=propuesto.profesional_id,
@@ -131,6 +133,7 @@ class TurnoCreado:
             inicio=propuesto.inicio,
             fin=propuesto.fin,
             duracion_min=propuesto.duracion_min,
+            creado_por=creado_por,
         )
 
 

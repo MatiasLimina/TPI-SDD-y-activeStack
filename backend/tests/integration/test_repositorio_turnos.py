@@ -14,7 +14,7 @@ from app.domain.turnos import (
     SolapamientoError,
     TurnoPropuesto,
 )
-from app.infrastructure.db.models import Turno
+from app.infrastructure.db.models import Turno, Usuario
 from app.infrastructure.db.repositorio_turnos import RepositorioTurnos
 from tests.integration.factories import Catalogo, crear_catalogo
 
@@ -303,6 +303,26 @@ def test_insertar_persiste_en_utc_y_devuelve_turno_creado(
     assert fila.inicio.utcoffset() == timedelta(0)
     assert (creado.estado, creado.creado_por) == ("programado", None)
     assert creado.fin == propuesto.fin
+
+
+def test_insertar_con_creado_por_lo_persiste_y_lo_devuelve(
+    db_session: Session, catalogo: Catalogo, recepcionista: Usuario
+) -> None:
+    creado = RepositorioTurnos(db_session).insertar(
+        _propuesto(catalogo), creado_por=recepcionista.id
+    )
+
+    fila = db_session.get(Turno, creado.id)
+    assert fila is not None
+    assert fila.creado_por == recepcionista.id
+    assert creado.creado_por == recepcionista.id
+
+
+def test_insertar_con_creado_por_inexistente_viola_la_fk(
+    db_session: Session, catalogo: Catalogo
+) -> None:
+    with pytest.raises(IntegrityError):
+        RepositorioTurnos(db_session).insertar(_propuesto(catalogo), creado_por=uuid4())
 
 
 @pytest.mark.parametrize(

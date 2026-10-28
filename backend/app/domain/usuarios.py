@@ -1,6 +1,7 @@
 """Reglas de dominio de usuarios: puras, sin base de datos ni FastAPI."""
 
 import unicodedata
+from dataclasses import dataclass
 from enum import StrEnum
 from uuid import UUID
 
@@ -11,6 +12,23 @@ class Rol(StrEnum):
 
 
 _ROLES_VALIDOS = frozenset(r.value for r in Rol)
+
+
+@dataclass(frozen=True)
+class UsuarioAutenticado:
+    """Quien hace el request: rol y profesional salen siempre de la base, no del token."""
+
+    id: UUID
+    rol: Rol
+    profesional_id: UUID | None
+
+
+class NoAutenticadoError(Exception):
+    """Falta el token o no vale (formato, firma, vencimiento) o su usuario no está activo."""
+
+
+class RolInsuficienteError(Exception):
+    """El usuario autenticado no tiene un rol permitido para la operación."""
 
 
 class CredencialesInvalidasError(Exception):

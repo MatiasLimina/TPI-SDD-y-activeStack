@@ -10,7 +10,7 @@ from sqlalchemy import func, select, text
 from sqlalchemy.orm import Session
 
 from app.api.turnos import get_reloj
-from app.infrastructure.db.models import Turno
+from app.infrastructure.db.models import Turno, Usuario
 from tests.integration.factories import Catalogo, crear_catalogo
 
 AHORA = datetime(2026, 10, 7, 12, 0, tzinfo=UTC)  # 2026-10-07 09:00 hora local
@@ -51,7 +51,7 @@ def _cantidad_turnos(session: Session) -> int:
 
 
 def test_post_turno_valido_responde_201_con_instantes_en_hora_local(
-    api: TestClient, db_session: Session, catalogo: Catalogo
+    api: TestClient, db_session: Session, catalogo: Catalogo, recepcionista: Usuario
 ) -> None:
     respuesta = api.post("/turnos", json=_body(catalogo))
 
@@ -61,7 +61,7 @@ def test_post_turno_valido_responde_201_con_instantes_en_hora_local(
     assert cuerpo["inicio"] == "2026-10-08T10:00:00-03:00"
     assert cuerpo["fin"] == "2026-10-08T10:45:00-03:00"
     assert cuerpo["duracion_min"] == 45
-    assert cuerpo["creado_por"] is None
+    assert cuerpo["creado_por"] == str(recepcionista.id)
     assert cuerpo["sillon_id"] == str(catalogo.sillones[0].id)
     inicio_utc = db_session.execute(
         text("SELECT inicio AT TIME ZONE 'UTC' FROM turno WHERE id = :id"), {"id": cuerpo["id"]}
