@@ -44,6 +44,10 @@ class AltaUsuarioInvalidaError(Exception):
         self.mensaje = mensaje
 
 
+class UsuarioInexistenteError(Exception):
+    """No hay un usuario con ese email (el CLI lo traduce a código de salida 1)."""
+
+
 def normalizar_email(email: str) -> str:
     """Quita los espacios de los extremos y pasa a minúsculas (igual que el CHECK de la base)."""
     return email.strip().lower()
