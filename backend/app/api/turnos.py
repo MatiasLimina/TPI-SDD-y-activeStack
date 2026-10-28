@@ -160,7 +160,8 @@ def get_reprogramar_turno(
 
 @router.post("", status_code=status.HTTP_201_CREATED, response_model=TurnoOut)
 def crear_turno(
-    # Primer parámetro: FastAPI autentica antes de validar path y body (401/403 ganan a 404/422)
+    # FastAPI resuelve las dependencias (401/403) antes de validar path y body (422), sin importar
+    # el orden de los parámetros. Excepción: un body con JSON inválido se parsea antes y da 422.
     usuario: RecepcionistaAutenticada,
     datos: TurnoIn,
     caso: Annotated[CrearTurno, Depends(get_crear_turno)],

@@ -11,7 +11,8 @@ from app.config import get_settings
 
 @lru_cache
 def get_engine() -> Engine:
-    return create_engine(get_settings().DATABASE_URL, pool_pre_ping=True)
+    # hide_parameters: los errores de SQLAlchemy no incluyen los parámetros (p. ej. el hash).
+    return create_engine(get_settings().DATABASE_URL, pool_pre_ping=True, hide_parameters=True)
 
 
 def get_session() -> Iterator[Session]:

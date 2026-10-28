@@ -193,6 +193,28 @@ def test_los_tres_rechazos_lanzan_credenciales_invalidas_tras_una_sola_verificac
     assert argon2_espia.verificaciones - antes == 1
 
 
+@pytest.mark.parametrize("hash_raro", ["no-es-un-hash", ""], ids=["texto-libre", "vacio"])
+def test_un_hash_guardado_de_formato_desconocido_se_rechaza_tras_una_sola_verificacion(
+    db_session: Session,
+    hasher_espia: Hasher,
+    argon2_espia: _Argon2Espia,
+    emisor_test: EmisorTokens,
+    hash_raro: str,
+) -> None:
+    """Sin el dummy, el hash corrupto respondería más rápido que cualquier otro rechazo."""
+    db_session.add(
+        Usuario(email="corrupto@example.com", password_hash=hash_raro, rol="recepcionista")
+    )
+    db_session.flush()
+    caso = _caso(db_session, hasher_espia, emisor_test)
+    antes = argon2_espia.verificaciones
+
+    with pytest.raises(CredencialesInvalidasError):
+        caso.ejecutar("corrupto@example.com", "clave-ficticia-a")
+
+    assert argon2_espia.verificaciones - antes == 1
+
+
 def test_contrasena_vacia_se_rechaza_tras_una_sola_verificacion(
     db_session: Session,
     hasher_espia: Hasher,

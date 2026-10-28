@@ -10,7 +10,7 @@ from collections.abc import Mapping
 from typing import TYPE_CHECKING
 from uuid import UUID
 
-from sqlalchemy.exc import IntegrityError
+from sqlalchemy.exc import DBAPIError, IntegrityError
 
 from app.domain.usuarios import (
     AltaUsuarioInvalidaError,
@@ -70,12 +70,18 @@ def _leer_password(entorno: Mapping[str, str], pedir: "Pedir") -> str:
     return primera
 
 
-def _traducir(error: IntegrityError) -> AltaUsuarioInvalidaError:
-    """Mensaje claro a partir del nombre de la restricción; nunca el texto de la excepción.
+def _traducir(error: DBAPIError) -> AltaUsuarioInvalidaError:
+    """Mensaje claro a partir del error de base; nunca el texto de la excepción.
 
-    El texto de una `IntegrityError` incluye los parámetros del INSERT, entre ellos el hash.
+    El texto de un `DBAPIError` incluye los parámetros del INSERT, entre ellos el hash. Solo una
+    `IntegrityError` aporta el nombre de la restricción violada; el resto (p. ej. un valor más
+    largo que la columna) da un mensaje genérico.
     """
-    restriccion = getattr(getattr(error.orig, "diag", None), "constraint_name", None)
+    restriccion = (
+        getattr(getattr(error.orig, "diag", None), "constraint_name", None)
+        if isinstance(error, IntegrityError)
+        else None
+    )
     if restriccion == "uq_usuario_email":
         return AltaUsuarioInvalidaError("email_duplicado", "Ese email ya está registrado.")
     if restriccion == "uq_usuario_profesional_activo":
@@ -115,9 +121,10 @@ def alta(args: argparse.Namespace, contexto: "Contexto") -> int:
         # Savepoint: si la base rechaza el INSERT, solo se deshace esto y la sesión sigue usable.
         with contexto.sesion.begin_nested():
             repositorio.agregar(usuario)
-    except IntegrityError as error:
+        contexto.sesion.commit()
+    except DBAPIError as error:
+        contexto.sesion.rollback()
         raise _traducir(error) from None
-    contexto.sesion.commit()
     print(f"Usuario creado: {email} ({args.rol}).")
     return 0
 

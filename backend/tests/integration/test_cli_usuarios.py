@@ -13,6 +13,7 @@ from uuid import uuid4
 
 import pytest
 from sqlalchemy import func, select
+from sqlalchemy.exc import DataError
 from sqlalchemy.orm import Session
 
 from app.application.autenticacion import IniciarSesion
@@ -363,6 +364,65 @@ def test_alta_ante_integrity_error_inesperada_devuelve_1_sin_traceback_ni_hash(
     err = _sin_secretos(capsys)
     assert "Traceback" not in err
     assert "email_normalizado" in err
+    assert _cantidad_usuarios(db_session) == antes
+
+
+def _email_de_largo(largo: int) -> str:
+    dominio = "@example.com"
+    return "a" * (largo - len(dominio)) + dominio
+
+
+def test_alta_con_email_mas_largo_que_la_columna_devuelve_1_sin_traceback_ni_hash(
+    db_session: Session, hasher_test: Hasher, capsys: pytest.CaptureFixture[str]
+) -> None:
+    antes = _cantidad_usuarios(db_session)
+
+    codigo = _ejecutar(
+        db_session, hasher_test, _alta("--email", _email_de_largo(255), "--rol", "recepcionista")
+    )
+
+    assert codigo == 1
+    err = _sin_secretos(capsys)
+    assert err.strip() != ""
+    assert "Traceback" not in err
+    assert "password_hash" not in err
+    assert _cantidad_usuarios(db_session) == antes
+
+
+def test_alta_con_email_de_exactamente_254_caracteres_se_crea(
+    db_session: Session, hasher_test: Hasher, capsys: pytest.CaptureFixture[str]
+) -> None:
+    email = _email_de_largo(254)
+
+    codigo = _ejecutar(db_session, hasher_test, _alta("--email", email, "--rol", "recepcionista"))
+
+    assert codigo == 0
+    assert RepositorioUsuarios(db_session).por_email(email) is not None
+    _sin_secretos(capsys)
+
+
+def test_alta_ante_error_de_base_al_confirmar_devuelve_1_sin_traceback_ni_hash(
+    db_session: Session,
+    hasher_test: Hasher,
+    capsys: pytest.CaptureFixture[str],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    def commit_roto() -> None:
+        raise DataError(
+            "INSERT ... [parameters: {'password_hash': '$argon2id$x'}]", {}, Exception()
+        )
+
+    monkeypatch.setattr(db_session, "commit", commit_roto)
+    antes = _cantidad_usuarios(db_session)
+
+    codigo = _ejecutar(
+        db_session, hasher_test, _alta("--email", "commit@example.com", "--rol", "recepcionista")
+    )
+
+    assert codigo == 1
+    err = _sin_secretos(capsys)
+    assert "Traceback" not in err
+    assert "password_hash" not in err
     assert _cantidad_usuarios(db_session) == antes
 
 

@@ -21,11 +21,13 @@ class Hasher:
     def verify_and_update(self, password: str, hash_guardado: str) -> tuple[bool, str | None]:
         """Devuelve `(valido, hash_nuevo)`; `hash_nuevo` solo si el hash guardado quedó viejo.
 
-        Un hash de formato desconocido se trata como contraseña incorrecta.
+        Un hash de formato desconocido se trata como contraseña incorrecta, pero igual se paga
+        una verificación (contra el dummy) para no responder más rápido que otros rechazos.
         """
         try:
             return self._password_hash.verify_and_update(password, hash_guardado)
         except UnknownHashError:
+            self.verificar_dummy(password)
             return False, None
 
     @cached_property
