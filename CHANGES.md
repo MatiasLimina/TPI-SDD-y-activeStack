@@ -215,6 +215,7 @@ C-04, C-07, C-09 y C-12 son obligatorios para el MVP pero cuelgan del camino cr�
   - `POST /auth/login` -> JWT con `sub`, `rol`, `profesional_id`, expiración corta (`JWT_EXPIRE_MINUTES`); credenciales inválidas 401, token vencido 401, rol insuficiente 403
   - Dependencias FastAPI de RBAC; se protegen `POST /turnos`, cancelar y reprogramar (solo recepcionista); `creado_por` pasa a poblarse
   - Comando CLI de alta y desactivación de usuarios (sin UI ni endpoint; la baja es `activo = false`, nunca borrado; DD-16)
+  - Contrato de errores `401 credenciales_invalidas` (idéntico para email desconocido, contraseña incorrecta y usuario inactivo), `401 no_autenticado` y `403 rol_insuficiente`; email normalizado, un usuario activo por profesional, contraseña del CLI por `USUARIO_PASSWORD` o doble prompt, sin reactivación (DD-24)
   - Tests: login válido/inválido, token expirado, acceso por rol a cada endpoint existente, `creado_por` registrado; CLI de alta y desactivación (un usuario desactivado no inicia sesión)
 - **Dependencias**: `C-03`
 - **Governance**: CRITICO
@@ -223,6 +224,7 @@ C-04, C-07, C-09 y C-12 son obligatorios para el MVP pero cuelgan del camino cr�
   - `knowledge-base/05_reglas_de_negocio.md` §RN-AU-01..03
   - `knowledge-base/07_flujos_principales.md` §Flujo 1
   - `knowledge-base/08_arquitectura_propuesta.md` §Seguridad
+  - `knowledge-base/09_decisiones_y_supuestos.md` §DD-16, §DD-24
 
 ### [C-07] `auditoria-turnos`
 - **Estado**: `[ ]` pendiente
@@ -422,4 +424,7 @@ Diferido por el Discovery (ver `docs/discovery/informe-discovery.md` §D.3 y §D
 - Panel de ausentismo y ocupación de sillones (no-show dashboard)
 - Multisede / multi-sucursal
 - Política de cancelación tardía (decidido DD-14: sin política en el MVP)
+- Reactivación de usuarios: el email de un usuario desactivado queda tomado y no se puede volver a dar de alta (limitación aceptada en DD-24)
+- Rate limiting del login y registro de eventos de seguridad (intentos fallidos) (DD-24)
+- Validación del largo mínimo de `JWT_SECRET` al arrancar (DD-24; hoy PyJWT solo advierte)
 - Consulta de disponibilidad / huecos libres (US-007): no figura en D.4, es una suposición de la KB y se acopla naturalmente con el enlace público de reserva diferido (D.3)

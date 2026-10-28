@@ -84,3 +84,15 @@ Ninguna abierta al 2026-10-07. Las ocho preguntas pendientes se resolvieron (ver
 | Al reprogramar, ¿un campo omitido conserva su valor o vuelve al default (duración de la prestación)? | Resuelta: conserva el valor actual, incluida la duración ajustada (DD-23) |
 | ¿Se puede cambiar el paciente o la prestación al reprogramar? | Resuelta: no; 422 `campo_no_editable` con mensaje para la recepcionista (DD-23) |
 | ¿Se puede reprogramar un turno cancelado o ya iniciado/pasado? | Resuelta: no; 409 `turno_ya_cancelado` / `turno_ya_iniciado`, estado antes que hora (DD-23) |
+
+## Preguntas resueltas (2026-10-28)
+
+| Pregunta | Resolución |
+|---|---|
+| ¿Qué responde el login ante email desconocido, contraseña incorrecta o usuario inactivo? | Resuelta: el mismo `401 credenciales_invalidas` en los tres casos, con verificación contra un hash ficticio cuando el email no existe (DD-24) |
+| ¿Qué responde una ruta protegida ante token ausente, mal formado, inválido o vencido, o usuario desactivado? ¿Y sin el rol? | Resuelta: `401 no_autenticado` con `WWW-Authenticate: Bearer`; sin el rol, `403 rol_insuficiente` (DD-24) |
+| ¿El email del usuario distingue mayúsculas? | Resuelta: no; se normaliza en el login y en el alta, y la base lo garantiza con CHECK + `UNIQUE` (DD-24) |
+| ¿Un profesional puede tener más de un usuario activo? | Resuelta: no; índice único parcial por profesional sobre los activos (DD-24) |
+| ¿`JWT_EXPIRE_MINUTES` en `0` o negativo es válido? | Resuelta: no; entero mayor que cero, default `60` (DD-24) |
+| ¿Cómo recibe la contraseña el CLI de alta y qué pasa si `USUARIO_PASSWORD` está definida pero vacía? | Resuelta: de `USUARIO_PASSWORD` si está definida y no vacía, o por doble prompt sin eco; definida y vacía se rechaza sin crear el usuario (DD-24) |
+| ¿Se puede reactivar un usuario desactivado o volver a dar de alta su email? | Resuelta: no en el MVP; limitación registrada en el backlog (DD-24) |

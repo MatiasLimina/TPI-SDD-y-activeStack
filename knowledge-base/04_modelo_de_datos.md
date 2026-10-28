@@ -27,7 +27,9 @@ Turno       1---* Recordatorio
 ## Entidades
 
 ### Usuario
-- `id` (uuid, PK), `email` (unique), `password_hash`, `rol` (enum: `recepcionista` | `odontologo`), `profesional_id` (FK nullable, obligatoria si rol = odontologo), `activo` (bool).
+- `id` (uuid, PK), `email` (unique, normalizado sin espacios y en minúsculas, garantizado por `CHECK (email = lower(btrim(email)) AND email <> '')`), `password_hash`, `rol` (`varchar` + `CHECK (rol IN ('recepcionista','odontologo'))`), `profesional_id` (FK nullable, obligatoria si y solo si rol = odontologo), `activo` (bool).
+- A lo sumo un usuario activo por profesional: índice único parcial `ON (profesional_id) WHERE activo` (DD-24).
+- `turno.creado_por` referencia a `usuario.id` con FK nullable `ON DELETE RESTRICT` (las filas previas a C-06 quedan en `NULL`).
 - Sin contraseñas en claro; hash con bcrypt/argon2.
 - Alta por seed y por comando CLI (alta y desactivación); la baja es `activo = false`, nunca borrado, porque la auditoría referencia al usuario (DD-16).
 
