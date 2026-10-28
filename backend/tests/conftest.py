@@ -1,21 +1,28 @@
 """Fixtures compartidas. Los tests de persistencia usan PostgreSQL real (TEST_DATABASE_URL)."""
 
 import os
-from collections.abc import Iterator
+from collections.abc import Callable, Iterator
 from pathlib import Path
 
 import pytest
 from alembic import command
 from alembic.config import Config
 from dotenv import dotenv_values
+from fastapi import FastAPI
 from fastapi.testclient import TestClient
+from pwdlib import PasswordHash
+from pwdlib.hashers.argon2 import Argon2Hasher
 from sqlalchemy import Engine, create_engine, text
 from sqlalchemy.engine import make_url
 from sqlalchemy.exc import OperationalError
 from sqlalchemy.orm import Session
 
+from app.api.auth import get_emisor_tokens, get_hasher
 from app.config import REPO_ROOT
+from app.infrastructure.db.models import Usuario
 from app.infrastructure.db.session import get_session
+from app.infrastructure.security.contrasenas import Hasher
+from app.infrastructure.security.tokens import EmisorTokens
 from app.main import create_app
 
 BACKEND_DIR = Path(__file__).resolve().parents[1]
@@ -73,12 +80,67 @@ def db_session(engine: Engine) -> Iterator[Session]:
         connection.close()
 
 
+SECRETO_TEST = "secreto-ficticio-solo-para-tests-de-al-menos-32-bytes"
+CONTRASENA_RECEPCIONISTA = "clave-ficticia-recepcion"
+
+
+@pytest.fixture(scope="session")
+def hasher_test() -> Hasher:
+    """Argon2id con parámetros mínimos: el mismo código de producción, con costo bajo."""
+    return Hasher(PasswordHash((Argon2Hasher(time_cost=1, memory_cost=8, parallelism=1),)))
+
+
+@pytest.fixture(scope="session")
+def emisor_test() -> EmisorTokens:
+    return EmisorTokens(SECRETO_TEST, 60)
+
+
 @pytest.fixture
-def client(db_session: Session) -> Iterator[TestClient]:
-    """Cliente HTTP con la dependencia de sesion apuntando a la sesion de test."""
+def recepcionista(db_session: Session, hasher_test: Hasher) -> Usuario:
+    """Usuario ficticio real, creado en la sesión de test con el modelo de producción."""
+    usuario = Usuario(
+        email="recepcion@example.com",
+        password_hash=hasher_test.hash(CONTRASENA_RECEPCIONISTA),
+        rol="recepcionista",
+    )
+    db_session.add(usuario)
+    db_session.flush()
+    return usuario
+
+
+@pytest.fixture
+def token_de(emisor_test: EmisorTokens) -> Callable[[Usuario], str]:
+    return emisor_test.emitir
+
+
+@pytest.fixture
+def app_de_test(db_session: Session, hasher_test: Hasher, emisor_test: EmisorTokens) -> FastAPI:
+    """App con sesión, hasher y emisor de test; la comparten los dos clientes."""
     app = create_app()
     app.dependency_overrides[get_session] = lambda: db_session
-    with TestClient(app) as test_client:
+    app.dependency_overrides[get_hasher] = lambda: hasher_test
+    app.dependency_overrides[get_emisor_tokens] = lambda: emisor_test
+    return app
+
+
+@pytest.fixture
+def cliente_anonimo(app_de_test: FastAPI) -> Iterator[TestClient]:
+    """Cliente HTTP sin encabezado `Authorization`."""
+    with TestClient(app_de_test) as test_client:
+        yield test_client
+
+
+@pytest.fixture
+def client(
+    app_de_test: FastAPI, recepcionista: Usuario, token_de: Callable[[Usuario], str]
+) -> Iterator[TestClient]:
+    """Cliente HTTP autenticado por defecto como la recepcionista de test.
+
+    Es un TestClient propio: si un test pide `client` y `cliente_anonimo`,
+    el anónimo no debe heredar el encabezado de este.
+    """
+    encabezados = {"Authorization": f"Bearer {token_de(recepcionista)}"}
+    with TestClient(app_de_test, headers=encabezados) as test_client:
         yield test_client
 
 
