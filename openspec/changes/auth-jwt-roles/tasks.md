@@ -60,5 +60,37 @@
 
 ## 10. Cierre
 
-- [ ] 10.1 Verificar integración completa: `pytest` en verde (baseline de 1.1 + nuevos), `ruff format --check` y `ruff check` sin errores, `test_modelos_vs_migracion.py` verde con `004`, `alembic upgrade head` + `downgrade 003` + `upgrade head` sobre una base scratch sin errores, y `openspec validate auth-jwt-roles --strict` sin errores
-- [ ] 10.2 Verificación manual de punta a punta con `docker compose up`: migrar, sembrar con las variables de `.env.example`, `POST /auth/login` de la recepcionista y del odontólogo, `POST /turnos` con cada token (`201` y `403`), `POST /turnos` sin token (`401`), y `python -m app.cli usuarios desactivar` seguido de un request con el token previo (`401`); registrar los comandos y resultados en el resumen del apply
+- [x] 10.1 Verificar integración completa: `pytest` en verde (baseline de 1.1 + nuevos), `ruff format --check` y `ruff check` sin errores, `test_modelos_vs_migracion.py` verde con `004`, `alembic upgrade head` + `downgrade 003` + `upgrade head` sobre una base scratch sin errores, y `openspec validate auth-jwt-roles --strict` sin errores
+- [x] 10.2 Verificación manual de punta a punta con `docker compose up`: migrar, sembrar con las variables de `.env.example`, `POST /auth/login` de la recepcionista y del odontólogo, `POST /turnos` con cada token (`201` y `403`), `POST /turnos` sin token (`401`), y `python -m app.cli usuarios desactivar` seguido de un request con el token previo (`401`); registrar los comandos y resultados en el resumen del apply
+
+## Resumen del apply (2026-10-28)
+
+**10.1**
+- `pytest`: 628 tests en verde (632 después de corregir el hallazgo 1 del advisor). El baseline de 1.1 era de 388.
+  - `test_concurrencia_turnos` y `test_concurrencia_reprogramar` fallan a veces en la suite completa y pasan siempre corridos solos. La causa es previa a C-06: un deadlock `40P01` en conflictos simultáneos de la restricción de exclusión. Se investiga aparte, en la rama `claude/relaxed-wiles-705d06`.
+- `ruff format --check` y `ruff check`: limpios.
+- `test_modelos_vs_migracion.py`: en verde.
+- Ida y vuelta `upgrade head → downgrade 003 → upgrade head` sobre `turnos_migrations_scratch`: sin errores.
+- `openspec validate --strict`: válido.
+
+**10.2** (stack de `docker compose`: servicio `api` en el puerto 8000, base dev en el 5433)
+1. `alembic upgrade head` (003 → 004). Después, el seed con las tres variables `SEED_*_PASSWORD` de `.env.example`.
+2. `POST /auth/login`:
+   - recepcionista → `200`;
+   - odontóloga `ana.ficticia@example.com` → `200`;
+   - contraseña incorrecta → `401`.
+3. `POST /turnos` sin token → `401 no_autenticado`.
+4. `POST /turnos` con el token de la odontóloga → `403 rol_insuficiente`.
+5. La recepcionista del seed quedó desactivada antes de verificar su `201`, y no hay comando de reactivación. Por eso, para el `201` se creó otra recepcionista con el CLI: `USUARIO_PASSWORD=<ficticia> python -m app.cli usuarios alta --email recepcion3@example.com --rol recepcionista` → código `0`.
+6. Login de `recepcion3` → `200`. Con su token, `POST /turnos` → `201`, con `creado_por` igual al `sub` del token.
+7. `python -m app.cli usuarios desactivar --email recepcion3@example.com` → código `0`. El mismo token en `POST /turnos` → `401 no_autenticado`.
+
+**Hallazgos del advisor (FINAL_DIFF: CONCERNS)**
+- **Corregidos** con aprobación del usuario:
+  - **1:** un error de base distinto de `IntegrityError` en el alta del CLI, por ejemplo un `DataError` por un email de 255 caracteres, exponía el hash en el traceback. Ahora `alta` captura `DBAPIError` alrededor del INSERT y del commit y lo traduce con un mensaje genérico. Además, el engine de producción usa `hide_parameters=True`. Hubo test RED → GREEN y se fijó la frontera: con 254 caracteres el alta pasa y con 255 se rechaza.
+  - **3:** un hash con formato desconocido ahora también verifica contra el dummy, con test RED → GREEN.
+  - **2:** comentario de `turnos.py` y riesgo del JSON inválido (`422` antes que `401`) en el design.
+  - **4:** largo máximo y política de complejidad de contraseña, al backlog.
+- **No elegido:**
+  - **5:** `creado_por` sigue siendo opcional en `CrearTurno`. Hoy no es un bug, porque la única ruta que crea turnos lo pasa.
+- **Suite final:** 632 tests en verde.

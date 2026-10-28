@@ -184,13 +184,13 @@ Ante cualquier diferencia entre la documentación y la KB prevalece la KB; la ú
 - [`JWT_SECRET` corto o el placeholder `change-me` en un despliegue] → PyJWT solo advierte; no se valida al arrancar por decisión del usuario (D5). Mitigación documental: `.env.example` y la guía de despliegue deben indicar un secreto aleatorio de ≥ 32 bytes. Backlog: `enforce_minimum_key_length` o validación en `Settings`.
 - [`LoginIn.password` sin largo máximo: cada request cuesta un hash argon2 sin rate limiting] → anotado como backlog junto con el rate limiting (D12); no se agrega requisito al spec.
 - [El `422` nativo de FastAPI devuelve en `input` el cuerpo recibido, incluida la contraseña, cuando el login llega incompleto] → solo vuelve al propio cliente y no se registra en logs; decisión del usuario en apply (2026-10-28): backlog, porque ocultarlo exige un manejador global de validación que afecta a todos los endpoints.
+- [Un body con JSON sintácticamente inválido y sin token responde `422` (`json_invalid`) en lugar de `401`] → FastAPI parsea el body antes de resolver las dependencias; los escenarios usan JSON bien formado; aceptado, backlog junto con el manejador global de validación.
 - [`Hasher.hash_dummy` se calcula la primera vez que se usa] → el primer login con un email inexistente tras arrancar paga un hash extra, una sola vez; decisión del usuario en apply (2026-10-28): se deja así, sin calentarlo en el `lifespan`.
 - [Sin revocación de tokens] → la relectura del usuario en cada request corta el acceso al desactivarlo; un token robado de un usuario activo vale hasta su `exp` (60 min por defecto).
 - [Una consulta extra por request protegido] → lectura por PK, despreciable para 1-5 profesionales.
 - [Contraseñas débiles por CLI] → solo se exige no vacía; una política de largo mínimo es una regla nueva sin respaldo en la KB y queda como pregunta para el backlog.
 - [Los tests de API pasan a depender del fixture de autenticación] → se introduce en el primer grupo de tareas con la suite completa en verde antes de proteger cualquier ruta.
 - [argon2 lento en la suite] → hasher barato inyectado; un solo test usa los parámetros recomendados.
-- [Body no-JSON responde `422` antes que `401`] → comportamiento del framework (el body se parsea antes de las dependencias); no filtra datos y se documenta.
 - [Odontólogo de un profesional desactivado puede iniciar sesión] → no tiene ningún endpoint habilitado en C-06; la regla se revisa con los endpoints de lectura (C-13).
 - [El primer usuario en un entorno nuevo] → sin seed ni CLI nadie puede crear turnos; el Migration Plan exige crear la primera recepcionista antes de usar la API.
 - [Sin reactivación: el email de un usuario desactivado queda tomado] → un usuario dado de baja por error no puede recuperar su cuenta ni volver a darse de alta con el mismo email; limitación aceptada del MVP (DD-24), con la reactivación registrada en el backlog de `CHANGES.md`.
