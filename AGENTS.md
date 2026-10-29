@@ -97,6 +97,23 @@ El plan de implementación completo está en [CHANGES.md](CHANGES.md). Resumen:
 
 ---
 
+## Equipo
+
+Desde C-07 el proyecto lo hacen tres personas. Reparto completo y reglas de colaboración: [docs/equipo/reparto-de-tareas.md](docs/equipo/reparto-de-tareas.md). El responsable de cada change figura en su campo **Responsable** de [CHANGES.md](CHANGES.md).
+
+| Integrante | GitHub | Herramientas | Changes |
+|------------|--------|--------------|---------|
+| Matías | `MatiasLimina` | Claude Pro | C-07, C-10, C-13 · padrino de C-08 y C-09 · integración |
+| Nico | `nicolasmonjelardi` | Claude Pro | C-11, C-12, C-15 · padrino de C-14 y C-16 |
+| Lauti | `LautaroAguero01` | OpenCode (modelos free), Gemini, Copilot Student | Apply de C-08, C-09, C-14, C-16 · documentación |
+
+- **Cada change va en su rama y entra por PR** con al menos una aprobación de alguien con Claude Pro. Nada se commitea directo en `main`.
+- **En los changes de Lauti el Propose lo hace el padrino** con Claude (y corre `revisar-escenarios`); Lauti hace el Apply y el Archive con OpenCode (`.opencode/commands/opsx-*.md`); el archive va en la rama del change, antes del merge.
+- **Si trabajás con una herramienta que no carga skills sola**, leé a mano `.agents/skills/<skill>/SKILL.md` de las skills de tu rol antes de escribir código.
+- **Migraciones**: el que mergea segundo renumera su revisión de Alembic para que `alembic heads` muestre una sola cabeza.
+
+---
+
 ## Reglas Duras (específicas del proyecto)
 
 > Reglas **globales** ya definidas en `~/.claude/CLAUDE.md` (orquestador, governance, TDD estricto, engram): el proyecto las **hereda**, no se repiten acá. Acá viven solo las reglas **específicas de este proyecto** y las universales que el global no cubre.
