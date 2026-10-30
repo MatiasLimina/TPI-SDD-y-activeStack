@@ -227,7 +227,7 @@ C-01 a C-06 los hizo Matías solo. A partir de C-07 se suman Nico y Lauti; el cr
   - `knowledge-base/09_decisiones_y_supuestos.md` §DD-16, §DD-24
 
 ### [C-07] `auditoria-turnos`
-- **Estado**: `[ ]` pendiente
+- **Estado**: `[x]` completado
 - **Responsable**: Matías (Apply y Propose) · revisa Nico
 - **Scope** (US-011):
   - Modelo `TurnoAuditoria` append-only (`turno_id`, `usuario_id`, `accion` `crear|reprogramar|cancelar`, `valores_previos`/`valores_nuevos` jsonb, `ocurrido_en` UTC) + migración (sin UPDATE/DELETE desde la aplicación; opcionalmente trigger que lo impida)
@@ -440,4 +440,5 @@ Diferido por el Discovery (ver `docs/discovery/informe-discovery.md` §D.3 y §D
 - Ocultar el campo `input` de los `422` de validación (hoy un login incompleto devuelve la contraseña enviada al propio cliente; requiere un manejador global)
 - Largo máximo de contraseña en el login (hoy cada request cuesta un hash argon2 sin rate limiting: DoS; DD-24 / Risks del design de C-06)
 - Política de complejidad o largo mínimo de contraseña más allá de "no vacía" (regla nueva sin respaldo en la KB; DD-24)
+- Rol de base de datos de mínimo privilegio para la aplicación: hoy se conecta como dueña de las tablas y podría deshabilitar los triggers append-only de `turno_auditoria` (DD-25)
 - Consulta de disponibilidad / huecos libres (US-007): no figura en D.4, es una suposición de la KB y se acopla naturalmente con el enlace público de reserva diferido (D.3)
