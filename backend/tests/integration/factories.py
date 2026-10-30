@@ -1,11 +1,12 @@
 """Fábricas de catálogo ficticio para tests de turnos (solo datos inventados)."""
 
 from dataclasses import dataclass
+from datetime import UTC, datetime, timedelta
 from itertools import count
 
 from sqlalchemy.orm import Session
 
-from app.infrastructure.db.models import Paciente, Prestacion, Profesional, Sillon
+from app.infrastructure.db.models import Paciente, Prestacion, Profesional, Sillon, Turno
 
 _secuencia = count(1)
 
@@ -46,3 +47,23 @@ def crear_catalogo(session: Session) -> Catalogo:
     session.add_all([*profesionales, *sillones, *pacientes, limpieza, consulta])
     session.flush()
     return Catalogo(profesionales, sillones, pacientes, limpieza, consulta)
+
+
+INICIO_BASE = datetime(2026, 10, 8, 13, 0, tzinfo=UTC)  # 10:00 hora local
+
+
+def crear_turno(session: Session, catalogo: Catalogo, *, desplazamiento_min: int = 0) -> Turno:
+    """Turno `programado` de 45 min insertado directo (sin casos de uso ni auditoría)."""
+    inicio = INICIO_BASE + timedelta(minutes=desplazamiento_min)
+    turno = Turno(
+        profesional_id=catalogo.profesionales[0].id,
+        sillon_id=catalogo.sillones[0].id,
+        paciente_id=catalogo.pacientes[0].id,
+        prestacion_id=catalogo.limpieza.id,
+        inicio=inicio,
+        fin=inicio + timedelta(minutes=45),
+        duracion_min=45,
+    )
+    session.add(turno)
+    session.flush()
+    return turno

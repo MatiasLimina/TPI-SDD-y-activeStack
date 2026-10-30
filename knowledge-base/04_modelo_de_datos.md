@@ -79,8 +79,10 @@ Turno       1---* Recordatorio
 - Índices: GiST (los de las constraints), `(profesional_id, inicio)`, `(sillon_id, inicio)`. El índice simple `(paciente_id)` ya no se crea: lo cubre el GiST de `turno_sin_solape_paciente`.
 
 ### TurnoAuditoria
-- `id`, `turno_id`, `usuario_id`, `accion` (`crear` | `reprogramar` | `cancelar`), `valores_previos` (jsonb), `valores_nuevos` (jsonb), `ocurrido_en` (timestamptz UTC).
-- Solo inserción (append-only). Exigido por Ley 25.326 / 26.529.
+- `id` (`bigint GENERATED ALWAYS AS IDENTITY`; el historial se ordena por `id`), `turno_id` (FK a `turno`, `RESTRICT`), `usuario_id` (FK a `usuario`, `RESTRICT`), `accion` (`varchar` + `CHECK (accion IN ('crear','reprogramar','cancelar'))`), `valores_previos` (jsonb, nulo si y solo si la acción es `crear`: `CHECK ((accion = 'crear') = (valores_previos IS NULL))`), `valores_nuevos` (jsonb, no nulo), `ocurrido_en` (timestamptz UTC, no nulo, sin `DEFAULT`: lo informa la aplicación con su reloj).
+- `valores_previos` y `valores_nuevos` son una instantánea completa y fija del turno: `profesional_id`, `paciente_id`, `prestacion_id`, `sillon_id`, `inicio`, `fin`, `duracion_min`, `estado`, `motivo_cancelacion` (instantes en UTC con zona explícita; sin datos personales del paciente).
+- Solo inserción (append-only), garantizado por la base: triggers que rechazan `UPDATE`, `DELETE` (por fila) y `TRUNCATE` (DD-25). Exigido por Ley 25.326 / 26.529.
+- Índices: `(turno_id, id)` y `(usuario_id)`.
 
 ### Recordatorio
 - `id`, `turno_id`, `programado_para` (timestamptz), `estado` (`pendiente` | `enviado` | `fallido` | `cancelado`), `canal` (`mock`), `intentos` (máximo 3 con backoff exponencial; agotados -> `fallido`, DD-19).

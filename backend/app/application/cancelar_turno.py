@@ -13,8 +13,8 @@ from app.domain.turnos import (
 )
 from app.infrastructure.db.repositorio_turnos import RepositorioTurnos
 
-ObservadorCancelacion = Callable[[TurnoRegistrado], None]
-"""Punto de extensión: efecto lateral dentro de la misma transacción, antes del commit."""
+ObservadorCancelacion = Callable[[TurnoRegistrado, TurnoRegistrado], None]
+"""Punto de extensión (anterior, nuevo): efecto lateral antes del commit, misma transacción."""
 
 
 class CancelarTurno:
@@ -42,7 +42,7 @@ class CancelarTurno:
         cancelado = self._repositorio.marcar_cancelado(turno_id, motivo_normalizado)
         try:
             for observador in self._observadores:
-                observador(cancelado)
+                observador(turno, cancelado)
         except Exception:
             self._repositorio.rollback()
             raise

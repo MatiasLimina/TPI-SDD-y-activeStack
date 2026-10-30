@@ -395,6 +395,32 @@ def test_obtener_para_actualizar_devuelve_el_turno_registrado(
     assert registrado.duracion_min == 45
 
 
+def test_existe_devuelve_true_para_un_turno_insertado(
+    db_session: Session, catalogo: Catalogo
+) -> None:
+    turno = _turno_programado(db_session, catalogo)
+
+    assert RepositorioTurnos(db_session).existe(turno.id) is True
+
+
+def test_existe_devuelve_true_tambien_para_un_turno_cancelado(
+    db_session: Session, catalogo: Catalogo
+) -> None:
+    turno = _turno_programado(db_session, catalogo)
+    turno.estado = "cancelado"
+    db_session.flush()
+
+    assert RepositorioTurnos(db_session).existe(turno.id) is True
+
+
+def test_existe_devuelve_false_para_un_uuid_desconocido(
+    db_session: Session, catalogo: Catalogo
+) -> None:
+    _turno_programado(db_session, catalogo)
+
+    assert RepositorioTurnos(db_session).existe(uuid4()) is False
+
+
 def test_obtener_para_actualizar_devuelve_none_si_el_turno_no_existe(db_session: Session) -> None:
     assert RepositorioTurnos(db_session).obtener_para_actualizar(uuid4()) is None
 

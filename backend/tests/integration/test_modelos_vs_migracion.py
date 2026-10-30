@@ -10,14 +10,15 @@ from app.infrastructure.db.models import (
     Profesional,
     Sillon,
     Turno,
+    TurnoAuditoria,
     Usuario,
 )
 
 TABLAS_CATALOGO = {"profesional", "sillon", "prestacion", "paciente"}
-TABLAS = TABLAS_CATALOGO | {"turno", "usuario"}
+TABLAS = TABLAS_CATALOGO | {"turno", "usuario", "turno_auditoria"}
 
 
-def test_base_metadata_registers_catalog_turno_and_usuario_tables() -> None:
+def test_base_metadata_registers_catalog_turno_usuario_and_auditoria_tables() -> None:
     assert TABLAS <= set(Base.metadata.tables)
 
 
@@ -30,6 +31,7 @@ def test_base_metadata_registers_catalog_turno_and_usuario_tables() -> None:
         (Paciente, "paciente"),
         (Turno, "turno"),
         (Usuario, "usuario"),
+        (TurnoAuditoria, "turno_auditoria"),
     ],
 )
 def test_model_maps_to_expected_table(modelo: type[Base], tabla: str) -> None:
