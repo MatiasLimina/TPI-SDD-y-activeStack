@@ -33,6 +33,16 @@ class RecordatorioRegistrado:
     intentos: int
 
 
+@dataclass(frozen=True)
+class RecordatorioParaEnvio:
+    """Recordatorio bloqueado junto con lo que hace falta del turno para decidir el envío."""
+
+    recordatorio: RecordatorioRegistrado
+    turno_estado: str
+    paciente_id: UUID
+    inicio: datetime
+
+
 def calcular_programacion(
     inicio: datetime, ahora: datetime, anticipacion: timedelta
 ) -> datetime | None:

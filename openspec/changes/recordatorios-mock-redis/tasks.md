@@ -32,7 +32,7 @@
 ## 5. Repositorio de recordatorios
 
 - [x] 5.1 RED→GREEN: `tests/integration/test_repositorio_recordatorios.py`. `crear_pendiente` persiste con `flush` (visible sin commit) y devuelve el id. `cancelar_pendiente(turno_id)` pasa a `cancelado` solo el `pendiente` de ese turno y no toca `enviado`/`fallido` ni los de otro turno. `listar_pendientes` devuelve solo `pendiente`, con `programado_para` en UTC. Verificar en verde
-- [ ] 5.2 RED→GREEN: `bloquear_para_envio(id)` devuelve el recordatorio y el estado y los datos del turno (`paciente_id`, `inicio`), o `None` si el id no existe. `marcar_enviado` suma un intento y pasa a `enviado`. `registrar_fallo` suma un intento y pasa a `fallido` al tercero. `marcar_cancelado` pasa a `cancelado` sin sumar intentos. Verificar en verde
+- [x] 5.2 RED→GREEN: `bloquear_para_envio(id)` devuelve el recordatorio y el estado y los datos del turno (`paciente_id`, `inicio`), o `None` si el id no existe. `marcar_enviado` suma un intento y pasa a `enviado`. `registrar_fallo` suma un intento y pasa a `fallido` al tercero. `marcar_cancelado` pasa a `cancelado` sin sumar intentos. Verificar en verde
 
 ## 6. Cola de recordatorios (contrato Redis y fake)
 

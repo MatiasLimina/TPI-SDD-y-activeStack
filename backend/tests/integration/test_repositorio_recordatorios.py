@@ -148,3 +148,89 @@ def test_listar_pendientes_without_pending_returns_empty(
     repositorio: RepositorioRecordatorios,
 ) -> None:
     assert repositorio.listar_pendientes() == []
+
+
+def test_bloquear_para_envio_returns_reminder_and_turno_data(
+    db_session: Session, repositorio: RepositorioRecordatorios, catalogo: Catalogo, turno: Turno
+) -> None:
+    recordatorio_id = repositorio.crear_pendiente(turno.id, PROGRAMADO, "mock")
+
+    para_envio = repositorio.bloquear_para_envio(recordatorio_id)
+
+    assert para_envio is not None
+    assert para_envio.recordatorio.id == recordatorio_id
+    assert para_envio.recordatorio.estado is EstadoRecordatorio.PENDIENTE
+    assert para_envio.recordatorio.intentos == 0
+    assert para_envio.recordatorio.programado_para == PROGRAMADO
+    assert para_envio.turno_estado == "programado"
+    assert para_envio.paciente_id == catalogo.pacientes[0].id
+    assert para_envio.inicio == turno.inicio
+
+
+def test_bloquear_para_envio_reports_cancelled_turno_state(
+    db_session: Session, repositorio: RepositorioRecordatorios, turno: Turno
+) -> None:
+    recordatorio_id = repositorio.crear_pendiente(turno.id, PROGRAMADO, "mock")
+    db_session.execute(
+        text("UPDATE turno SET estado = 'cancelado' WHERE id = :id"), {"id": turno.id}
+    )
+
+    para_envio = repositorio.bloquear_para_envio(recordatorio_id)
+
+    assert para_envio is not None
+    assert para_envio.turno_estado == "cancelado"
+
+
+def test_bloquear_para_envio_returns_none_for_unknown_id(
+    repositorio: RepositorioRecordatorios,
+) -> None:
+    assert repositorio.bloquear_para_envio(uuid.uuid4()) is None
+
+
+@pytest.mark.parametrize("intentos_previos", [0, 1, 2])
+def test_marcar_enviado_adds_one_attempt_and_sets_enviado(
+    db_session: Session,
+    repositorio: RepositorioRecordatorios,
+    turno: Turno,
+    intentos_previos: int,
+) -> None:
+    recordatorio_id = repositorio.crear_pendiente(turno.id, PROGRAMADO, "mock")
+    db_session.execute(
+        text("UPDATE recordatorio SET intentos = :n WHERE id = :id"),
+        {"n": intentos_previos, "id": recordatorio_id},
+    )
+
+    repositorio.marcar_enviado(recordatorio_id)
+
+    enviado = _leer(db_session, recordatorio_id)
+    assert (enviado.estado, enviado.intentos) == ("enviado", intentos_previos + 1)
+
+
+def test_registrar_fallo_adds_attempts_and_becomes_fallido_on_the_third(
+    db_session: Session, repositorio: RepositorioRecordatorios, turno: Turno
+) -> None:
+    recordatorio_id = repositorio.crear_pendiente(turno.id, PROGRAMADO, "mock")
+
+    primero = repositorio.registrar_fallo(recordatorio_id)
+    segundo = repositorio.registrar_fallo(recordatorio_id)
+    tercero = repositorio.registrar_fallo(recordatorio_id)
+
+    assert [(r.estado, r.intentos) for r in (primero, segundo, tercero)] == [
+        (EstadoRecordatorio.PENDIENTE, 1),
+        (EstadoRecordatorio.PENDIENTE, 2),
+        (EstadoRecordatorio.FALLIDO, 3),
+    ]
+    persistido = _leer(db_session, recordatorio_id)
+    assert (persistido.estado, persistido.intentos) == ("fallido", 3)
+
+
+def test_marcar_cancelado_sets_cancelado_without_adding_attempts(
+    db_session: Session, repositorio: RepositorioRecordatorios, turno: Turno
+) -> None:
+    recordatorio_id = repositorio.crear_pendiente(turno.id, PROGRAMADO, "mock")
+    repositorio.registrar_fallo(recordatorio_id)
+
+    repositorio.marcar_cancelado(recordatorio_id)
+
+    cancelado = _leer(db_session, recordatorio_id)
+    assert (cancelado.estado, cancelado.intentos) == ("cancelado", 1)

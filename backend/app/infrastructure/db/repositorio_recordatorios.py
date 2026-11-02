@@ -7,12 +7,17 @@ dentro de un caso de uso de turnos, la transacción es del caso de uso.
 from datetime import datetime
 from uuid import UUID
 
-from sqlalchemy import select, update
+from sqlalchemy import case, select, update
 from sqlalchemy.orm import Session
 
-from app.domain.recordatorios import EstadoRecordatorio, RecordatorioRegistrado
+from app.domain.recordatorios import (
+    MAX_INTENTOS,
+    EstadoRecordatorio,
+    RecordatorioParaEnvio,
+    RecordatorioRegistrado,
+)
 from app.domain.time import to_utc
-from app.infrastructure.db.models import Recordatorio
+from app.infrastructure.db.models import Recordatorio, Turno
 
 
 class RepositorioRecordatorios:
@@ -60,6 +65,75 @@ class RepositorioRecordatorios:
             .execution_options(populate_existing=True)
         )
         return [_a_registrado(fila) for fila in filas]
+
+    def bloquear_para_envio(self, recordatorio_id: UUID) -> RecordatorioParaEnvio | None:
+        """Bloquea el turno `FOR SHARE` y después el recordatorio `FOR UPDATE` (D8).
+
+        Es el mismo orden (turno, recordatorio) que siguen cancelar y reprogramar, que bloquean
+        el turno `FOR UPDATE` y después tocan el recordatorio: no hay ciclo de espera. Devuelve
+        `None` si el recordatorio no existe.
+        """
+        turno_id = self._session.scalar(
+            select(Recordatorio.turno_id).where(Recordatorio.id == recordatorio_id)
+        )
+        if turno_id is None:
+            return None
+        turno = self._session.execute(
+            select(Turno.estado, Turno.paciente_id, Turno.inicio)
+            .where(Turno.id == turno_id)
+            .with_for_update(read=True)
+        ).one()
+        fila = self._session.execute(
+            select(Recordatorio)
+            .where(Recordatorio.id == recordatorio_id)
+            .with_for_update()
+            .execution_options(populate_existing=True)
+        ).scalar_one()
+        return RecordatorioParaEnvio(
+            recordatorio=_a_registrado(fila),
+            turno_estado=turno.estado,
+            paciente_id=turno.paciente_id,
+            inicio=to_utc(turno.inicio),
+        )
+
+    def marcar_enviado(self, recordatorio_id: UUID) -> None:
+        """Suma un intento y pasa a `enviado`."""
+        self._actualizar(
+            recordatorio_id,
+            estado=EstadoRecordatorio.ENVIADO.value,
+            intentos=Recordatorio.intentos + 1,
+        )
+
+    def registrar_fallo(self, recordatorio_id: UUID) -> RecordatorioRegistrado:
+        """Suma un intento; al llegar a `MAX_INTENTOS` pasa a `fallido`. Devuelve el resultado."""
+        fila = self._actualizar(
+            recordatorio_id,
+            estado=case(
+                (Recordatorio.intentos + 1 >= MAX_INTENTOS, EstadoRecordatorio.FALLIDO.value),
+                else_=Recordatorio.estado,
+            ),
+            intentos=Recordatorio.intentos + 1,
+        )
+        return _a_registrado(fila)
+
+    def marcar_cancelado(self, recordatorio_id: UUID) -> None:
+        """Pasa a `cancelado` sin sumar intentos."""
+        self._actualizar(recordatorio_id, estado=EstadoRecordatorio.CANCELADO.value)
+
+    def commit(self) -> None:
+        self._session.commit()
+
+    def rollback(self) -> None:
+        self._session.rollback()
+
+    def _actualizar(self, recordatorio_id: UUID, **valores: object) -> Recordatorio:
+        return self._session.execute(
+            update(Recordatorio)
+            .where(Recordatorio.id == recordatorio_id)
+            .values(**valores)
+            .returning(Recordatorio)
+            .execution_options(populate_existing=True)
+        ).scalar_one()
 
 
 def _a_registrado(fila: Recordatorio) -> RecordatorioRegistrado:
