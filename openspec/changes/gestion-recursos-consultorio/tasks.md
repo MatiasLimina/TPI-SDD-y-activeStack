@@ -6,14 +6,14 @@
 
 ## 1. Preparación
 
-- [ ] 1.1 Safety net: correr `pytest` completo (C-01..C-07) contra la BD de test y registrar el baseline de tests en verde; si algo falla, frenar y reportarlo como falla preexistente
-- [ ] 1.2 Verificar la versión instalada de FastAPI y Pydantic en el contenedor (`pip show fastapi pydantic`) y anotarla en el resumen del Apply (riesgo C7-3 de `design.md`)
+- [x] 1.1 Safety net: correr `pytest` completo (C-01..C-07) contra la BD de test y registrar el baseline de tests en verde; si algo falla, frenar y reportarlo como falla preexistente
+- [x] 1.2 Verificar la versión instalada de FastAPI y Pydantic en el contenedor (`pip show fastapi pydantic`) y anotarla en el resumen del Apply (riesgo C7-3 de `design.md`)
 
 ## 2. Regla de duración compartida (dominio, sin BD)
 
-- [ ] 2.1 Safety net: correr `tests/unit/test_dominio_turnos.py`, `test_crear_turno.py`, `test_reprogramar_turno.py`, `test_api_turnos.py` y `test_api_reprogramar_turno.py` y registrar cuántos pasan
-- [ ] 2.2 RED→GREEN: `tests/unit/test_grilla.py` — `duracion_en_grilla` devuelve `True` para 5, 45 y 480 y `False` para 0, -5, 7, 42 y 485 (parametrizado; valores literales del spec, no recalculados); crear `app/domain/grilla.py` con `GRILLA_MIN`, `DURACION_MAX_MIN`, `MENSAJE_DURACION_INVALIDA` y `duracion_en_grilla`; verificar en verde
-- [ ] 2.3 REFACTOR: `validar_duracion_y_grilla` de `app/domain/turnos.py` usa `duracion_en_grilla` y el mensaje compartido, y re-exporta las constantes; verificar que los tests de 2.1 siguen en verde con el mismo número y que `app/domain/grilla.py` no importa SQLAlchemy ni FastAPI
+- [x] 2.1 Safety net: correr `tests/unit/test_dominio_turnos.py`, `test_crear_turno.py`, `test_reprogramar_turno.py`, `test_api_turnos.py` y `test_api_reprogramar_turno.py` y registrar cuántos pasan
+- [x] 2.2 RED→GREEN: `tests/unit/test_grilla.py` — `duracion_en_grilla` devuelve `True` para 5, 45 y 480 y `False` para 0, -5, 7, 42 y 485 (parametrizado; valores literales del spec, no recalculados); crear `app/domain/grilla.py` con `GRILLA_MIN`, `DURACION_MAX_MIN`, `MENSAJE_DURACION_INVALIDA` y `duracion_en_grilla`; verificar en verde
+- [x] 2.3 REFACTOR: `validar_duracion_y_grilla` de `app/domain/turnos.py` usa `duracion_en_grilla` y el mensaje compartido, y re-exporta las constantes; verificar que los tests de 2.1 siguen en verde con el mismo número y que `app/domain/grilla.py` no importa SQLAlchemy ni FastAPI
 
 ## 3. Dominio del catálogo
 
