@@ -1,12 +1,19 @@
 """Fábricas de catálogo ficticio para tests de turnos (solo datos inventados)."""
 
 from dataclasses import dataclass
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, datetime, time, timedelta
 from itertools import count
 
 from sqlalchemy.orm import Session
 
-from app.infrastructure.db.models import Paciente, Prestacion, Profesional, Sillon, Turno
+from app.infrastructure.db.models import (
+    HorarioAtencion,
+    Paciente,
+    Prestacion,
+    Profesional,
+    Sillon,
+    Turno,
+)
 
 _secuencia = count(1)
 
@@ -20,8 +27,27 @@ class Catalogo:
     consulta: Prestacion  # 30 min, no requiere sillón
 
 
-def crear_catalogo(session: Session) -> Catalogo:
-    """Dos profesionales, dos sillones, dos pacientes y dos prestaciones, con nombres únicos."""
+def dar_horario_amplio(session: Session, profesional: Profesional) -> None:
+    """Siete franjas de 00:00 a 23:55, una por día: el profesional atiende a cualquier hora."""
+    session.add_all(
+        HorarioAtencion(
+            profesional_id=profesional.id,
+            dia_semana=dia,
+            hora_inicio=time(0, 0),
+            hora_fin=time(23, 55),
+        )
+        for dia in range(7)
+    )
+    session.flush()
+
+
+def crear_catalogo(session: Session, *, con_horario: bool = True) -> Catalogo:
+    """Dos profesionales, dos sillones, dos pacientes y dos prestaciones, con nombres únicos.
+
+    Con `con_horario` (por defecto), cada profesional atiende todos los días de 00:00 a 23:55,
+    para que los tests de turnos no dependan del horario (D16); `con_horario=False` lo deja sin
+    franjas, para los tests que definen las suyas.
+    """
     n = next(_secuencia)
     profesionales = [
         Profesional(nombre=f"Ana{n}", apellido="Ficticia"),
@@ -46,6 +72,9 @@ def crear_catalogo(session: Session) -> Catalogo:
     consulta = Prestacion(nombre=f"Consulta {n}", duracion_min=30, requiere_sillon=False)
     session.add_all([*profesionales, *sillones, *pacientes, limpieza, consulta])
     session.flush()
+    if con_horario:
+        for profesional in profesionales:
+            dar_horario_amplio(session, profesional)
     return Catalogo(profesionales, sillones, pacientes, limpieza, consulta)
 
 
