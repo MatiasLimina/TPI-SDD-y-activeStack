@@ -27,7 +27,7 @@ Ver `proposal.md` (Why, Non-goals) y los delta specs `recordatorios` y `app-conf
 
 ## Decisions
 
-Las decisiones marcadas **[A confirmar]** no las fija la KB. Se proponen acá y, cuando el usuario las aprueba, se registran como **DD-26** en `knowledge-base/09_decisiones_y_supuestos.md` (tarea 10.1). Governance ALTO: no se implementa nada antes de esa aprobación.
+Las decisiones marcadas **[A confirmar]** no las fija la KB. Se proponen acá y, cuando el usuario las aprueba, se registran como **DD-26** en `knowledge-base/09_decisiones_y_supuestos.md` (tarea 11.1), junto con D16, que no es una regla de dominio sino la validación de las variables nuevas con el criterio de DD-24 (f), y se registra para que la cita del spec `app-configuration` tenga fuente. Governance ALTO: no se implementa nada antes de esa aprobación.
 
 | Id | Decisión | Fuente |
 |---|---|---|
@@ -35,17 +35,18 @@ Las decisiones marcadas **[A confirmar]** no las fija la KB. Se proponen acá y,
 | D2 | Tabla `recordatorio` con CHECKs de estado, canal, intentos y coherencia, más índice único parcial "un `pendiente` por turno" | 04 §Recordatorio, DD-21 (varchar + CHECK); unicidad y coherencia **[A confirmar]** |
 | D3 | Se programa sii `inicio - REMINDER_LEAD_HOURS >= ahora` (24 h exactas sí programan); `ahora` = reloj inyectado | RN-NO-03, DD-13 ("menos de 24 h" no programa) |
 | D4 | Programador como observador armado por request, en la misma transacción | Puntos de extensión de C-03; 08 (unidad de trabajo turno + auditoría + recordatorio) |
-| D5 | Reprogramar: si cambia `inicio`, cancela el `pendiente` y crea uno nuevo si corresponde; si `inicio` no cambia, no toca nada | RN-NO-02; la forma (fila nueva vs. editar) **[A confirmar]** |
+| D5 | Reprogramar: si cambia `inicio`, cancela el `pendiente` y crea uno nuevo si corresponde; si `inicio` no cambia, no toca nada. Consecuencia explícita: si el recordatorio anterior ya estaba `enviado` (o `fallido`), el turno reprogramado recibe un **segundo** recordatorio, para la fecha nueva | RN-NO-02; RN-NO-01 ("todo turno activo genera un recordatorio previo"); la forma (fila nueva vs. editar) **[A confirmar]** |
 | D6 | Encolado **después** del commit y best-effort; la base es la fuente de verdad; cancelar no toca Redis | Flujo 6 (errores, Suposición de la KB); **[A confirmar]** |
 | D7 | Cola = sorted set de Redis (miembro = id, score = vencimiento en epoch UTC), detrás del puerto `ColaRecordatorios` | 08 (cola de trabajo Redis + worker) |
 | D8 | Worker: bloqueo `turno FOR SHARE` → `recordatorio FOR UPDATE`, re-verificación de estados, envío y actualización en una transacción | Flujo 6 ("verifica que el turno siga activo") |
 | D9 | Backoff: 1 min antes del 2.º intento y 2 min antes del 3.º (base 1 min, factor 2), constante en código | DD-19 (exponencial); valores **[A confirmar]** |
-| D10 | "3 intentos" = 3 intentos en total (el 1.º más 2 reintentos) | DD-19, 04 ("máximo 3"); la redacción de RN-NO-05 ("se reintenta hasta 3 veces") se alinea **[A confirmar]** |
+| D10 | "3 intentos" = 3 intentos en total (el 1.º más 2 reintentos) | DD-19, 04 ("máximo 3"); la redacción de RN-NO-05 ("se reintenta hasta 3 veces") y la de US-012 ("se reintenta 3 veces") se alinean **[A confirmar]** |
 | D11 | Re-encolado al iniciar; un error inesperado termina el proceso y Compose lo reinicia (crash-only) | `CHANGES.md` §C-12, Flujo 6 |
 | D12 | Contenido: texto fijo con fecha `dd/mm/aaaa`, hora `HH:MM` en `APP_TIMEZONE` y `CONSULTORIO_NOMBRE`; destinatario = `paciente_id` | RN-NO-04; `CONSULTORIO_NOMBRE` y el texto **[A confirmar]** |
 | D13 | `MockSender` registra en memoria y en el log; `NOTIFICATION_ADAPTER` acepta solo `mock` | `CHANGES.md` §C-12, DD-04 |
 | D14 | Configuración del worker separada (`ConfiguracionWorker`), sin `JWT_SECRET`; `Settings` la extiende | Mínimo privilegio (08 §Seguridad) **[A confirmar]** |
 | D15 | Redis real solo para el contrato del adaptador (`TEST_REDIS_URL`); el resto de los tests usa la cola en memoria, que pasa el mismo contrato | Reglas duras (PostgreSQL real para persistencia; Redis no es la base) |
+| D16 | Validación de las variables nuevas: `REMINDER_LEAD_HOURS` entero mayor que cero (`0`, un negativo o un valor no numérico son inválidos y la aplicación no arranca) y `CONSULTORIO_NOMBRE` no vacío ni formado solo por espacios | Mismo criterio que DD-24 (f) para `JWT_EXPIRE_MINUTES`; RN-CU-03. Se registra en DD-26 junto con las decisiones aprobadas |
 
 ### 1. Capas y módulos
 - `app/domain/recordatorios.py` (puro): `EstadoRecordatorio` (`StrEnum`: `pendiente`, `enviado`, `fallido`, `cancelado`), `MAX_INTENTOS = 3`, `calcular_programacion(inicio, ahora, anticipacion) -> datetime | None` (D3, en UTC), `espera_reintento(intentos_hechos: int) -> timedelta` (D9) y el puerto `ColaRecordatorios(Protocol)`: `encolar(recordatorio_id: UUID, vence: datetime) -> None` y `tomar_vencidos(ahora: datetime, limite: int) -> list[UUID]`.
@@ -84,6 +85,7 @@ recordatorio
 - `al_crear`: si `calcular_programacion(creado.inicio, ahora, anticipacion)` devuelve un instante, `crear_pendiente` (`add` + `flush`, para que una violación salte antes del commit) y lo anota para publicar.
 - `al_cancelar`: `cancelar_pendiente(turno_id)` = `UPDATE recordatorio SET estado='cancelado' WHERE turno_id=:t AND estado='pendiente'`. Nada que publicar: el worker descarta el id al verlo `cancelado` (D6).
 - `al_reprogramar`: si `anterior.inicio == nuevo.inicio`, no hace nada (D5). Si no, `cancelar_pendiente` y después la misma regla que el alta con `nuevo.inicio`. Se crea una fila nueva en lugar de editar la existente porque un recordatorio `enviado` o `fallido` es terminal, y así hay un solo camino para todos los casos (con o sin pendiente previo, ya enviado). El historial queda en las filas `cancelado`.
+- Consecuencia de D5, a aprobar a conciencia: un turno cuyo recordatorio ya está `enviado` (o quedó `fallido`) y se reprograma con la anticipación suficiente recibe un **segundo** recordatorio, para la fecha nueva; el anterior queda intacto. Se apoya en RN-NO-01 (todo turno activo genera un recordatorio previo) y DD-26 lo dice explícitamente (tarea 11.1).
 - El cálculo de D3 usa el mismo `ahora` del reloj inyectado que la validación del turno, así que es determinístico en los tests.
 - Alternativas descartadas: editar `programado_para` del pendiente existente (no cubre el caso "ya enviado" y obliga a dos caminos); recalcular también cuando `inicio` no cambia (crea filas `cancelado` sin motivo y re-encola sin necesidad); programar desde un trigger de la base (la regla de 24 h y el reloj inyectado quedarían fuera del dominio).
 
@@ -110,7 +112,7 @@ recordatorio
 6. Commit. Después del commit, si el resultado es `reintento`, `cola.encolar(id, vence)`.
 - Solo se tratan como intento fallido las excepciones del emisor. Un error de base o de Redis se propaga: el ciclo no lo atrapa, el proceso termina con código distinto de 0 y Compose lo reinicia (`restart: unless-stopped`). Al reiniciar, D11 recupera los pendientes (diseño crash-only, sin estados intermedios que manejar).
 - **Backoff (D9)**: `espera_reintento(1) = 1 min` y `espera_reintento(2) = 2 min`. Con 24 h de anticipación, los tres intentos terminan en ~3 min. Es una constante de dominio, no una variable de entorno: la KB no pide configurarla y los tests la verifican con el reloj fijo.
-- **Tres intentos en total (D10)**: DD-19 dice "3 intentos" y 04 dice "máximo 3". La frase de RN-NO-05 "se reintenta hasta 3 veces" admite leer 1 + 3. Se toma la lectura de DD-19, consistente con el CHECK `intentos BETWEEN 0 AND 3`, y se alinea la redacción de RN-NO-05 en la KB.
+- **Tres intentos en total (D10)**: DD-19 dice "3 intentos" y 04 dice "máximo 3". La frase de RN-NO-05 "se reintenta hasta 3 veces" admite leer 1 + 3. US-012 ("el envío fallido se reintenta 3 veces") tiene la misma ambigüedad. Se toma la lectura de DD-19, consistente con el CHECK `intentos BETWEEN 0 AND 3`, y se alinea la redacción de RN-NO-05 y del criterio de US-012 en la KB.
 - Alternativas descartadas: verificar sin bloqueo (una cancelación concurrente podría confirmarse entre la lectura y el envío sin que nadie lo note); bloquear solo el recordatorio (el turno podría cancelarse mientras se envía); reintentar dentro del mismo ciclo con `sleep` (bloquea al worker y no sobrevive a un reinicio).
 
 ### 7. Re-encolado al iniciar (D11)
@@ -125,7 +127,7 @@ recordatorio
 
 ### 9. Adaptador mock y configuración (D13, D14)
 - `MockSender.enviar` agrega el mensaje a `self.enviados` y emite un `logger.info` "recordatorio enviado (mock)" con `recordatorio_id`, `paciente_id` y el texto, que no tiene datos clínicos. No hace I/O de red. `crear_sender("mock")` devuelve un `MockSender`.
-- `ConfiguracionWorker(BaseSettings)`: `DATABASE_URL`, `REDIS_URL`, `APP_TIMEZONE`, `NOTIFICATION_ADAPTER: Literal["mock"]`, `REMINDER_LEAD_HOURS: int = Field(24, gt=0)` y `CONSULTORIO_NOMBRE` (validador: `strip()` no vacío). `Settings(ConfiguracionWorker)` agrega `JWT_SECRET`, `JWT_EXPIRE_MINUTES` y `CORS_ORIGINS`. La API sigue usando `Settings`; el worker usa `ConfiguracionWorker` y construye su propio engine (`create_engine(DATABASE_URL, pool_pre_ping=True, hide_parameters=True)`), porque `get_engine()` carga `Settings` y exigiría `JWT_SECRET`.
+- `ConfiguracionWorker(BaseSettings)`: `DATABASE_URL`, `REDIS_URL`, `APP_TIMEZONE`, `NOTIFICATION_ADAPTER: Literal["mock"]`, `REMINDER_LEAD_HOURS: int = Field(24, gt=0)` y `CONSULTORIO_NOMBRE` (validador: `strip()` no vacío), según D16. `Settings(ConfiguracionWorker)` agrega `JWT_SECRET`, `JWT_EXPIRE_MINUTES` y `CORS_ORIGINS`. La API sigue usando `Settings`; el worker usa `ConfiguracionWorker` y construye su propio engine (`create_engine(DATABASE_URL, pool_pre_ping=True, hide_parameters=True)`), porque `get_engine()` carga `Settings` y exigiría `JWT_SECRET`.
 - Alternativa descartada: pasar `JWT_SECRET` al worker para reutilizar `Settings` (expone un secreto a un proceso que no lo usa).
 
 ### 10. Estrategia de tests (D15)

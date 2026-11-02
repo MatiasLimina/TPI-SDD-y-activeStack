@@ -22,7 +22,7 @@ El sistema SHALL leer su configuración desde variables de entorno (opcionalment
 - **THEN** la configuración efectiva usa `48` y `Consultorio Odontológico Ejemplo`
 
 ### Requirement: Fallo explícito ante configuración obligatoria faltante
-El sistema MUST negarse a arrancar con un error que nombre la variable cuando falte una variable obligatoria sin valor por defecto (`DATABASE_URL`, `JWT_SECRET`) o cuando un valor sea inválido, en lugar de usar un valor implícito. `JWT_EXPIRE_MINUTES` y `REMINDER_LEAD_HOURS` MUST ser enteros mayores que cero; un valor no numérico también es inválido (DD-24). `NOTIFICATION_ADAPTER` MUST valer `mock`, el único adaptador del MVP, y `CONSULTORIO_NOMBRE` MUST NOT estar vacío ni ser solo espacios.
+El sistema MUST negarse a arrancar con un error que nombre la variable cuando falte una variable obligatoria sin valor por defecto (`DATABASE_URL`, `JWT_SECRET`) o cuando un valor sea inválido, en lugar de usar un valor implícito. `JWT_EXPIRE_MINUTES` MUST ser un entero mayor que cero; un valor no numérico también es inválido (DD-24 (f)). `REMINDER_LEAD_HOURS` MUST ser un entero mayor que cero, con el mismo criterio (design D16, a registrar en DD-26). `NOTIFICATION_ADAPTER` MUST valer `mock`, el único adaptador del MVP (DD-04; design D13), y `CONSULTORIO_NOMBRE` MUST NOT estar vacío ni ser solo espacios (design D16, a registrar en DD-26).
 
 #### Scenario: Falta DATABASE_URL
 - **WHEN** se carga la configuración sin `DATABASE_URL` en el entorno ni en `.env`

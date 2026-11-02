@@ -17,107 +17,122 @@ Cada alta de turno exitosa con una anticipación de `REMINDER_LEAD_HOURS` horas 
 #### Scenario: Anticipación exactamente igual a 24 h
 - **GIVEN** dados los mismos recursos y que el reloj marca 2026-10-07 10:00 hora local
 - **WHEN** cuando la recepcionista crea un turno con inicio 2026-10-08T10:00-03:00
-- **THEN** entonces el turno tiene un recordatorio `pendiente` con `programado_para` 2026-10-07T13:00Z
+- **THEN** entonces la respuesta es `201` y el turno tiene exactamente un recordatorio `pendiente` con `programado_para` 2026-10-07T13:00Z
 
 #### Scenario: Alta con menos de 24 h de anticipación
-- **GIVEN** dados los mismos recursos y que el reloj marca 2026-10-07 09:00 hora local
-- **WHEN** cuando la recepcionista crea un turno con inicio 2026-10-08T08:55-03:00 (23 h 55 min después)
+- **GIVEN** dados los mismos recursos y que el reloj marca 2026-10-07 09:01 hora local
+- **WHEN** cuando la recepcionista crea un turno con inicio 2026-10-08T09:00-03:00 (23 h 59 min después)
 - **THEN** entonces la respuesta es `201`, el turno queda `programado` y no existe ningún recordatorio para ese turno
 
 #### Scenario: Anticipación configurada en 48 h
-- **GIVEN** dado `REMINDER_LEAD_HOURS=48` y que el reloj marca 2026-10-07 09:00 hora local
-- **WHEN** cuando se crea un turno con inicio 2026-10-09T08:00-03:00 (47 h después) y otro, de otro paciente, con inicio 2026-10-09T10:00-03:00 (49 h después)
-- **THEN** entonces el primero no tiene recordatorio y el segundo tiene un recordatorio `pendiente` con `programado_para` 2026-10-07T13:00Z
+- **GIVEN** dado `REMINDER_LEAD_HOURS=48` y que el reloj marca 2026-10-07 10:00 hora local
+- **WHEN** cuando se crea un turno con inicio 2026-10-09T09:00-03:00 (47 h después) y otro, de otro paciente, con inicio 2026-10-09T11:00-03:00 (49 h después)
+- **THEN** entonces ambas respuestas son `201`, el primero no tiene recordatorio y el segundo tiene un recordatorio `pendiente` con `programado_para` 2026-10-07T14:00Z
 
 ### Requirement: Cancelar el turno cancela su recordatorio pendiente
 Cada cancelación exitosa de un turno MUST pasar a `estado = cancelado` su recordatorio `pendiente`, si lo tiene. Los recordatorios en `enviado`, `fallido` o `cancelado` MUST NOT modificarse (RN-NO-02).
 
 #### Scenario: Cancelación con recordatorio pendiente
-- **GIVEN** dado un turno `programado` futuro con un recordatorio `pendiente` y una recepcionista autenticada
+- **GIVEN** dado un turno `programado` con inicio 2026-10-09 10:00 hora local y su recordatorio `pendiente` con `programado_para` 2026-10-08T13:00Z, una recepcionista autenticada y que el reloj marca 2026-10-07 09:00 hora local
 - **WHEN** cuando la recepcionista envía `POST /turnos/{id}/cancelar`
 - **THEN** entonces la respuesta es `200` y el recordatorio queda en `estado` `cancelado`, con su `programado_para` y sus `intentos` sin cambios
 
 #### Scenario: Cancelación de un turno sin recordatorio
-- **GIVEN** dado un turno `programado` creado con menos de 24 h de anticipación, que no tiene recordatorio
+- **GIVEN** dado un turno `programado` con inicio 2026-10-07 15:00 hora local, creado sin recordatorio porque faltaba menos de 24 h, y que el reloj marca 2026-10-07 09:00 hora local
 - **WHEN** cuando una recepcionista lo cancela
 - **THEN** entonces la respuesta es `200` y el turno sigue sin recordatorios
 
 #### Scenario: Recordatorio ya enviado no se modifica al cancelar
-- **GIVEN** dado un turno `programado` que todavía no empezó y cuyo recordatorio ya está `enviado` con `intentos` 1
+- **GIVEN** dado un turno `programado` con inicio 2026-10-09 10:00 hora local cuyo recordatorio ya está `enviado` con `intentos` 1, y que el reloj marca 2026-10-08 11:00 hora local
 - **WHEN** cuando una recepcionista lo cancela
-- **THEN** entonces el recordatorio sigue `enviado` con `intentos` 1 y no se crea ningún recordatorio nuevo
+- **THEN** entonces la respuesta es `200`, el recordatorio sigue `enviado` con `intentos` 1 y no se crea ningún recordatorio nuevo
 
 ### Requirement: Reprogramar el turno reprograma su recordatorio
 Cuando una reprogramación exitosa cambia el `inicio` del turno, su recordatorio `pendiente` MUST pasar a `cancelado` y MUST crearse uno nuevo `pendiente` si el nuevo inicio cumple la anticipación configurada, con la misma regla del alta. Si el `inicio` no cambia, el recordatorio MUST NOT modificarse. Los recordatorios en `enviado` o `fallido` MUST NOT modificarse (RN-NO-02, RN-NO-03).
 
 #### Scenario: Nuevo inicio con 24 h o más
 - **GIVEN** dado un turno `programado` con inicio 2026-10-09 10:00 hora local y su recordatorio `pendiente` con `programado_para` 2026-10-08T13:00Z, y que el reloj marca 2026-10-07 09:00 hora local
-- **WHEN** cuando una recepcionista lo reprograma a `inicio` 2026-10-10T15:00-03:00
-- **THEN** entonces la respuesta es `200`, el recordatorio anterior queda `cancelado` y el turno tiene exactamente un recordatorio `pendiente`, nuevo, con `programado_para` 2026-10-09T18:00Z e `intentos` 0
+- **WHEN** cuando una recepcionista lo reprograma a `inicio` 2026-10-12T15:00-03:00
+- **THEN** entonces la respuesta es `200`, el recordatorio anterior queda `cancelado` y el turno tiene exactamente un recordatorio `pendiente`, nuevo, con `programado_para` 2026-10-11T18:00Z e `intentos` 0
 
 #### Scenario: Nuevo inicio con menos de 24 h
 - **GIVEN** dado el mismo turno con su recordatorio `pendiente` y que el reloj marca 2026-10-07 09:00 hora local
 - **WHEN** cuando una recepcionista lo reprograma a `inicio` 2026-10-07T15:00-03:00
-- **THEN** entonces el recordatorio anterior queda `cancelado` y el turno no tiene ningún recordatorio `pendiente`
+- **THEN** entonces la respuesta es `200`, el recordatorio anterior queda `cancelado` y el turno no tiene ningún recordatorio `pendiente`
 
 #### Scenario: Turno sin recordatorio reprogramado con 24 h o más
-- **GIVEN** dado un turno `programado` con inicio 2026-10-08 08:00 hora local, creado sin recordatorio porque faltaba menos de 24 h, y que el reloj marca 2026-10-07 09:00 hora local
+- **GIVEN** dado un turno `programado` con inicio 2026-10-07 15:00 hora local, creado sin recordatorio porque faltaba menos de 24 h, y que el reloj marca 2026-10-07 09:00 hora local
 - **WHEN** cuando una recepcionista lo reprograma a `inicio` 2026-10-09T10:00-03:00
-- **THEN** entonces el turno tiene exactamente un recordatorio `pendiente` con `programado_para` 2026-10-08T13:00Z
+- **THEN** entonces la respuesta es `200` y el turno tiene exactamente un recordatorio `pendiente` con `programado_para` 2026-10-08T13:00Z
 
 #### Scenario: Reprogramación sin cambio de inicio
-- **GIVEN** dado un turno `programado` futuro con un recordatorio `pendiente`, y el sillón 2 activo y libre en ese horario
+- **GIVEN** dado un turno `programado` con inicio 2026-10-09 10:00 hora local en el sillón 1 y su recordatorio `pendiente` con `programado_para` 2026-10-08T13:00Z, el sillón 2 activo y libre en ese horario, y que el reloj marca 2026-10-07 09:00 hora local
 - **WHEN** cuando una recepcionista lo reprograma informando solo `sillon_id` del sillón 2
 - **THEN** entonces la respuesta es `200` y el turno conserva el mismo recordatorio `pendiente` (mismo id, mismo `programado_para`), sin que se cree ninguno nuevo
 
 #### Scenario: Recordatorio ya enviado y nuevo inicio con 24 h o más
 - **GIVEN** dado un turno `programado` con inicio 2026-10-09 10:00 hora local, cuyo recordatorio ya está `enviado` con `intentos` 1, y que el reloj marca 2026-10-08 11:00 hora local
-- **WHEN** cuando una recepcionista lo reprograma a `inicio` 2026-10-10T10:00-03:00
-- **THEN** entonces el recordatorio anterior sigue `enviado` y el turno tiene además un recordatorio `pendiente` con `programado_para` 2026-10-09T13:00Z
+- **WHEN** cuando una recepcionista lo reprograma a `inicio` 2026-10-12T10:00-03:00
+- **THEN** entonces la respuesta es `200`, el recordatorio anterior sigue `enviado` con `intentos` 1 y el turno tiene además un recordatorio `pendiente`, nuevo, con `programado_para` 2026-10-11T13:00Z
+
+#### Scenario: Recordatorio fallido y nuevo inicio con 24 h o más
+- **GIVEN** dado un turno `programado` con inicio 2026-10-09 10:00 hora local, cuyo recordatorio quedó `fallido` con `intentos` 3, y que el reloj marca 2026-10-08 11:00 hora local
+- **WHEN** cuando una recepcionista lo reprograma a `inicio` 2026-10-12T10:00-03:00
+- **THEN** entonces la respuesta es `200`, el recordatorio anterior sigue `fallido` con `intentos` 3 y el turno tiene además un recordatorio `pendiente`, nuevo, con `programado_para` 2026-10-11T13:00Z e `intentos` 0
 
 ### Requirement: Atomicidad del recordatorio con el cambio del turno
-La creación, cancelación o reprogramación del recordatorio MUST ocurrir en la misma transacción que el cambio del turno y su registro de auditoría: si el recordatorio no puede registrarse, el cambio del turno MUST revertirse por completo. Una operación rechazada MUST NOT crear ni modificar recordatorios.
+La creación, cancelación o reprogramación del recordatorio MUST ocurrir en la misma transacción que el cambio del turno y su registro de auditoría: si el recordatorio no puede registrarse, el cambio del turno MUST revertirse por completo. Una operación rechazada MUST NOT crear ni modificar recordatorios (05 §Excepciones globales; 08 §Patrones aplicados, unidad de trabajo turno + auditoría + recordatorio).
 
 #### Scenario: Falla del recordatorio revierte el alta
-- **GIVEN** dado que la base rechaza el registro del recordatorio
-- **WHEN** cuando se intenta crear un turno con 48 h de anticipación
-- **THEN** entonces el alta falla, y no quedan ni el turno, ni su registro de auditoría, ni ningún recordatorio
+- **GIVEN** dado que la base rechaza el registro del recordatorio y que el reloj marca 2026-10-07 09:00 hora local
+- **WHEN** cuando se intenta crear un turno con inicio 2026-10-09T09:00-03:00 (48 h después)
+- **THEN** entonces, a nivel de caso de uso, se lanza el error de integridad de la base (no se define respuesta HTTP para esta falla), y no quedan ni el turno, ni su registro de auditoría, ni ningún recordatorio
 
 #### Scenario: Falla del recordatorio revierte la reprogramación
-- **GIVEN** dado un turno `programado` con inicio 2026-10-09 10:00 hora local y su recordatorio `pendiente`, y que la base rechaza el registro del recordatorio nuevo
-- **WHEN** cuando se intenta reprogramarlo a `inicio` 2026-10-10T15:00-03:00
-- **THEN** entonces la reprogramación falla, el turno conserva su inicio 2026-10-09 10:00 hora local y su recordatorio original sigue `pendiente`
+- **GIVEN** dado un turno `programado` con inicio 2026-10-09 10:00 hora local y su recordatorio `pendiente`, que la base rechaza el registro del recordatorio nuevo y que el reloj marca 2026-10-07 09:00 hora local
+- **WHEN** cuando se intenta reprogramarlo a `inicio` 2026-10-12T15:00-03:00
+- **THEN** entonces, a nivel de caso de uso, se lanza el error de integridad de la base (no se define respuesta HTTP para esta falla), el turno conserva su inicio 2026-10-09 10:00 hora local, su recordatorio original sigue `pendiente` con el mismo id y el mismo `programado_para`, y no queda ningún recordatorio nuevo
 
 #### Scenario: Operaciones rechazadas no tocan recordatorios
-- **GIVEN** dado un turno `programado` futuro con un recordatorio `pendiente`
-- **WHEN** cuando se intenta un alta que solapa con él (`409`), una reprogramación con `duracion_min` 7 (`422`) y, después de cancelarlo, una segunda cancelación (`409 turno_ya_cancelado`)
-- **THEN** entonces las tres operaciones se rechazan, no se crea ningún recordatorio y el estado de los existentes es el que dejó la última operación exitosa
+- **GIVEN** dado un turno `programado` con inicio 2026-10-09 10:00 hora local y su recordatorio `pendiente` con `programado_para` 2026-10-08T13:00Z, y que el reloj marca 2026-10-07 09:00 hora local
+- **WHEN** cuando se intenta un alta que solapa con él (`409`), una reprogramación con `duracion_min` 7 (`422`) y, después de cancelarlo con éxito, una segunda cancelación (`409 turno_ya_cancelado`)
+- **THEN** entonces las tres operaciones se rechazan; después del `409` y del `422` el recordatorio sigue `pendiente` con el mismo id y el mismo `programado_para`; después de la segunda cancelación sigue `cancelado`; y la cantidad de recordatorios del turno no cambia en ninguna de las tres
 
 ### Requirement: Encolado después de confirmar el cambio
-Cada recordatorio `pendiente` nuevo MUST publicarse en la cola de recordatorios de Redis, con vencimiento en su `programado_para`, solo después de confirmada la transacción. Si la cola no responde, la operación sobre el turno MUST responder igual con éxito y el recordatorio MUST quedar `pendiente` en la base. Una operación rechazada MUST NOT publicar nada.
+Cada recordatorio `pendiente` nuevo MUST publicarse en la cola de recordatorios de Redis, con vencimiento en su `programado_para`, solo después de confirmada la transacción. Si la cola no responde, la operación sobre el turno MUST responder igual con éxito y el recordatorio MUST quedar `pendiente` en la base. Una operación rechazada MUST NOT publicar nada (Flujo 6, errores).
 
 #### Scenario: Recordatorio encolado tras el alta
 - **GIVEN** dado que el reloj marca 2026-10-07 09:00 hora local
 - **WHEN** cuando una recepcionista crea un turno con inicio 2026-10-09T10:00-03:00
-- **THEN** entonces la cola contiene el id del recordatorio creado con vencimiento 2026-10-08T13:00Z
+- **THEN** entonces la respuesta es `201` y la cola contiene el id del recordatorio creado con vencimiento 2026-10-08T13:00Z
 
 #### Scenario: Recordatorio nuevo encolado tras reprogramar
-- **GIVEN** dado un turno con su recordatorio `pendiente` ya encolado y que el reloj marca 2026-10-07 09:00 hora local
-- **WHEN** cuando una recepcionista lo reprograma a `inicio` 2026-10-10T15:00-03:00
-- **THEN** entonces la cola contiene el id del recordatorio nuevo con vencimiento 2026-10-09T18:00Z
+- **GIVEN** dado un turno con inicio 2026-10-09 10:00 hora local y su recordatorio `pendiente` ya encolado, y que el reloj marca 2026-10-07 09:00 hora local
+- **WHEN** cuando una recepcionista lo reprograma a `inicio` 2026-10-12T15:00-03:00
+- **THEN** entonces la respuesta es `200` y la cola contiene el id del recordatorio nuevo con vencimiento 2026-10-11T18:00Z
 
 #### Scenario: Cola no disponible al crear
 - **GIVEN** dado que la cola de recordatorios no responde y que el reloj marca 2026-10-07 09:00 hora local
 - **WHEN** cuando una recepcionista crea un turno con inicio 2026-10-09T10:00-03:00
 - **THEN** entonces la respuesta es `201` y el recordatorio existe en la base con `estado` `pendiente`
 
+#### Scenario: Cola no disponible al reprogramar
+- **GIVEN** dado un turno `programado` con inicio 2026-10-09 10:00 hora local y su recordatorio `pendiente` con `programado_para` 2026-10-08T13:00Z, que la cola de recordatorios no responde y que el reloj marca 2026-10-07 09:00 hora local
+- **WHEN** cuando una recepcionista lo reprograma a `inicio` 2026-10-12T15:00-03:00
+- **THEN** entonces la respuesta es `200`, el recordatorio anterior queda `cancelado` y en la base existe un recordatorio `pendiente` nuevo con `programado_para` 2026-10-11T18:00Z
+
 #### Scenario: Alta rechazada no encola
-- **GIVEN** dado un turno existente del profesional A de 2026-10-09 10:00 a 10:45 hora local
+- **GIVEN** dado un turno existente del profesional A de 2026-10-09 10:00 a 10:45 hora local y que el reloj marca 2026-10-07 09:00 hora local
 - **WHEN** cuando se intenta crear otro turno de A con inicio 2026-10-09T10:30-03:00 y la respuesta es `409`
 - **THEN** entonces la cola no recibe ningún elemento nuevo
 
+#### Scenario: Reprogramación rechazada no encola
+- **GIVEN** dados dos turnos del profesional A, uno de 2026-10-09 10:00 a 10:45 hora local con su recordatorio `pendiente` ya encolado y otro de 2026-10-12 15:00 a 15:45 hora local, y que el reloj marca 2026-10-07 09:00 hora local
+- **WHEN** cuando se intenta reprogramar el primero a `inicio` 2026-10-12T15:30-03:00 y la respuesta es `409`
+- **THEN** entonces la cola no recibe ningún elemento nuevo y el recordatorio del primer turno sigue `pendiente` con el mismo id y el mismo `programado_para`
+
 ### Requirement: Cola de recordatorios con vencimiento
-La cola MUST entregar un recordatorio recién cuando llega su vencimiento, en orden de vencimiento, y a un solo consumidor. Volver a encolar un recordatorio que ya está en la cola MUST reemplazar su vencimiento y MUST NOT duplicarlo. La cola MUST implementarse sobre Redis.
+La cola MUST entregar un recordatorio recién cuando llega su vencimiento, en orden de vencimiento, y a un solo consumidor. Volver a encolar un recordatorio que ya está en la cola MUST reemplazar su vencimiento y MUST NOT duplicarlo. La cola MUST implementarse sobre Redis (DD-04; 08 §Patrones aplicados, cola de trabajo Redis + worker).
 
 #### Scenario: Solo se entregan los vencidos, en orden
 - **GIVEN** dados los recordatorios R1 con vencimiento 2026-10-08T13:05Z, R2 con 2026-10-08T13:00Z y R3 con 2026-10-08T14:00Z en la cola
@@ -153,7 +168,7 @@ El worker MUST tomar de la cola los recordatorios vencidos y, si el recordatorio
 - **THEN** entonces el adaptador mock registra el envío con el id del recordatorio y su contenido, sin contactar ningún servicio externo de mensajería
 
 ### Requirement: Sin envío para turnos cancelados ni recordatorios no pendientes
-El worker MUST NOT invocar el puerto de notificación si el recordatorio ya no está `pendiente` o ya no existe, o si su turno no está `programado`. En el último caso, el recordatorio MUST pasar a `cancelado`. El estado se MUST verificar en la base, con el recordatorio bloqueado, en el momento del envío.
+El worker MUST NOT invocar el puerto de notificación si el recordatorio ya no está `pendiente` o ya no existe, o si su turno no está `programado`. En el último caso, el recordatorio MUST pasar a `cancelado`. El estado se MUST verificar en la base, con el recordatorio bloqueado, en el momento del envío (Flujo 6, paso 1; RN-NO-02).
 
 #### Scenario: Turno cancelado no envía
 - **GIVEN** dado un recordatorio `pendiente` y vencido en la cola cuyo turno está `cancelado`
@@ -222,8 +237,8 @@ El mensaje entregado al puerto de notificación MUST contener solo la fecha (`dd
 - **THEN** entonces el mensaje no contiene "Limpieza", "Pérez", "Ana", "Prueba" ni "30111222", ni el id de la prestación ni el del profesional
 
 #### Scenario: Fecha y hora en la zona local
-- **GIVEN** dado un turno con inicio 2026-10-10T02:00Z
-- **WHEN** cuando el worker envía su recordatorio
+- **GIVEN** dado un inicio de turno 2026-10-10T02:00Z, que en `America/Argentina/Buenos_Aires` es el viernes 09/10/2026 a las 23:00
+- **WHEN** cuando se arma el mensaje del recordatorio para ese inicio
 - **THEN** entonces el texto informa la fecha "09/10/2026" y la hora "23:00"
 
 ### Requirement: Re-encolado de pendientes al iniciar el worker
@@ -245,7 +260,7 @@ Al iniciar, el worker MUST encolar todos los recordatorios en `pendiente` de la 
 - **THEN** entonces el recordatorio queda `enviado` con `intentos` 1
 
 ### Requirement: A lo sumo un recordatorio pendiente por turno
-La base MUST rechazar un segundo recordatorio `pendiente` para el mismo turno, aunque la aplicación no lo valide. Un turno MUST poder tener a la vez varios recordatorios en `cancelado`, `enviado` o `fallido`.
+La base MUST rechazar un segundo recordatorio `pendiente` para el mismo turno, aunque la aplicación no lo valide. Un turno MUST poder tener a la vez varios recordatorios en `cancelado`, `enviado` o `fallido` (RN-NO-02; design D2, a registrar en DD-26).
 
 #### Scenario: Segundo pendiente rechazado por la base
 - **GIVEN** dado un turno con un recordatorio `pendiente`
@@ -258,7 +273,7 @@ La base MUST rechazar un segundo recordatorio `pendiente` para el mismo turno, a
 - **THEN** entonces la base acepta la inserción
 
 ### Requirement: Integridad del recordatorio en la base
-La base MUST rechazar un recordatorio con `estado` distinto de `pendiente`, `enviado`, `fallido` o `cancelado`, `canal` distinto de `mock`, `intentos` fuera de 0..3, `fallido` sin 3 intentos, `enviado` sin al menos 1 intento, `turno_id` inexistente o `programado_para` nulo. Un turno con recordatorios MUST NOT poder borrarse.
+La base MUST rechazar un recordatorio con `estado` distinto de `pendiente`, `enviado`, `fallido` o `cancelado`, `canal` distinto de `mock`, `intentos` fuera de 0..3, `fallido` sin 3 intentos, `enviado` sin al menos 1 intento, `turno_id` inexistente o `programado_para` nulo. Un turno con recordatorios MUST NOT poder borrarse (04 §Recordatorio, DD-08, DD-21; design D2, a registrar en DD-26).
 
 #### Scenario: Valores inválidos rechazados
 - **GIVEN** dado un turno existente
@@ -276,7 +291,7 @@ La base MUST rechazar un recordatorio con `estado` distinto de `pendiente`, `env
 - **THEN** entonces es un `timestamptz` igual a 2026-10-08T13:00Z
 
 ### Requirement: Worker desplegado como servicio
-`docker-compose.yml` MUST declarar un servicio `worker`, construido con la misma imagen que la API, que ejecute el proceso de recordatorios. El servicio MUST recibir `DATABASE_URL`, `REDIS_URL`, `APP_TIMEZONE`, `NOTIFICATION_ADAPTER`, `REMINDER_LEAD_HOURS` y `CONSULTORIO_NOMBRE`, depender de `db` y `redis`, y reiniciarse si el proceso termina. El worker MUST NOT recibir `JWT_SECRET`, porque no lo necesita.
+`docker-compose.yml` MUST declarar un servicio `worker`, construido con la misma imagen que la API, que ejecute el proceso de recordatorios. El servicio MUST recibir `DATABASE_URL`, `REDIS_URL`, `APP_TIMEZONE`, `NOTIFICATION_ADAPTER`, `REMINDER_LEAD_HOURS` y `CONSULTORIO_NOMBRE`, depender de `db` y `redis`, y reiniciarse si el proceso termina. El worker MUST NOT recibir `JWT_SECRET`, porque no lo necesita (DD-04; 08 §Seguridad, mínimo privilegio; design D14, a registrar en DD-26).
 
 #### Scenario: Servicio worker en Compose
 - **WHEN** se inspecciona `docker-compose.yml`
