@@ -10,6 +10,7 @@ class TipoRecurso(StrEnum):
     PROFESIONAL = "profesional"
     SILLON = "sillon"
     PRESTACION = "prestacion"
+    HORARIO = "horario"
 
 
 class RecursoError(Exception):

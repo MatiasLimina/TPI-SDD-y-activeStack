@@ -74,7 +74,12 @@ def test_recurso_duplicado_expone_tipo_y_campo() -> None:
 
 
 def test_los_valores_de_tipo_recurso_son_los_del_contrato_http() -> None:
-    assert [tipo.value for tipo in TipoRecurso] == ["profesional", "sillon", "prestacion"]
+    assert [tipo.value for tipo in TipoRecurso] == [
+        "profesional",
+        "sillon",
+        "prestacion",
+        "horario",
+    ]
 
 
 def test_modulo_de_recursos_no_importa_sqlalchemy_ni_fastapi() -> None:
