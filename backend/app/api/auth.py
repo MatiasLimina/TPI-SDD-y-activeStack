@@ -89,7 +89,7 @@ RecepcionistaAutenticada = Annotated[UsuarioAutenticado, Depends(requiere_rol(Ro
 UsuarioDeAmbosRoles = Annotated[
     UsuarioAutenticado, Depends(requiere_rol(Rol.RECEPCIONISTA, Rol.ODONTOLOGO))
 ]
-"""Un alias por módulo, definido una sola vez: FastAPI cachea la dependencia por request."""
+# Un alias por módulo, definido una sola vez: FastAPI cachea la dependencia por request.
 
 
 @router.post("/login", response_model=TokenOut)
