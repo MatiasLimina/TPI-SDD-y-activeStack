@@ -27,8 +27,8 @@
 
 ## 5. Repositorio de recursos
 
-- [ ] 5.1 RED→GREEN: `tests/integration/test_repositorio_recursos.py` — para cada definición (profesional, sillón, prestación, parametrizado): `agregar` + `guardar` persiste con el flag de actividad en `true`; `obtener` devuelve `None` para un UUID desconocido; `listar` devuelve activos e inactivos en el orden de D13 (profesionales `apellido, nombre, id`; sillones y prestaciones por `nombre`); verificar en verde
-- [ ] 5.2 RED→GREEN: `guardar` traduce la violación de `uq_sillon_nombre`, `uq_prestacion_nombre` y `uq_profesional_matricula` a `RecursoDuplicadoError` con `campo` `nombre`/`matricula`, y una violación de otra restricción se relanza sin traducir; verificar en verde
+- [x] 5.1 RED→GREEN: `tests/integration/test_repositorio_recursos.py` — para cada definición (profesional, sillón, prestación, parametrizado): `agregar` + `guardar` persiste con el flag de actividad en `true`; `obtener` devuelve `None` para un UUID desconocido; `listar` devuelve activos e inactivos en el orden de D13 (profesionales `apellido, nombre, id`; sillones y prestaciones por `nombre`); verificar en verde
+- [x] 5.2 RED→GREEN: `guardar` traduce la violación de `uq_sillon_nombre`, `uq_prestacion_nombre` y `uq_profesional_matricula` a `RecursoDuplicadoError` con `campo` `nombre`/`matricula`, y una violación de otra restricción se relanza sin traducir; verificar en verde
 
 ## 6. Casos de uso y API de escritura
 
