@@ -17,8 +17,8 @@
 
 ## 3. Dominio del catálogo
 
-- [ ] 3.1 RED→GREEN: `tests/unit/test_dominio_recursos.py` — `validar_duracion_prestacion` no lanza con 5, 45 y 480 y lanza `RecursoInvalidoError` con `codigo = "duracion_invalida"` y el mismo mensaje que los turnos con 0, -5, 7 y 485; crear `app/domain/recursos.py`; verificar en verde
-- [ ] 3.2 RED→GREEN: `normalizar_matricula` — `"  MN-0001 "` → `"MN-0001"`, `""` y `"   "` → `None`, `None` → `None`; `EstadoNoEditableError(["activa"])` expone `campos = ("activa",)` y un mensaje que menciona `/desactivar`; `RecursoInexistenteError` y `RecursoDuplicadoError` exponen `tipo` (`TipoRecurso`) y `campo`; verificar en verde y que el módulo no importa SQLAlchemy ni FastAPI
+- [x] 3.1 RED→GREEN: `tests/unit/test_dominio_recursos.py` — `validar_duracion_prestacion` no lanza con 5, 45 y 480 y lanza `RecursoInvalidoError` con `codigo = "duracion_invalida"` y el mismo mensaje que los turnos con 0, -5, 7 y 485; crear `app/domain/recursos.py`; verificar en verde
+- [x] 3.2 RED→GREEN: `normalizar_matricula` — `"  MN-0001 "` → `"MN-0001"`, `""` y `"   "` → `None`, `None` → `None`; `EstadoNoEditableError(["activa"])` expone `campos = ("activa",)` y un mensaje que menciona `/desactivar`; `RecursoInexistenteError` y `RecursoDuplicadoError` exponen `tipo` (`TipoRecurso`) y `campo`; verificar en verde y que el módulo no importa SQLAlchemy ni FastAPI
 
 ## 4. CHECK de duración en la base y migración `006`
 
