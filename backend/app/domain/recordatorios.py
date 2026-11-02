@@ -1,5 +1,6 @@
 """Reglas puras de los recordatorios (RN-NO-01..05): sin base, Redis ni FastAPI."""
 
+from dataclasses import dataclass
 from datetime import datetime, timedelta
 from enum import StrEnum
 from typing import Protocol
@@ -18,6 +19,18 @@ class EstadoRecordatorio(StrEnum):
     ENVIADO = "enviado"
     FALLIDO = "fallido"
     CANCELADO = "cancelado"
+
+
+@dataclass(frozen=True)
+class RecordatorioRegistrado:
+    """Estado persistido de un recordatorio (`programado_para` siempre en UTC)."""
+
+    id: UUID
+    turno_id: UUID
+    programado_para: datetime
+    estado: EstadoRecordatorio
+    canal: str
+    intentos: int
 
 
 def calcular_programacion(
