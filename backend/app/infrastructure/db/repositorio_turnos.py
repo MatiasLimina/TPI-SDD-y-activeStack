@@ -137,6 +137,10 @@ class RepositorioTurnos:
         self._escribir_traduciendo_exclusion(agregar)
         return TurnoCreado.desde_propuesto(propuesto, id=turnos[-1].id, creado_por=creado_por)
 
+    def existe(self, turno_id: UUID) -> bool:
+        """Si hay un turno con ese id, en cualquier estado; no toma bloqueos."""
+        return self._session.scalar(select(Turno.id).where(Turno.id == turno_id)) is not None
+
     def obtener_para_actualizar(self, turno_id: UUID) -> TurnoRegistrado | None:
         """Lee el turno bloqueando su fila (FOR UPDATE) hasta el fin de la transacción.
 

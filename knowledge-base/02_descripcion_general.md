@@ -61,6 +61,6 @@ No hay integraciones externas obligatorias en el MVP.
 | Pacientes | CRUD básico (datos ficticios) |
 | Turnos | `GET /turnos?desde&hasta&profesional&sillon`, `POST /turnos`, `PATCH /turnos/{id}/reprogramar`, `POST /turnos/{id}/cancelar` |
 | Disponibilidad | `GET /disponibilidad?profesional&prestacion&fecha` |
-| Auditoría | `GET /auditoria/turnos` (solo lectura, recepcionista) |
+| Auditoría | `GET /turnos/{id}/auditoria` (solo lectura, recepcionista; DD-25) |
 
 Conflicto de solapamiento -> `409 Conflict`; fuera de horario o dentro de bloqueo -> `422`.

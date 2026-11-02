@@ -124,22 +124,44 @@ def test_cancelar_turno_iniciado_lanza_ya_iniciado_y_sigue_programado(
 # --- 4.3 puntos de extensión -------------------------------------------------------------
 
 
-def test_observador_recibe_el_turno_cancelado_antes_del_commit(
+def test_observador_recibe_anterior_y_nuevo_antes_del_commit(
     db_session: Session, catalogo: Catalogo
 ) -> None:
     turno_id = _crear(db_session, catalogo).id
-    recibidos: list[TurnoRegistrado] = []
+    recibidos: list[tuple[TurnoRegistrado, TurnoRegistrado]] = []
     repo = RepositorioTurnos(db_session)
     commits: list[int] = []
     commit_original = repo.commit
     repo.commit = lambda: (commits.append(len(recibidos)), commit_original())[1]  # type: ignore[method-assign]
-    caso = CancelarTurno(repo, reloj=lambda: AHORA, observadores=[recibidos.append])
+    caso = CancelarTurno(
+        repo, reloj=lambda: AHORA, observadores=[lambda a, n: recibidos.append((a, n))]
+    )
 
-    resultado = caso.ejecutar(turno_id, "Motivo")
+    resultado = caso.ejecutar(turno_id, "  Motivo  ")
 
-    assert recibidos == [resultado]
-    assert recibidos[0].estado == "cancelado"
+    assert len(recibidos) == 1
+    anterior, nuevo = recibidos[0]
+    assert nuevo == resultado
+    assert (anterior.estado, anterior.motivo_cancelacion) == ("programado", None)
+    assert (nuevo.estado, nuevo.motivo_cancelacion) == ("cancelado", "Motivo")
+    assert anterior.id == nuevo.id == turno_id
+    assert (anterior.inicio, anterior.fin) == (nuevo.inicio, nuevo.fin)
     assert commits == [1]  # el observador ya había corrido cuando se hizo el commit
+
+
+def test_observador_sin_motivo_recibe_motivo_nulo_en_anterior_y_nuevo(
+    db_session: Session, catalogo: Catalogo
+) -> None:
+    turno_id = _crear(db_session, catalogo).id
+    recibidos: list[tuple[TurnoRegistrado, TurnoRegistrado]] = []
+
+    _cancelar(db_session, observadores=[lambda a, n: recibidos.append((a, n))]).ejecutar(
+        turno_id, "   "
+    )
+
+    anterior, nuevo = recibidos[0]
+    assert anterior.motivo_cancelacion is None
+    assert (nuevo.estado, nuevo.motivo_cancelacion) == ("cancelado", None)
 
 
 def test_observador_que_falla_hace_rollback_y_el_turno_sigue_programado(
@@ -147,7 +169,7 @@ def test_observador_que_falla_hace_rollback_y_el_turno_sigue_programado(
 ) -> None:
     turno_id = _crear(db_session, catalogo).id
 
-    def falla(_: TurnoRegistrado) -> None:
+    def falla(_anterior: TurnoRegistrado, _nuevo: TurnoRegistrado) -> None:
         raise RuntimeError("fallo del observador")
 
     with pytest.raises(RuntimeError, match="fallo del observador"):
