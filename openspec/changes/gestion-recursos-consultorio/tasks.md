@@ -41,8 +41,8 @@
 
 ## 7. API de lectura y acceso por rol
 
-- [ ] 7.1 RED→GREEN: requisito "Consulta de recursos" — `ConsultarRecursos` y `GET /{recurso}` / `GET /{recurso}/{id}`: listado con inactivos y en orden ("Sillón 1" inactivo antes que "Sillón 2"; "Zoe Alfa" antes que "Ana Beta"); detalle de "Consulta" con los cinco campos; recurso desactivado consultable con `activo = false`; UUID inexistente → `404`; `no-es-un-id` → `422`; verificar en verde
-- [ ] 7.2 RED→GREEN: `tests/integration/test_api_rbac_recursos.py` (requisitos "Escritura de recursos reservada a la recepcionista" y "Lectura de recursos para ambos roles") — parametrizado sobre las 9 rutas de escritura: odontólogo → `403` con el cuerpo exacto `rol_insuficiente` y la base sin cambios (incluido su propio profesional, que sigue activo); sin token → `401` con `WWW-Authenticate: Bearer` y `no_autenticado`; odontólogo con `POST /sillones` y body `{}` (lo rechaza el schema de Pydantic) → `403`, no `422`, y sin sillones nuevos (es el caso que prueba que el rol se evalúa antes que la validación del body); odontólogo con `POST /prestaciones` y `duracion_min = 7` → `403`, no `422`, y sin prestaciones nuevas; odontólogo desactivando un UUID inexistente → `403`, no `404`; odontólogo lee los tres listados (`200`, incluye a ambos profesionales); `GET` sin token → `401`; `GET /sillones/no-es-un-id` sin token → `401`, no `422`; `PUT` y `DELETE` sobre `/{recurso}/{id}` → `405`; verificar en verde
+- [x] 7.1 RED→GREEN: requisito "Consulta de recursos" — `ConsultarRecursos` y `GET /{recurso}` / `GET /{recurso}/{id}`: listado con inactivos y en orden ("Sillón 1" inactivo antes que "Sillón 2"; "Zoe Alfa" antes que "Ana Beta"); detalle de "Consulta" con los cinco campos; recurso desactivado consultable con `activo = false`; UUID inexistente → `404`; `no-es-un-id` → `422`; verificar en verde
+- [x] 7.2 RED→GREEN: `tests/integration/test_api_rbac_recursos.py` (requisitos "Escritura de recursos reservada a la recepcionista" y "Lectura de recursos para ambos roles") — parametrizado sobre las 9 rutas de escritura: odontólogo → `403` con el cuerpo exacto `rol_insuficiente` y la base sin cambios (incluido su propio profesional, que sigue activo); sin token → `401` con `WWW-Authenticate: Bearer` y `no_autenticado`; odontólogo con `POST /sillones` y body `{}` (lo rechaza el schema de Pydantic) → `403`, no `422`, y sin sillones nuevos (es el caso que prueba que el rol se evalúa antes que la validación del body); odontólogo con `POST /prestaciones` y `duracion_min = 7` → `403`, no `422`, y sin prestaciones nuevas; odontólogo desactivando un UUID inexistente → `403`, no `404`; odontólogo lee los tres listados (`200`, incluye a ambos profesionales); `GET` sin token → `401`; `GET /sillones/no-es-un-id` sin token → `401`, no `422`; `PUT` y `DELETE` sobre `/{recurso}/{id}` → `405`; verificar en verde
 
 ## 8. Desactivación y turnos
 
@@ -53,7 +53,7 @@
 
 ## 9. Documentación de la API
 
-- [ ] 9.1 RED→GREEN: en `test_api_rbac_recursos.py`, un test sobre `TestClient.get("/openapi.json")` afirma el conjunto exacto de rutas `/profesionales*`, `/sillones*` y `/prestaciones*` con sus métodos (las 15 de D1, ninguna `PUT` ni `DELETE`) y que cada una usa su schema de respuesta por recurso; verificar en verde
+- [x] 9.1 RED→GREEN: en `test_api_rbac_recursos.py`, un test sobre `TestClient.get("/openapi.json")` afirma el conjunto exacto de rutas `/profesionales*`, `/sillones*` y `/prestaciones*` con sus métodos (las 15 de D1, ninguna `PUT` ni `DELETE`) y que cada una usa su schema de respuesta por recurso; verificar en verde
 
 ## 10. KB, numeración y cierre
 

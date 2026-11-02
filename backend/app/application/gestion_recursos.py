@@ -80,3 +80,17 @@ class DesactivarRecurso[M: CatalogoMixin]:
             self._repositorio.guardar()
         self._repositorio.commit()
         return entidad
+
+
+class ConsultarRecursos[M: CatalogoMixin]:
+    def __init__(self, repositorio: RepositorioRecursos[M]) -> None:
+        self._repositorio = repositorio
+
+    def listar(self) -> list[M]:
+        return self._repositorio.listar()
+
+    def detalle(self, id: UUID) -> M:
+        entidad = self._repositorio.obtener(id)
+        if entidad is None:
+            raise RecursoInexistenteError(self._repositorio.tipo)
+        return entidad

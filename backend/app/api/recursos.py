@@ -15,8 +15,9 @@ from pydantic import (
 )
 from sqlalchemy.orm import Session
 
-from app.api.auth import RecepcionistaAutenticada
+from app.api.auth import RecepcionistaAutenticada, UsuarioDeAmbosRoles
 from app.application.gestion_recursos import (
+    ConsultarRecursos,
     CrearRecurso,
     DesactivarRecurso,
     EditarRecurso,
@@ -192,6 +193,26 @@ def _router[M: CatalogoMixin](
         session: Annotated[Session, Depends(get_session)], usuario: RecepcionistaAutenticada
     ) -> DesactivarRecurso[M]:
         return DesactivarRecurso(RepositorioRecursos(session, definicion))
+
+    def get_consultar(
+        session: Annotated[Session, Depends(get_session)], usuario: UsuarioDeAmbosRoles
+    ) -> ConsultarRecursos[M]:
+        return ConsultarRecursos(RepositorioRecursos(session, definicion))
+
+    @router.get("", response_model=list[salida])
+    def listar(
+        usuario: UsuarioDeAmbosRoles,
+        caso: Annotated[ConsultarRecursos[M], Depends(get_consultar)],
+    ) -> list[M]:
+        return caso.listar()
+
+    @router.get("/{recurso_id}", response_model=salida)
+    def detalle(
+        usuario: UsuarioDeAmbosRoles,
+        recurso_id: UUID,
+        caso: Annotated[ConsultarRecursos[M], Depends(get_consultar)],
+    ) -> M:
+        return caso.detalle(recurso_id)
 
     @router.post("", status_code=status.HTTP_201_CREATED, response_model=salida)
     def crear(
