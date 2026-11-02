@@ -1,58 +1,58 @@
 # Aplicación de la skill propia y del MCP en un change real
 
-Proyecto: Turnos y Agenda para Consultorios Odontológicos · Fecha: 2026-10-28 · Change: `C-06` `auth-jwt-roles`
+Proyecto: Turnos y Agenda para Consultorios Odontológicos · Fecha: 2026-10-28 · Actualizado: 2026-11-02 · Change del TP: `C-08` `gestion-recursos-consultorio` · Antecedente: `C-06` `auth-jwt-roles`
 
 Este documento sigue a [investigacion.md](investigacion.md): allí se justificó qué skill y qué MCP se
-instalaban; acá se registra cómo se usaron en el ciclo OPSX completo de C-06, con la evidencia de cada paso.
+instalaban; acá se registra cómo se usaron para preparar un change real, con la evidencia de cada paso.
 
-## 1. Contexto
+## 1. Qué change se presenta y por qué cambió
 
-C-06 es el change de autenticación (JWT, dos roles, usuarios por CLI y seed). Lo elegí en la ficha de
-investigación (§1) por tres motivos: depende solo de C-03, está en el camino crítico y es de governance
-CRÍTICO, así que un error en el spec se paga caro. Además, la KB dice "JWT firmado" y "bcrypt/argon2" pero no
-fija librería ni API, que es justo el hueco que cubre un MCP de documentación.
+La ficha de investigación eligió **C-06**. La skill y el MCP se crearon y probaron ahí (ver §6), pero C-06
+llegó hasta el archivo, y la consigna pide un change "listo para implementar", sin marcarlo como implementado.
+Por eso el change del TP pasó a ser **C-08** (profesionales, sillones y prestaciones):
 
-Orden de trabajo del 2026-10-28:
+- Dependía solo de C-06, ya archivado, y está en el camino crítico (C-10 y C-11 dependen de él).
+- Tiene reglas concretas para que la skill controle: duración `> 0`, múltiplo de 5 y `≤ 480` (DD-15),
+  desactivación lógica que conserva el historial y escritura solo de la recepcionista (RN-AU-03).
+- Tiene una migración propia con un CHECK y elige APIs de Pydantic, Alembic, FastAPI y SQLAlchemy, que es
+  donde sirve un MCP de documentación.
 
-1. `/opsx:explore` de C-06, con consultas a Context7.
-2. `/opsx:propose`: 5 delta specs con 89 escenarios.
-3. `revisar-escenarios`, primera pasada.
-4. Decisiones mías sobre los hallazgos, DD-24 en la KB y `/opsx:update`.
-5. `revisar-escenarios`, segunda pasada.
-6. `/opsx:apply` con TDD estricto y revisión final del advisor.
-7. `/opsx:archive`.
+**Estado que se presenta**: con el reparto del 2026-11-02 (`docs/equipo/reparto-de-tareas.md`), C-08 se
+implementó en la misma semana porque está en el camino crítico. El estado "listo para Apply" que pide la
+consigna es el commit **`01c6b1c`**:
+
+| Commit | Contenido |
+|---|---|
+| `9d120f3` `docs(c-08): propose gestion-recursos-consultorio` | `proposal.md`, `design.md`, 2 delta specs y `tasks.md`, ya con las correcciones de la revisión |
+| `01c6b1c` `docs(c-08): add scenario review for gestion-recursos-consultorio` | `revision-escenarios.md`, veredicto **LISTO PARA APPLY** |
+
+Ninguno de los dos tiene código: la implementación empieza en `cf88d63`. Se puede ver con
+`git checkout 01c6b1c`. Los mismos artefactos quedaron en
+[openspec/changes/archive/2026-11-02-gestion-recursos-consultorio/](../../openspec/changes/archive/2026-11-02-gestion-recursos-consultorio/).
+
+**Reparto**: Matías hizo el propose, las consultas a Context7 y la revisión con la skill. Nico reproduce la
+guía del MCP en su máquina, verifica la skill en una sesión nueva e integra la entrega. Lauti sigue en el
+equipo, pero esta semana no tiene pasos asignados (ver
+[plan-preparacion-c08.md](plan-preparacion-c08.md)).
 
 ## 2. Uso del MCP Context7
 
-**Cuándo**: en el explore y en el propose, antes de fijar en `design.md` cualquier API de terceros. Las
-consultas las hizo un sub-agente de solo lectura. Para la conexión y la primera prueba del servidor ver
-[evidencias/mcp-context7.md](evidencias/mcp-context7.md) (2026-10-16).
+**Cuándo**: durante el `/opsx:propose` de C-08, antes de fijar en `design.md` cualquier API de terceros.
+Evidencia completa, con las fuentes: [evidencias/c-08/explore-context7.md](evidencias/c-08/explore-context7.md).
 
 **Regla de privacidad**: todas las consultas fueron genéricas sobre la librería. No se envió código del
 proyecto, secretos, `.env` ni datos de pacientes (límite fijado en [mcp.md](mcp.md)).
 
-| Biblioteca (id) | Pregunta | Hallazgo |
+| Biblioteca (id) | Pregunta | Qué decidió en `design.md` |
 |---|---|---|
-| `pwdlib` → `/frankie567/pwdlib` | hash, verificación y hash señuelo con argon2 | Id confirmado (score 87,65) |
-| `/frankie567/pwdlib` | `recommended`, `verify_and_update`, extras | argon2 viene con `pwdlib[argon2]`; `verify_and_update` devuelve `(valido, hash_nuevo \| None)` |
-| `/websites/fastapi_tiangolo` | `OAuth2PasswordBearer` frente a `HTTPBearer`, form frente a JSON, 401 frente a 403 | Desde FastAPI 0.122 se responde 401 sin header (antes 403); el form OAuth2 exige `username`/`password` como form-data; patrón `DUMMY_HASH`; el tutorial devuelve 400 al usuario inactivo |
-| `/jpadilla/pyjwt` | claims obligatorios y largo de clave HS256 | `options={"require": ["exp", "sub"]}` levanta `MissingRequiredClaimError`; HS256 pide clave de al menos 256 bits y solo avisa salvo `enforce_minimum_key_length=True` |
+| Pydantic (`/websites/pydantic_dev_validation`) | `gt`, `le` y `multiple_of` en un `int`; si acepta `float` | **No** se usa `Field(multiple_of=5, le=480)`: el `422` tendría otra forma que el `{"detail": {"codigo": "duracion_invalida"}}` de los turnos. La regla vive en una función de dominio compartida (D2). El caso `45.0` aceptado y `45.5` rechazado pasó a ser un test |
+| Alembic (`/websites/alembic_sqlalchemy`) | `op.create_check_constraint` con convención de nombres | Sin `op.f()` la convención de `base.py` duplicaría el prefijo `ck_prestacion_`. La migración `006` usa `op.f()` con el nombre completo (D3) |
+| FastAPI (`/websites/fastapi_tiangolo`) | `PATCH` parcial y `null` explícito frente a campo omitido | La edición toma solo `model_fields_set` y rechaza `null` en campos obligatorios (D4). El cambio de la 0.151.0 quedó como riesgo y una tarea verifica la versión instalada |
+| SQLAlchemy (`/websites/sqlalchemy_en_20_orm`) | `Session.get` con `with_for_update` y `populate_existing` | Las referencias de un turno se leen con `FOR SHARE` y relectura forzada: el alta espera a una desactivación en curso (D10) |
 
-**Qué cambió en el diseño** (detalle en la sección "Consulta a Context7" de
-[design.md](../../openspec/changes/archive/2026-10-28-auth-jwt-roles/design.md)):
-
-| Decisión | Origen | Resultado |
-|---|---|---|
-| Usuario inactivo | El tutorial responde `400`. **Prevaleció la KB**: se mantiene `401` uniforme, igual al de credenciales inválidas, para no revelar que la cuenta existe (DD-24) | Documentación descartada |
-| Códigos 401/403 | Dependen de la versión de FastAPI | Se fijó `fastapi>=0.122` y se agregó el escenario explícito "sin token → 401" |
-| Validación del token | PyJWT `require` | Se adoptó `require: ["exp", "sub"]` y `algorithms=["HS256"]` fijo |
-| Contraseñas | pwdlib `verify_and_update` | Re-hash en el login cuando cambian los parámetros |
-| Email inexistente | patrón `DUMMY_HASH` | Se verifica igual contra un hash señuelo (anti-timing, DD-24) |
-| Largo de `JWT_SECRET` | PyJWT solo advierte | **Decidí no validarlo al arrancar**; quedó como riesgo y backlog |
-
-El caso del `400` es el ejemplo de la regla "ante conflicto prevalece la KB": la documentación oficial
-resuelve un tutorial, no el dominio del producto. Otro punto con Context7: el tutorial usa form-data, pero
-el diseño eligió body JSON con Pydantic (decisión D2) y lo dejó anotado como descartado.
+**Qué no decidió Context7**: el `409 recurso_duplicado`, la desactivación idempotente, la falta de
+reactivación y qué pasa con los turnos de un recurso desactivado salen de la KB o de decisiones confirmadas
+por el usuario, que quedaron registradas como **DD-26**.
 
 ## 3. Uso de la skill `revisar-escenarios`
 
@@ -60,83 +60,71 @@ el diseño eligió body JSON con Pydantic (decisión D2) y lo dejó anotado como
 correcciones pasan por `/opsx:update`, así que la decisión sigue siendo humana. Controles C1–C9 y formato
 en [SKILL.md](../../.agents/skills/revisar-escenarios/SKILL.md).
 
-### 3.1 Primera pasada
+Informe: [revision-escenarios.md](../../openspec/changes/archive/2026-11-02-gestion-recursos-consultorio/revision-escenarios.md).
+Revisó 58 escenarios en 17 requirements, contra RN-AG, RN-AU, RN-CU, DD-05 a DD-24 y US-001. Veredicto:
+**LISTO PARA APPLY**, con 0 bloqueantes, 0 mayores, 7 menores y 4 sugerencias. Todas las reglas del scope de
+`CHANGES.md` §C-08 tenían escenario, y cada escenario tenía una tarea que lo verifica.
 
-Informe: [revision-escenarios-v1.md](../../openspec/changes/archive/2026-10-28-auth-jwt-roles/revision-escenarios-v1.md).
-Revisó 89 escenarios en 5 specs. Veredicto: **CORREGIR ANTES DE APPLY** (0 bloqueantes, 3 mayores,
-4 menores, 2 sugerencias).
-
-| Id | Sev. | Hallazgo | Mi decisión |
+| Id | Sev. | Hallazgo | Decisión |
 |---|---|---|---|
-| H1 | MAYOR | Seis decisiones nuevas sin registro DD en la KB | Corregir (DD-24) |
-| H2 | MAYOR | Causas del alta inválida por CLI sin escenario | Corregir |
-| H3 | MAYOR | `USUARIO_PASSWORD` definida pero vacía: resultado no definido | Corregir: se rechaza |
-| H4 | MENOR | Falta escenario de `sub` que no es UUID | Corregir |
-| H5 | MENOR | Cuerpo "idéntico" con `mensaje` sin valor concreto | Corregir |
-| H6 | MENOR | "Pocos segundos" de tolerancia, reloj sin fijar | Corregir |
-| H7 | MENOR | Faltan bordes de vencimiento y de configuración | Corregir |
-| H8 | SUGERENCIA | Email de un usuario inactivo no se puede reutilizar | Limitación aceptada, backlog "Reactivación de usuarios" |
-| H9 | SUGERENCIA | Carrera entre dos altas por CLI | Riesgo conocido, la base garantiza la unicidad |
+| H1 | MENOR | Rechazos cuyo THEN da solo el código, sin afirmar "no se persiste nada" | Corregir: se agregaron las aserciones de estado al spec y a las tareas |
+| H3 | MENOR | "Rol evaluado antes que el body" no distinguía la validación del schema | Corregir: el caso pasa a `POST /sillones` con `{}` → `403`, no `422` |
+| H4 | MENOR | El test de concurrencia (b) pasaba aunque faltara el `FOR SHARE` | Corregir, con un matiz (ver §5) |
+| H5 | MENOR | Cláusulas del spec sin escenario (nombre demasiado largo, campo desconocido, reprogramación concurrente) | Corregir: 3 escenarios nuevos |
+| H6 | MENOR | Requirements sin citar la decisión que los respalda | Corregir en parte: se citó DD-26 |
+| H2, H7 | MENOR | Turnos sin reloj fijo en el spec; lecturas sin rol nombrado | Sin cambios: `tasks.md` ya fija el reloj y el rol |
+| H8–H11 | SUGERENCIA | Tareas sin escenario, riesgos sin escenario, mayúsculas, texto de DD-15 | Sin cambios, a propósito |
 
-### 3.2 Correcciones
-
-- Se creó **DD-24** (contrato de autenticación y usuarios) en `knowledge-base/09_decisiones_y_supuestos.md`, y
-  se actualizaron `04`, `07`, `10` y `CHANGES.md`.
-- Mientras registraba DD-24 apareció una contradicción en la propia KB: `rol` figuraba como "enum" en un
-  lado y como `varchar` + CHECK en otro. Se resolvió al unificar el modelo de datos.
-- `/opsx:update` llevó el change de 89 a 96 escenarios.
-
-### 3.3 Segunda pasada
-
-Informe: [revision-escenarios.md](../../openspec/changes/archive/2026-10-28-auth-jwt-roles/revision-escenarios.md),
-con tabla de seguimiento. Veredicto: **LISTO PARA APPLY** (0 bloqueantes, 0 mayores, 2 menores nuevos).
-
-| Hallazgo v1 | Estado |
-|---|---|
-| H1 a H7 | Cerrados, con evidencia en el spec o la KB (H5 cerrado en parte, ver N1) |
-| H8 | Aceptado como limitación |
-| H9 | Aceptado como riesgo conocido |
-
-Los dos menores nuevos (N1: literal del mensaje de `rol_insuficiente` sin fijar; N2: variable `SEED_*`
-definida y vacía sin escenario) aparecieron recién ahora porque DD-24 ya existía y permitió exigirlos. Se
-corrigieron y el change quedó en **97 escenarios**.
+Además señaló una inconsistencia **de la KB, no del spec**: `02_descripcion_general.md` decía "CRUD
+(recepcionista)" sin la lectura del odontólogo, que sí figura en `03_actores_y_roles.md` y en US-001. Se
+alineó `02` en el apply.
 
 ## 4. Resultado medible
 
 | Medida | Antes | Después |
 |---|---|---|
-| Escenarios | 89 (propose) | 96 (update) y 97 (tras la segunda pasada) |
-| Hallazgos MAYOR | 3 | 0 |
-| Hallazgos MENOR | 4 | 2, corregidos |
-| Decisiones de diseño con registro en KB | 0 de 6 | DD-24 |
-| Tests (`pytest`) | 388 de base | 632 (639 tras integrar una corrección de concurrencia ajena a C-06) |
+| Escenarios | 58 (propose) | 61 (tras `/opsx:update`) |
+| Hallazgos MENOR | 7 | 2, dejados sin cambios con motivo |
+| Decisiones de diseño sin registro en la KB | 6 (D5, D6, D7, D9, D11, D12) | 0, registradas en DD-26 |
+| Tests (`pytest`) | 741 de base | 945 tras el apply |
 
-Apply: 10 grupos de tareas con TDD estricto, `ruff` limpio y `openspec validate --strict` válido. Resumen en
-[tasks.md](../../openspec/changes/archive/2026-10-28-auth-jwt-roles/tasks.md). La verificación manual contra
-el stack de Docker confirmó los casos clave: login `200`, contraseña incorrecta `401`, sin token `401`, rol
-insuficiente `403`, creación `201` con `creado_por` igual al `sub`, y token de un usuario desactivado `401`.
+Apply: 28 de 28 tareas con TDD estricto, `ruff` limpio, `alembic heads` con una sola cabeza (`006`) y
+revisión final del advisor sin bloqueos. Entró a `main` por el PR #5.
 
-## 5. Qué no cubre cada herramienta
+## 5. Revisión crítica
 
-La skill revisa **escenarios contra la KB**, no el diseño técnico ni el código. Lo vimos en tres casos:
+**La skill se equivocó en parte en H4.** Decía que, sin `FOR SHARE`, la desactivación de un sillón nunca
+espera a un alta de turno en curso. Al revisar el diseño se vio que eso vale solo si el alta todavía no hizo
+el `INSERT`: después del `INSERT`, el lock de la clave foránea ya choca con el `FOR UPDATE` de la
+desactivación. Si se seguía la sugerencia tal cual, el test podía quedar verde por la razón equivocada. La
+corrección fija dónde se detiene el alta en el test (después de leer las referencias y antes del `INSERT`) y
+exige ver el test en rojo antes del cambio. El matiz quedó escrito en el informe y en `design.md` §4.
 
-| Hallazgo | Quién lo encontró | Por qué la skill no lo veía |
-|---|---|---|
-| 5 problemas de diseño y tests (por ejemplo, tests del seed que dependían del `.env` local, y un problema de orden TDD en la tarea 4.1) | Advisor, revisor aparte, antes de Apply | No son escenarios ni reglas de la KB |
-| Fuga del hash en un camino de error del CLI (error de base distinto de `IntegrityError`) | Advisor, revisión final del diff | Es código, no spec. Se corrigió con test RED → GREEN y frontera de 254/255 caracteres |
-| Un byte NUL literal escrito en `tasks.md` durante el propose | Solo `git` | `validate`, la skill y el advisor leen texto y no lo detectaron |
+Controles sobre el resto del informe:
 
-Otros límites:
+- Cada hallazgo cita una regla o un control que existe (C5, DD-15, RN-AU-03, DD-24) y dice eso.
+- Ningún escenario sugerido introduce una regla nueva: las decisiones que la KB no tomaba se confirmaron
+  antes con el usuario y pasaron a DD-26.
+- Nada de lo que marcó como faltante es de otro change: no pidió horarios (C-10) ni bloqueos (C-11).
 
-- Context7 informa, pero no decide: la diferencia con la KB (el `400`) la resolví yo.
-- La skill es de solo reporte por diseño. Eso evitó que un agente cambiara el spec sin mi decisión, a costa
-  de un paso manual más.
-- Las pasadas no sustituyen a los tests: cada escenario se verifica con `pytest` en el Apply.
+## 6. Antecedente: C-06 `auth-jwt-roles`
 
-Se complementan así: Context7 fundamenta el diseño antes de escribir, la skill controla spec contra KB antes
-de Apply, y el advisor revisa diseño y código. Cada una atrapó cosas que las otras no veían.
+La skill y el MCP se usaron por primera vez en C-06, el 2026-10-28, en el ciclo OPSX completo:
 
-## 6. Archivos de la fundación
+- **Context7** fundamentó el uso de `pwdlib`, `PyJWT` y la seguridad de FastAPI. En un caso **prevaleció la
+  KB**: el tutorial de FastAPI responde `400` al usuario inactivo, pero el diseño mantuvo `401` uniforme para
+  no revelar que la cuenta existe (DD-24). Detalle en
+  [design.md](../../openspec/changes/archive/2026-10-28-auth-jwt-roles/design.md).
+- **La skill** hizo dos pasadas. La primera dio **CORREGIR ANTES DE APPLY**, con 3 mayores, y obligó a crear
+  DD-24 ([v1](../../openspec/changes/archive/2026-10-28-auth-jwt-roles/revision-escenarios-v1.md)). La
+  segunda dio **LISTO PARA APPLY**
+  ([v2](../../openspec/changes/archive/2026-10-28-auth-jwt-roles/revision-escenarios.md)). El change pasó de
+  89 a 97 escenarios.
+- **Lo que la skill no ve**: el advisor encontró problemas de diseño de tests y una fuga del hash en un
+  camino de error del CLI, y un byte NUL en `tasks.md` solo lo detectó `git`. La skill revisa escenarios
+  contra la KB, no el diseño técnico ni el código.
+
+## 7. Archivos de la fundación
 
 Comparación con lo previsto en [investigacion.md](investigacion.md) §5. Todos existen en el repo.
 
@@ -149,12 +137,13 @@ Comparación con lo previsto en [investigacion.md](investigacion.md) §5. Todos 
 | `AGENTS.md` y `CLAUDE.md` | Rol "Revisión de specs", sección de la skill, sección de integraciones MCP y paso 5 del flujo |
 | `.mcp.json` | Servidor `context7`, sin secretos |
 | `docs/skills-mcp/` (`investigacion.md`, `mcp.md`, `evidencias/`, este archivo) | Documentación y evidencia |
-| `docs/fundacion/skills-seleccionadas.md`, `README.md` | Ampliación del 2026-10-16 |
-| `knowledge-base/09`, `04`, `07`, `10` y `CHANGES.md` | **Cambiaron** por DD-24. Difiere de lo previsto en §5, donde la KB no se tocaba: aquel supuesto valía para las herramientas, pero la revisión sí produjo decisiones de dominio |
+| `knowledge-base/` y `CHANGES.md` | **Cambiaron**: DD-24 (C-06) y DD-26 (C-08). Difiere de lo previsto en §5, donde la KB no se tocaba: aquel supuesto valía para las herramientas, pero las revisiones sí produjeron decisiones de dominio |
 
-## 7. Conclusión
+## 8. Conclusión
 
-Con un change real quedó a la vista qué aporta cada pieza. Context7 evitó decidir librerías de memoria y
-dejó trazable en `design.md` dónde la documentación coincidió con la KB y dónde no. La skill encontró tres
-problemas mayores antes de escribir una línea de código, y obligó a registrar DD-24. Ninguna reemplaza la
-revisión humana ni la del código; sí acortaron el camino hasta un Apply con spec cerrado.
+En C-08 cada pieza aportó algo distinto. Context7 cambió dos decisiones de diseño: dejar la duración fuera
+de `Field` y usar `op.f()` en la migración. La skill dejó el spec más verificable antes de escribir código y
+obligó a registrar DD-26. El caso de H4 muestra que sus sugerencias también se revisan: un hallazgo correcto
+en el fondo traía una explicación incompleta, y aplicarlo tal cual habría dado un test engañoso. Ninguna de
+las dos reemplaza la revisión humana ni la del código; sí acortaron el camino hasta un Apply con el spec
+cerrado.
