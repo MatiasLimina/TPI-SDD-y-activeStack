@@ -6,10 +6,15 @@ from datetime import datetime, timedelta
 from typing import Literal, Self
 from uuid import UUID
 
+from app.domain.grilla import (
+    DURACION_MAX_MIN,
+    GRILLA_MIN,
+    MENSAJE_DURACION_INVALIDA,
+    duracion_en_grilla,
+)
 from app.domain.time import to_local
 
-GRILLA_MIN = 5
-DURACION_MAX_MIN = 480
+__all__ = ["DURACION_MAX_MIN", "GRILLA_MIN"]  # re-exportadas: los imports existentes no cambian
 
 
 Recurso = Literal["profesional", "sillon", "paciente"]
@@ -170,12 +175,8 @@ def calcular_fin(inicio: datetime, duracion_min: int) -> datetime:
 
 def validar_duracion_y_grilla(inicio: datetime, duracion_min: int) -> None:
     """Duración en (0, 480] múltiplo de 5 e inicio alineado a 5 min en hora local (DD-15)."""
-    if duracion_min <= 0 or duracion_min % GRILLA_MIN != 0 or duracion_min > DURACION_MAX_MIN:
-        raise TurnoInvalidoError(
-            "duracion_invalida",
-            f"la duración debe ser múltiplo de {GRILLA_MIN} entre {GRILLA_MIN} "
-            f"y {DURACION_MAX_MIN} minutos",
-        )
+    if not duracion_en_grilla(duracion_min):
+        raise TurnoInvalidoError("duracion_invalida", MENSAJE_DURACION_INVALIDA)
     local = to_local(inicio)
     if local.minute % GRILLA_MIN != 0 or local.second != 0 or local.microsecond != 0:
         raise TurnoInvalidoError(

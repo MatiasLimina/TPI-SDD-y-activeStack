@@ -8,7 +8,7 @@ from fastapi import APIRouter, Depends
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
-from app.api.turnos import RecepcionistaAutenticada
+from app.api.auth import RecepcionistaAutenticada
 from app.application.auditoria_turnos import ConsultarAuditoriaTurno
 from app.domain.auditoria import Instantanea, RegistroAuditoria
 from app.domain.time import to_local

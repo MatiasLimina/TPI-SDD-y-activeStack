@@ -33,8 +33,10 @@ def _paciente(**campos: str | None) -> Paciente:
 # --- 3.1 duracion positiva ---------------------------------------------------------------
 
 
-@pytest.mark.parametrize("duracion", [1, 45, 600])
-def test_prestacion_with_positive_duration_is_persisted(db_session: Session, duracion: int) -> None:
+@pytest.mark.parametrize("duracion", [5, 45, 480])
+def test_prestacion_with_duration_in_the_grid_is_persisted(
+    db_session: Session, duracion: int
+) -> None:
     prestacion = Prestacion(nombre="Limpieza", duracion_min=duracion)
 
     db_session.add(prestacion)
@@ -52,6 +54,45 @@ def test_prestacion_with_non_positive_duration_is_rejected_by_check(
 
     assert "ck_prestacion_duracion_min_positiva" in str(error.orig)
     assert db_session.execute(text("SELECT count(*) FROM prestacion")).scalar_one() == 0
+
+
+@pytest.mark.parametrize(
+    ("duracion", "restriccion"),
+    [
+        (485, "ck_prestacion_duracion_min_maxima"),
+        (7, "ck_prestacion_duracion_min_multiplo_5"),
+    ],
+)
+def test_prestacion_outside_the_duration_grid_is_rejected_by_check(
+    db_session: Session, duracion: int, restriccion: str
+) -> None:
+    error = _insert_rechazado(db_session, Prestacion(nombre="Fuera", duracion_min=duracion))
+
+    assert restriccion in str(error.orig)
+    assert db_session.execute(text("SELECT count(*) FROM prestacion")).scalar_one() == 0
+
+
+def test_update_to_a_duration_outside_the_grid_is_rejected_and_keeps_the_row(
+    db_session: Session,
+) -> None:
+    prestacion = Prestacion(nombre="Limpieza", duracion_min=45)
+    db_session.add(prestacion)
+    db_session.flush()
+
+    with pytest.raises(IntegrityError) as excinfo:
+        with db_session.begin_nested():
+            db_session.execute(
+                text("UPDATE prestacion SET duracion_min = 42 WHERE id = :id"),
+                {"id": prestacion.id},
+            )
+
+    assert "ck_prestacion_duracion_min_multiplo_5" in str(excinfo.value.orig)
+    assert (
+        db_session.execute(
+            text("SELECT duracion_min FROM prestacion WHERE id = :id"), {"id": prestacion.id}
+        ).scalar_one()
+        == 45
+    )
 
 
 # --- 3.2 requiere_sillon -----------------------------------------------------------------

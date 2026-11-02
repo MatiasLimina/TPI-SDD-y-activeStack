@@ -7,7 +7,11 @@ from app.infrastructure.db.models.mixins import CatalogoMixin
 
 class Prestacion(CatalogoMixin, Base):
     __tablename__ = "prestacion"
-    __table_args__ = (CheckConstraint("duracion_min > 0", name="duracion_min_positiva"),)
+    __table_args__ = (
+        CheckConstraint("duracion_min > 0", name="duracion_min_positiva"),
+        CheckConstraint("mod(duracion_min, 5) = 0", name="duracion_min_multiplo_5"),
+        CheckConstraint("duracion_min <= 480", name="duracion_min_maxima"),
+    )
 
     nombre: Mapped[str] = mapped_column(String(100), unique=True)
     duracion_min: Mapped[int] = mapped_column(Integer)

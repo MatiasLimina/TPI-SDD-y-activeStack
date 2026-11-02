@@ -9,7 +9,7 @@ from fastapi.responses import JSONResponse
 from pydantic import AwareDatetime, BaseModel, Field, JsonValue, model_validator
 from sqlalchemy.orm import Session
 
-from app.api.auth import requiere_rol
+from app.api.auth import RecepcionistaAutenticada
 from app.application.auditoria_turnos import AuditorTurnos
 from app.application.cancelar_turno import CancelarTurno
 from app.application.crear_turno import CrearTurno, Reloj, SolicitudTurno
@@ -29,14 +29,12 @@ from app.domain.turnos import (
     TurnoNoModificableError,
     TurnoRegistrado,
 )
-from app.domain.usuarios import Rol, UsuarioAutenticado
+from app.domain.usuarios import UsuarioAutenticado
 from app.infrastructure.db.repositorio_auditoria import RepositorioAuditoria
 from app.infrastructure.db.repositorio_turnos import RepositorioTurnos
 from app.infrastructure.db.session import get_session
 
 router = APIRouter(prefix="/turnos", tags=["turnos"])
-
-RecepcionistaAutenticada = Annotated[UsuarioAutenticado, Depends(requiere_rol(Rol.RECEPCIONISTA))]
 
 
 class TurnoIn(BaseModel):

@@ -246,8 +246,8 @@ C-01 a C-06 los hizo Matías, y C-07 está implementado y pendiente de merge (PR
 ## FASE 3 — Configuración, pacientes, horarios y bloqueos
 
 ### [C-08] `gestion-recursos-consultorio`
-- **Estado**: `[ ]` pendiente
-- **Responsable**: Matías · revisa Nico
+- **Estado**: `[x]` completado
+- **Responsable**: Matías (implementado en `feat/c-08-gestion-recursos-consultorio`) · revisa Nico
 - **Scope** (US-001):
   - CRUD de profesionales, sillones y prestaciones: `/profesionales`, `/sillones`, `/prestaciones` (alta, edición, desactivación lógica)
   - Validaciones: `duracion_min > 0`, múltiplo de 5 y ≤ 480 (con CHECK en BD; DD-15), `requiere_sillon`; recurso desactivado no admite turnos nuevos pero conserva historial
@@ -434,6 +434,7 @@ Diferido por el Discovery (ver `docs/discovery/informe-discovery.md` §D.3 y §D
 - Panel de ausentismo y ocupación de sillones (no-show dashboard)
 - Multisede / multi-sucursal
 - Política de cancelación tardía (decidido DD-14: sin política en el MVP)
+- Reactivación de profesionales, sillones y prestaciones: hoy la desactivación es definitiva por API (DD-26)
 - Reactivación de usuarios: el email de un usuario desactivado queda tomado y no se puede volver a dar de alta (limitación aceptada en DD-24)
 - Rate limiting del login y registro de eventos de seguridad (intentos fallidos) (DD-24)
 - Validación del largo mínimo de `JWT_SECRET` al arrancar (DD-24; hoy PyJWT solo advierte)
