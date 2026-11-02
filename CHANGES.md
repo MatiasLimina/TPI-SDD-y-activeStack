@@ -275,7 +275,7 @@ C-01 a C-06 los hizo Matías, y C-07 está implementado y pendiente de merge (PR
   - `knowledge-base/05_reglas_de_negocio.md` §RN-CU-02
 
 ### [C-10] `horarios-atencion`
-- **Estado**: `[ ]` pendiente
+- **Estado**: `[x]` completado
 - **Responsable**: Matías · revisa Nico
 - **Scope** (US-002):
   - Modelo `HorarioAtencion` (`profesional_id`, `dia_semana` 0-6, `hora_inicio`, `hora_fin`, varias franjas por día) + migración
