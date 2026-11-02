@@ -53,9 +53,9 @@ No hay integraciones externas obligatorias en el MVP.
 | Recurso | Endpoints principales |
 |---------|-----------------------|
 | Auth | `POST /auth/login`, `POST /auth/refresh` (**Suposición**) |
-| Profesionales | CRUD (recepcionista); `GET` (ambos roles) |
-| Sillones | CRUD (recepcionista) |
-| Prestaciones | CRUD con duración por defecto (recepcionista) |
+| Profesionales | `GET /profesionales[/{id}]` (ambos roles); `POST /profesionales`, `PATCH /profesionales/{id}`, `POST /profesionales/{id}/desactivar` (recepcionista; DD-26) |
+| Sillones | `GET /sillones[/{id}]` (ambos roles); `POST /sillones`, `PATCH /sillones/{id}`, `POST /sillones/{id}/desactivar` (recepcionista; DD-26) |
+| Prestaciones | `GET /prestaciones[/{id}]` (ambos roles); `POST /prestaciones` con duración por defecto, `PATCH /prestaciones/{id}`, `POST /prestaciones/{id}/desactivar` (recepcionista; DD-26) |
 | Horarios de atención | CRUD por profesional |
 | Bloqueos | `POST/DELETE` (recepcionista cualquiera; odontólogo propios) |
 | Pacientes | CRUD básico (datos ficticios) |

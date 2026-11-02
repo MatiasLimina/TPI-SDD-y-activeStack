@@ -434,6 +434,7 @@ Diferido por el Discovery (ver `docs/discovery/informe-discovery.md` §D.3 y §D
 - Panel de ausentismo y ocupación de sillones (no-show dashboard)
 - Multisede / multi-sucursal
 - Política de cancelación tardía (decidido DD-14: sin política en el MVP)
+- Reactivación de profesionales, sillones y prestaciones: hoy la desactivación es definitiva por API (DD-26)
 - Reactivación de usuarios: el email de un usuario desactivado queda tomado y no se puede volver a dar de alta (limitación aceptada en DD-24)
 - Rate limiting del login y registro de eventos de seguridad (intentos fallidos) (DD-24)
 - Validación del largo mínimo de `JWT_SECRET` al arrancar (DD-24; hoy PyJWT solo advierte)
