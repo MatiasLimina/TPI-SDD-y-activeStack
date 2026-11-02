@@ -6,8 +6,8 @@
 
 ## 1. Preparación
 
-- [ ] 1.1 Safety net: correr `pytest` completo (C-01..C-07) contra la base de test y registrar el baseline de tests en verde. Si algo falla, frenar y reportarlo como falla preexistente
-- [ ] 1.2 Agregar `redis>=5` a `dependencies` y `pyyaml` a `dev` en `backend/pyproject.toml`; reinstalar y verificar que `python -c "import redis, yaml"` funciona. Agregar a `tests/conftest.py` la función `get_test_redis_url()` (lee `TEST_REDIS_URL` del entorno o de `.env` y falla con un mensaje que indica `docker compose up -d redis`, igual que `get_test_database_url`) y verificar que la suite actual sigue en verde
+- [x] 1.1 Safety net: correr `pytest` completo (C-01..C-07) contra la base de test y registrar el baseline de tests en verde. Si algo falla, frenar y reportarlo como falla preexistente
+- [x] 1.2 Agregar `redis>=5` a `dependencies` y `pyyaml` a `dev` en `backend/pyproject.toml`; reinstalar y verificar que `python -c "import redis, yaml"` funciona. Agregar a `tests/conftest.py` la función `get_test_redis_url()` (lee `TEST_REDIS_URL` del entorno o de `.env` y falla con un mensaje que indica `docker compose up -d redis`, igual que `get_test_database_url`) y verificar que la suite actual sigue en verde
 
 ## 2. Configuración (`app-configuration`)
 

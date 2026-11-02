@@ -27,6 +27,10 @@ from app.main import create_app
 
 BACKEND_DIR = Path(__file__).resolve().parents[1]
 DB_HINT = "Levantá la base de test con: docker compose up -d db (y copiá .env.example a .env)."
+REDIS_HINT = (
+    "Levantá Redis con: docker compose up -d redis (y definí TEST_REDIS_URL, "
+    "con una base distinta de REDIS_URL, en .env)."
+)
 
 
 def pytest_collection_modifyitems(items: list[pytest.Item]) -> None:
@@ -41,6 +45,15 @@ def get_test_database_url() -> str:
     )
     if not url:
         pytest.fail(f"TEST_DATABASE_URL no está definida. {DB_HINT}", pytrace=False)
+    return url
+
+
+def get_test_redis_url() -> str:
+    url = os.environ.get("TEST_REDIS_URL") or dotenv_values(REPO_ROOT / ".env").get(
+        "TEST_REDIS_URL"
+    )
+    if not url:
+        pytest.fail(f"TEST_REDIS_URL no está definida. {REDIS_HINT}", pytrace=False)
     return url
 
 
