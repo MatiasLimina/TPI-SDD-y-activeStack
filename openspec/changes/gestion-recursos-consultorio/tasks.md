@@ -60,7 +60,7 @@
 - [x] 10.1 Registrar en `knowledge-base/09_decisiones_y_supuestos.md` la decisión **DD-26** con el estilo de DD-24/DD-25 (D5, D6, D7, D9, D11 y D12, confirmadas por el usuario el 2026-11-02, más D1, D2, D10 y las consecuencias de Risks sobre reprogramar turnos de una prestación desactivada o cuyo `requiere_sillon` cambió; el delta `gestion-recursos` ya cita "DD-26" en sus requisitos, así que si ese número lo tomó otro change, renumerar también esas citas); actualizar `02_descripcion_general.md` (tabla de API: rutas de los tres recursos y lectura de ambos roles) y `04_modelo_de_datos.md` §Prestacion (CHECK ya creado en C-08); agregar al backlog de `CHANGES.md` "reactivación de profesionales, sillones y prestaciones"; verificar que `CLAUDE.md`/`AGENTS.md` no quedan desalineados
 - [x] 10.2 Antes del merge, renumerar la revisión respecto de `main` (si C-12 u otro change ya mergeó una `006`, pasar esta a la siguiente, con su `down_revision`, el nombre del archivo y el `head` esperado en `test_migrations.py` y `test_migracion_006.py`) y verificar que `alembic heads` muestre una sola cabeza
 - [x] 10.3 Verificación integral: `ruff format --check` y `ruff check` sin errores, `pytest` completo en verde (baseline de 1.1 + nuevos) y `openspec validate gestion-recursos-consultorio --strict` sin errores
-- [ ] 10.4 Checkpoint FINAL_DIFF: consultar al agente `advisor` sobre `git diff` antes de declarar el Apply terminado; un veredicto BLOCK frena hasta la confirmación del usuario
+- [x] 10.4 Checkpoint FINAL_DIFF: consultar al agente `advisor` sobre `git diff` antes de declarar el Apply terminado; un veredicto BLOCK frena hasta la confirmación del usuario
 
 ## Workflow follow-up
 

@@ -41,7 +41,7 @@ Turno       1---* Recordatorio
 - `id`, `nombre` (p. ej. "Sillón 1"), `activo`. Entre 1 y 4 en el segmento objetivo.
 
 ### Prestacion
-- `id`, `nombre`, `duracion_min` (int > 0, múltiplo de 5 y ≤ 480, duración por defecto, RN4; CHECK en BD en C-08, DD-15), `requiere_sillon` (bool, default `true`; RN-AG-10), `activa`.
+- `id`, `nombre`, `duracion_min` (int > 0, múltiplo de 5 y ≤ 480, duración por defecto, RN4; CHECK en BD desde C-08: `ck_prestacion_duracion_min_positiva`, `ck_prestacion_duracion_min_multiplo_5` y `ck_prestacion_duracion_min_maxima`, migración `006`; DD-15, DD-26), `requiere_sillon` (bool, default `true`; RN-AG-10), `activa`.
 - Sin precios ni cobertura en el MVP (ARCA/caja fuera de alcance).
 
 ### HorarioAtencion
