@@ -68,5 +68,7 @@ proyecto/
 | `JWT_EXPIRE_MINUTES` | Vigencia del token | `60` | No |
 | `REMINDER_LEAD_HOURS` | Anticipación del recordatorio en horas (DD-13); si el turno se crea con menos, no hay recordatorio | `24` | No |
 | `APP_TIMEZONE` | Zona de presentación | `America/Argentina/Buenos_Aires` | No |
-| `NOTIFICATION_ADAPTER` | Adaptador activo | `mock` | No |
+| `NOTIFICATION_ADAPTER` | Adaptador activo; el único valor válido hoy es `mock` (un adaptador real exige ampliar el valor y la migración del canal) | `mock` | No |
+| `CONSULTORIO_NOMBRE` | Nombre del consultorio que se informa en el recordatorio (RN-NO-04); no puede estar vacío | `Consultorio Odontológico Ejemplo` | No |
 | `CORS_ORIGINS` | Orígenes permitidos | `http://localhost:5173` | No |
+| `TEST_REDIS_URL` | Redis de los tests (solo contrato de la cola); usa una base distinta de `REDIS_URL` para no vaciar la cola de desarrollo | `redis://localhost:6379/15` | No |
