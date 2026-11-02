@@ -210,3 +210,36 @@ def test_dos_profesionales_sin_matricula_no_son_duplicados(db_session: Session) 
         text("SELECT count(*) FROM profesional WHERE matricula IS NULL")
     ).scalar_one()
     assert total == 2
+
+
+# --- modificar ---------------------------------------------------------------------------
+
+
+def test_modificar_y_guardar_aplican_los_cambios_solo_enviados(db_session: Session) -> None:
+    repo = _repo(db_session, DEFINICION_PROFESIONAL)
+    ana = Profesional(nombre="Ana", apellido="Ficticia", matricula="MN-0001")
+    repo.agregar(ana)
+    repo.guardar()
+
+    repo.modificar(ana, {"apellido": "Segunda"})
+    repo.guardar()
+
+    assert (ana.nombre, ana.apellido, ana.matricula) == ("Ana", "Segunda", "MN-0001")
+
+
+def test_modificar_a_un_valor_repetido_se_traduce_y_la_sesion_sigue_usable(
+    db_session: Session,
+) -> None:
+    repo = _repo(db_session, DEFINICION_SILLON)
+    uno, dos = Sillon(nombre="Sillón 1"), Sillon(nombre="Sillón 2")
+    repo.agregar(uno)
+    repo.agregar(dos)
+    repo.guardar()
+
+    repo.modificar(dos, {"nombre": "Sillón 1"})
+    with pytest.raises(RecursoDuplicadoError) as excinfo:
+        repo.guardar()
+
+    assert excinfo.value.campo == "nombre"
+    db_session.expire_all()
+    assert [s.nombre for s in repo.listar()] == ["Sillón 1", "Sillón 2"]

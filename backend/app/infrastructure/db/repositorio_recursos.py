@@ -1,6 +1,8 @@
 """Acceso a datos del catálogo (profesionales, sillones, prestaciones): un repositorio genérico."""
 
+from collections.abc import Mapping
 from dataclasses import dataclass
+from typing import Any
 from uuid import UUID
 
 from sqlalchemy import select
@@ -53,6 +55,21 @@ class RepositorioRecursos[M: CatalogoMixin]:
     def __init__(self, session: Session, definicion: DefinicionRecurso[M]) -> None:
         self._session = session
         self._definicion = definicion
+        self._nuevos: list[M] = []
+        self._cambios: list[tuple[M, Mapping[str, Any]]] = []
+
+    @property
+    def tipo(self) -> TipoRecurso:
+        return self._definicion.tipo
+
+    @property
+    def flag(self) -> str:
+        """Nombre del atributo de actividad: `activo` o `activa`."""
+        return self._definicion.flag
+
+    def construir(self, **datos: Any) -> M:
+        """Instancia el modelo del recurso con `datos` ya validados."""
+        return self._definicion.modelo(**datos)
 
     def listar(self) -> list[M]:
         """Todos los recursos, activos e inactivos, en el orden fijo de la definición."""
@@ -69,12 +86,27 @@ class RepositorioRecursos[M: CatalogoMixin]:
         )
 
     def agregar(self, entidad: M) -> None:
-        self._session.add(entidad)
+        """Deja el recurso para el próximo `guardar`; entra a la sesión dentro de su SAVEPOINT."""
+        self._nuevos.append(entidad)
+
+    def modificar(self, entidad: M, cambios: Mapping[str, Any]) -> None:
+        """Deja `cambios` para el próximo `guardar`; se aplican dentro de su SAVEPOINT."""
+        self._cambios.append((entidad, cambios))
 
     def guardar(self) -> None:
-        """`flush` que traduce la violación de un UNIQUE conocido a `RecursoDuplicadoError`."""
+        """`flush` en un SAVEPOINT que traduce un UNIQUE conocido a `RecursoDuplicadoError`.
+
+        El SAVEPOINT deja la sesión usable tras el rechazo: solo se revierte esta escritura.
+        """
+        nuevos, self._nuevos = self._nuevos, []
+        cambios, self._cambios = self._cambios, []
         try:
-            self._session.flush()
+            with self._session.begin_nested():
+                self._session.add_all(nuevos)
+                for entidad, valores in cambios:
+                    for campo, valor in valores.items():
+                        setattr(entidad, campo, valor)
+                self._session.flush()
         except IntegrityError as error:
             campo = self._campo_duplicado(error)
             if campo is None:
