@@ -85,9 +85,11 @@ Turno       1---* Recordatorio
 - Índices: `(turno_id, id)` y `(usuario_id)`.
 
 ### Recordatorio
-- `id`, `turno_id`, `programado_para` (timestamptz), `estado` (`pendiente` | `enviado` | `fallido` | `cancelado`), `canal` (`mock`), `intentos` (máximo 3 con backoff exponencial; agotados -> `fallido`, DD-19).
+- `id` (uuid, PK), `turno_id` (FK `turno`, `ON DELETE RESTRICT`: un turno con recordatorios no se borra), `programado_para` (timestamptz, NOT NULL, **sin default**: lo calcula la aplicación con el reloj inyectado, `inicio - REMINDER_LEAD_HOURS`), `estado` (`varchar(20)`, default `pendiente`), `canal` (`varchar(20)`, NOT NULL), `intentos` (int, default 0), `creado_en` y `actualizado_en`.
+- CHECKs (DD-21, DD-26): `ck_recordatorio_estado_valido` (`estado IN ('pendiente','enviado','fallido','cancelado')`), `ck_recordatorio_canal_valido` (`canal IN ('mock')`; un canal real exige ampliar el CHECK con una migración), `ck_recordatorio_intentos_rango` (`intentos BETWEEN 0 AND 3`, backoff exponencial, agotados -> `fallido`, DD-19) y `ck_recordatorio_intentos_segun_estado` (un `fallido` tiene exactamente 3 intentos y un `enviado` al menos 1).
+- Índice único parcial `ux_recordatorio_turno_pendiente ON (turno_id) WHERE estado = 'pendiente'`: a lo sumo un recordatorio pendiente por turno (RN-NO-02); puede haber varios `cancelado`, `enviado` o `fallido`. Índices de apoyo: `ix_recordatorio_turno_id` (FK) e `ix_recordatorio_pendiente_programado_para` (parcial, para el re-encolado al iniciar el worker).
 - Solo se crea si faltan 24 h o más para el turno (DD-13).
-- Al cancelar o reprogramar el turno, el recordatorio pendiente se cancela/reprograma.
+- Al cancelar el turno, el recordatorio pendiente pasa a `cancelado`; al reprogramar con cambio de inicio, el pendiente pasa a `cancelado` y se crea uno nuevo si corresponde (DD-26). Los `enviado` y `fallido` no se modifican.
 
 ## Seed data inicial (todo ficticio)
 - 1 usuario `recepcionista` y 2 usuarios `odontologo` (credenciales de desarrollo en `.env.example`/seed, no productivas).
