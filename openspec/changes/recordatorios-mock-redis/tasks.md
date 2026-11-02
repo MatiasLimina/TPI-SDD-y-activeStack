@@ -37,7 +37,7 @@
 ## 6. Cola de recordatorios (contrato Redis y fake)
 
 - [x] 6.1 RED→GREEN: `tests/integration/test_contrato_cola_recordatorios.py`, parametrizado sobre `ColaRedis` (Redis real en `TEST_REDIS_URL`, clave única por test, borrada al final) y `ColaEnMemoria` (`tests/fakes.py`). Escenarios del requisito "Cola de recordatorios con vencimiento": "Solo se entregan los vencidos, en orden" (R2, R1; R3 queda), "Un vencido se entrega una sola vez" y "Re-encolar reemplaza el vencimiento". Además, `limite` acota la cantidad entregada. Implementar `app/infrastructure/queue/cola_redis.py` (design §5) y verificar en verde contra ambas implementaciones
-- [ ] 6.2 Agregar a `tests/fakes.py` `ColaQueFalla` (lanza `redis.exceptions.ConnectionError` en `encolar`) y `EmisorQueFalla(fallas=n)`. Verificarlos con un test mínimo de cada doble (falla las `n` primeras veces y después responde bien)
+- [x] 6.2 Agregar a `tests/fakes.py` `ColaQueFalla` (lanza `redis.exceptions.ConnectionError` en `encolar`) y `EmisorQueFalla(fallas=n)`. Verificarlos con un test mínimo de cada doble (falla las `n` primeras veces y después responde bien)
 
 ## 7. Programación en los casos de uso
 
