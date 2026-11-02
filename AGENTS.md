@@ -99,18 +99,17 @@ El plan de implementación completo está en [CHANGES.md](CHANGES.md). Resumen:
 
 ## Equipo
 
-Desde C-07 el proyecto lo hacen tres personas. Reparto completo y reglas de colaboración: [docs/equipo/reparto-de-tareas.md](docs/equipo/reparto-de-tareas.md). El responsable de cada change figura en su campo **Responsable** de [CHANGES.md](CHANGES.md).
+Desde C-08 los changes pendientes se reparten entre dos personas (versión 2 del reparto, 2026-11-02). Reparto completo y reglas de colaboración: [docs/equipo/reparto-de-tareas.md](docs/equipo/reparto-de-tareas.md). El responsable de cada change figura en su campo **Responsable** de [CHANGES.md](CHANGES.md).
 
 | Integrante | GitHub | Herramientas | Changes |
 |------------|--------|--------------|---------|
-| Matías | `MatiasLimina` | Claude Pro | C-07, C-10, C-13 · padrino de C-08 y C-09 · integración |
-| Nico | `nicolasmonjelardi` | Claude Pro | C-11, C-12, C-15 · padrino de C-14 y C-16 |
-| Lauti | `LautaroAguero01` | OpenCode (modelos free), Gemini, Copilot Student | Apply de C-08, C-09, C-14, C-16 · documentación |
+| Matías | `MatiasLimina` | Claude Pro | C-07 (PR #3), C-08, C-10, C-13, C-16 · integración |
+| Nico | `nicolasmonjelardi` | Claude Pro | C-09, C-11, C-12, C-14, C-15 |
+| Lauti | `LautaroAguero01` | Herramientas gratuitas | Sin changes asignados por ahora |
 
-- **Cada change va en su rama y entra por PR** con al menos una aprobación de alguien con Claude Pro. Nada se commitea directo en `main`.
-- **En los changes de Lauti el Propose lo hace el padrino** con Claude (y corre `revisar-escenarios`); Lauti hace el Apply y el Archive con OpenCode (`.opencode/commands/opsx-*.md`); el archive va en la rama del change, antes del merge.
-- **Si trabajás con una herramienta que no carga skills sola**, leé a mano `.agents/skills/<skill>/SKILL.md` de las skills de tu rol antes de escribir código.
-- **Migraciones**: el que mergea segundo renumera su revisión de Alembic para que `alembic heads` muestre una sola cabeza.
+- **Cada change va en su rama y entra por PR** con la aprobación del otro integrante. Nada se commitea directo en `main`.
+- **Cada responsable hace el ciclo OPSX completo de su change**: propose, `revisar-escenarios`, apply y archive. El archive va en la rama del change, antes del merge.
+- **Migraciones**: C-07 usa `005` y se mergea antes de crear la de C-08. En adelante, el que mergea segundo renumera su revisión de Alembic para que `alembic heads` muestre una sola cabeza.
 
 ---
 

@@ -65,8 +65,8 @@ GATE 2: C-03 ✓                                    ← FORK
   → C-06 auth-jwt-roles                          [Agente C]
 
 GATE 3: C-06 ✓                                    ← FORK
-  → C-08 gestion-recursos-consultorio            [Lauti]
-  → C-09 registro-pacientes                      [Lauti]
+  → C-08 gestion-recursos-consultorio            [Matías]
+  → C-09 registro-pacientes                      [Nico]
   → C-07 auditoria-turnos                        [Matías — C-04 y C-05 ✓]
 
 GATE 4: C-04 ✓ y C-05 ✓
@@ -80,9 +80,9 @@ GATE 6: C-10 ✓ y C-11 ✓
   → C-13 agenda-diaria-semanal                   [Matías]
 
 GATE 7: Backend MVP completo (C-07, C-09, C-12, C-13) ✓
-  → C-14 frontend-base-login                     [Lauti]
+  → C-14 frontend-base-login                     [Nico]
   → C-15 frontend-agenda-turnos                  [Nico]
-  → C-16 frontend-configuracion-pacientes-bloqueos [Lauti]
+  → C-16 frontend-configuracion-pacientes-bloqueos [Matías]
 ```
 
 > Nota: C-04, C-05, C-07, C-10, C-11 y C-12 tocan los mismos casos de uso de turnos; si corren en paralelo, coordinar el merge (los hooks de auditoría/recordatorio/validaciones se enchufan por puntos de extensión definidos en C-03).
@@ -93,20 +93,20 @@ GATE 7: Backend MVP completo (C-07, C-09, C-12, C-13) ✓
 
 C-04, C-07, C-09 y C-12 son obligatorios para el MVP pero cuelgan del camino crítico sin alargarlo.
 
-### Plan del equipo (desde 2026-10-29)
+### Plan del equipo (versión 2, desde 2026-11-02)
 
-C-01 a C-06 los hizo Matías solo. A partir de C-07 se suman Nico y Lauti; el criterio y las reglas de colaboración están en [docs/equipo/reparto-de-tareas.md](docs/equipo/reparto-de-tareas.md). En resumen: los changes CRITICO, ALTO y los MEDIO que tocan los casos de uso de turnos van a Matías y Nico (Claude Pro); los BAJO van a Lauti (herramientas gratuitas), con el Propose a cargo de un padrino con Claude.
+C-01 a C-06 los hizo Matías, y C-07 está implementado y pendiente de merge (PR #3). Para avanzar lo más posible, los changes pendientes se reparten **solo entre Matías y Nico** (los dos con Claude Pro, cada uno con el ciclo OPSX completo de sus changes). Lauti queda fuera del reparto por ahora. Criterio y reglas de colaboración: [docs/equipo/reparto-de-tareas.md](docs/equipo/reparto-de-tareas.md).
 
-| Ola | Matías (Claude Pro) | Nico (Claude Pro) | Lauti (herramientas gratuitas) |
-|-----|---------------------|-------------------|--------------------------------|
-| 1 | C-07 · Propose de C-08 | C-12 | Onboarding (D-1) · Apply de C-08 |
-| 2 | C-10 · Propose de C-09 | C-11 | Apply de C-09 |
-| 3 | C-13 | Propose de C-14 | Referencia de la API (D-2) |
-| 4 | Verificación del backend | Propose de C-15 | Apply de C-14 |
-| 5 | Revisión | C-15 · Propose de C-16 | Documentación (D-3, D-4) |
-| 6 | Revisión final | Revisión final | Apply de C-16 |
+| Ola | Matías | Nico |
+|-----|--------|------|
+| 1 | Merge de C-07 (PR #3) · C-08 | C-12 |
+| 2 | C-10 | C-11 |
+| 3 | C-13 | C-09 |
+| 4 | Verificación del backend · Propose de C-16 | C-14 |
+| 5 | Revisión | C-15 |
+| 6 | C-16 | Revisión final |
 
-> Esta tabla reemplaza al "Plan óptimo con 3 agentes" original, que asumía agentes en lugar de personas. Las olas respetan los GATEs de arriba: en la ola 1 C-07 y C-12 no dependen de C-08, y C-10 y C-11 arrancan en la ola 2 cuando C-08 está listo.
+> Reemplaza al plan de tres integrantes del 2026-10-29 (commit `c3506a2`). El camino crítico C-08 → C-10 → C-13 lo hace una sola persona para no tener esperas; C-11 corre en paralelo con C-10 y C-12 no depende de nada pendiente. C-07 se mergea antes de crear la migración de C-08, que toma el siguiente número libre. El Propose de C-16 se adelanta a la ola 4: si C-15 cambia al mergear, se ajusta con `/opsx:update` antes del Apply.
 
 ---
 
@@ -228,7 +228,7 @@ C-01 a C-06 los hizo Matías solo. A partir de C-07 se suman Nico y Lauti; el cr
 
 ### [C-07] `auditoria-turnos`
 - **Estado**: `[ ]` pendiente
-- **Responsable**: Matías (Apply y Propose) · revisa Nico
+- **Responsable**: Matías (implementado en `feat/c-07-auditoria-turnos`, PR #3) · revisa Nico
 - **Scope** (US-011):
   - Modelo `TurnoAuditoria` append-only (`turno_id`, `usuario_id`, `accion` `crear|reprogramar|cancelar`, `valores_previos`/`valores_nuevos` jsonb, `ocurrido_en` UTC) + migración (sin UPDATE/DELETE desde la aplicación; opcionalmente trigger que lo impida)
   - Registro dentro de la misma transacción en crear, reprogramar y cancelar (si falla la auditoría, el cambio se revierte)
@@ -247,7 +247,7 @@ C-01 a C-06 los hizo Matías solo. A partir de C-07 se suman Nico y Lauti; el cr
 
 ### [C-08] `gestion-recursos-consultorio`
 - **Estado**: `[ ]` pendiente
-- **Responsable**: Lauti (Apply) · padrino Matías (Propose y revisión)
+- **Responsable**: Matías · revisa Nico
 - **Scope** (US-001):
   - CRUD de profesionales, sillones y prestaciones: `/profesionales`, `/sillones`, `/prestaciones` (alta, edición, desactivación lógica)
   - Validaciones: `duracion_min > 0`, múltiplo de 5 y ≤ 480 (con CHECK en BD; DD-15), `requiere_sillon`; recurso desactivado no admite turnos nuevos pero conserva historial
@@ -262,7 +262,7 @@ C-01 a C-06 los hizo Matías solo. A partir de C-07 se suman Nico y Lauti; el cr
 
 ### [C-09] `registro-pacientes`
 - **Estado**: `[ ]` pendiente
-- **Responsable**: Lauti (Apply) · padrino Matías (Propose y revisión)
+- **Responsable**: Nico · revisa Matías
 - **Scope** (US-009):
   - `POST/GET/PATCH /pacientes` y búsqueda por nombre/apellido/documento (datos ficticios, sin ficha clínica ni odontograma)
   - Desactivación lógica; roles: recepcionista escribe; odontólogo lectura mínima
@@ -276,7 +276,7 @@ C-01 a C-06 los hizo Matías solo. A partir de C-07 se suman Nico y Lauti; el cr
 
 ### [C-10] `horarios-atencion`
 - **Estado**: `[ ]` pendiente
-- **Responsable**: Matías (Apply y Propose) · revisa Nico
+- **Responsable**: Matías · revisa Nico
 - **Scope** (US-002):
   - Modelo `HorarioAtencion` (`profesional_id`, `dia_semana` 0-6, `hora_inicio`, `hora_fin`, varias franjas por día) + migración
   - `/profesionales/{id}/horarios` CRUD (solo recepcionista); semilla de ejemplo L-V mañana y tarde
@@ -291,7 +291,7 @@ C-01 a C-06 los hizo Matías solo. A partir de C-07 se suman Nico y Lauti; el cr
 
 ### [C-11] `bloqueos-agenda`
 - **Estado**: `[ ]` pendiente
-- **Responsable**: Nico (Apply y Propose) · revisa Matías
+- **Responsable**: Nico · revisa Matías
 - **Scope** (US-003):
   - Modelo `Bloqueo` (`profesional_id`, `inicio`, `fin`, `motivo`, `creado_por`) + migración
   - `POST /bloqueos`, `GET`, `DELETE`; el odontólogo fuerza `profesional_id` del token y solo bloquea lo suyo; la recepcionista cualquiera (RN-HB-02, RN-AU-02)
@@ -311,7 +311,7 @@ C-01 a C-06 los hizo Matías solo. A partir de C-07 se suman Nico y Lauti; el cr
 
 ### [C-12] `recordatorios-mock-redis`
 - **Estado**: `[ ]` pendiente
-- **Responsable**: Nico (Apply y Propose) · revisa Matías
+- **Responsable**: Nico · revisa Matías
 - **Scope** (US-012):
   - Puerto `NotificationSender` (dominio) + adaptador `MockSender` (registra el envío, sin mensajería real); `NOTIFICATION_ADAPTER=mock`
   - Modelo `Recordatorio` (`turno_id`, `programado_para`, `estado`, `canal=mock`, `intentos`) + migración
@@ -331,7 +331,7 @@ C-01 a C-06 los hizo Matías solo. A partir de C-07 se suman Nico y Lauti; el cr
 
 ### [C-13] `agenda-diaria-semanal`
 - **Estado**: `[ ]` pendiente
-- **Responsable**: Matías (Apply y Propose) · revisa Nico
+- **Responsable**: Matías · revisa Nico
 - **Scope** (US-008, backend):
   - `GET /turnos?desde&hasta&profesional&sillon` (rango local -> UTC, respuesta en UTC) para vistas diaria/semanal multiprofesional y multisillón; incluye bloqueos en la respuesta de agenda
   - El odontólogo queda filtrado a su `profesional_id` (RN-AU-02)
@@ -351,7 +351,7 @@ C-01 a C-06 los hizo Matías solo. A partir de C-07 se suman Nico y Lauti; el cr
 
 ### [C-14] `frontend-base-login`
 - **Estado**: `[ ]` pendiente
-- **Responsable**: Lauti (Apply) · padrino Nico (Propose y revisión)
+- **Responsable**: Nico · revisa Matías
 - **Scope**:
   - Scaffolding Vite + React + TypeScript en `frontend/` (features/, shared/, pages/), cliente HTTP con JWT, `CORS_ORIGINS`
   - Página de login, guardas de ruta por rol, layout; servicio `frontend` en Docker Compose
@@ -365,7 +365,7 @@ C-01 a C-06 los hizo Matías solo. A partir de C-07 se suman Nico y Lauti; el cr
 
 ### [C-15] `frontend-agenda-turnos`
 - **Estado**: `[ ]` pendiente
-- **Responsable**: Nico (Apply y Propose) · revisa Matías
+- **Responsable**: Nico · revisa Matías
 - **Scope**:
   - Agenda diaria y semanal filtrable por profesional/sillón (horarios en `America/Argentina/Buenos_Aires`)
   - Formularios de crear, reprogramar y cancelar turno con manejo de 409/422 y selector de paciente
@@ -379,7 +379,7 @@ C-01 a C-06 los hizo Matías solo. A partir de C-07 se suman Nico y Lauti; el cr
 
 ### [C-16] `frontend-configuracion-pacientes-bloqueos`
 - **Estado**: `[ ]` pendiente
-- **Responsable**: Lauti (Apply) · padrino Nico (Propose y revisión)
+- **Responsable**: Matías · revisa Nico
 - **Scope**:
   - Pantallas de profesionales, sillones, prestaciones, horarios de atención, pacientes y bloqueos
   - Vista de auditoría de un turno (recepcionista)
@@ -404,15 +404,15 @@ C-01 a C-06 los hizo Matías solo. A partir de C-07 se suman Nico y Lauti; el cr
 | C-05 | reprogramar-turno | 1 | C-03 | MEDIO | Matías |
 | C-06 | auth-jwt-roles | 2 | C-03 | CRITICO | Matías |
 | C-07 | auditoria-turnos | 2 | C-06, C-04, C-05 | CRITICO | Matías |
-| C-08 | gestion-recursos-consultorio | 3 | C-06 | BAJO | Lauti |
-| C-09 | registro-pacientes | 3 | C-06 | BAJO | Lauti |
+| C-08 | gestion-recursos-consultorio | 3 | C-06 | BAJO | Matías |
+| C-09 | registro-pacientes | 3 | C-06 | BAJO | Nico |
 | C-10 | horarios-atencion | 3 | C-08, C-03, C-05 | MEDIO | Matías |
 | C-11 | bloqueos-agenda | 3 | C-08, C-04, C-05, C-06 | MEDIO | Nico |
 | C-12 | recordatorios-mock-redis | 4 | C-04, C-05, C-01 | ALTO | Nico |
 | C-13 | agenda-diaria-semanal | 4 | C-06, C-03, C-11 | MEDIO | Matías |
-| C-14 | frontend-base-login | 5 | C-06, C-13 | BAJO | Lauti |
+| C-14 | frontend-base-login | 5 | C-06, C-13 | BAJO | Nico |
 | C-15 | frontend-agenda-turnos | 5 | C-14, C-12, C-07, C-09 | MEDIO | Nico |
-| C-16 | frontend-configuracion-pacientes-bloqueos | 5 | C-15, C-08, C-10, C-11 | BAJO | Lauti |
+| C-16 | frontend-configuracion-pacientes-bloqueos | 5 | C-15, C-08, C-10, C-11 | BAJO | Matías |
 
 **Primer change a ejecutar en el ciclo OPSX**: `C-03` (requiere C-01 y C-02 previos). Arranque: `/opsx:propose C-03-crear-turno-sin-solapamientos`.
 
