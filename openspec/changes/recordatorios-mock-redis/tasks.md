@@ -18,8 +18,8 @@
 
 ## 3. Dominio de recordatorios y contenido (sin base)
 
-- [ ] 3.1 RED→GREEN: `tests/unit/test_dominio_recordatorios.py` para `calcular_programacion`. Con 49 h de anticipación devuelve `inicio - 24 h` en UTC; con exactamente 24 h devuelve `ahora`; con 23 h 59 min devuelve `None`; con una anticipación de 48 h y 47 h por delante devuelve `None`; un `inicio` con `-03:00` da el mismo instante en UTC. Agregar `EstadoRecordatorio` con exactamente `pendiente`, `enviado`, `fallido`, `cancelado` y `MAX_INTENTOS == 3`. Verificar en verde
-- [ ] 3.2 RED→GREEN: `espera_reintento(1) == 1 min` y `espera_reintento(2) == 2 min` (D9); parametrizar y verificar en verde
+- [x] 3.1 RED→GREEN: `tests/unit/test_dominio_recordatorios.py` para `calcular_programacion`. Con 49 h de anticipación devuelve `inicio - 24 h` en UTC; con exactamente 24 h devuelve `ahora`; con 23 h 59 min devuelve `None`; con una anticipación de 48 h y 47 h por delante devuelve `None`; un `inicio` con `-03:00` da el mismo instante en UTC. Agregar `EstadoRecordatorio` con exactamente `pendiente`, `enviado`, `fallido`, `cancelado` y `MAX_INTENTOS == 3`. Verificar en verde
+- [x] 3.2 RED→GREEN: `espera_reintento(1) == 1 min` y `espera_reintento(2) == 2 min` (D9); parametrizar y verificar en verde
 - [ ] 3.3 RED→GREEN: `tests/unit/test_dominio_notificaciones.py` (requisito "Contenido del recordatorio sin datos clínicos"). Escenario "Texto del recordatorio": texto exacto `Recordatorio: tiene un turno el 09/10/2026 a las 10:00 en Consultorio Odontológico Ejemplo.` y `paciente_id` como destinatario. Escenario "Fecha y hora en la zona local": `armar_mensaje` con inicio `2026-10-10T02:00Z` → `09/10/2026` y `23:00` (prueba de dominio, sin crear un turno, porque esa hora queda fuera del horario de atención). `MensajeRecordatorio` tiene exactamente los campos `recordatorio_id`, `paciente_id` y `texto`. Verificar en verde que `app/domain/recordatorios.py` y `app/domain/notificaciones.py` no importan SQLAlchemy, redis ni FastAPI
 
 ## 4. Tabla `recordatorio`, migración `006` y garantías de la base
