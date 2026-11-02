@@ -45,8 +45,9 @@ Turno       1---* Recordatorio
 - Sin precios ni cobertura en el MVP (ARCA/caja fuera de alcance).
 
 ### HorarioAtencion
-- `id`, `profesional_id`, `dia_semana` (0-6), `hora_inicio`, `hora_fin` (hora local, `hora_fin > hora_inicio`).
+- `id`, `profesional_id` (FK `ON DELETE CASCADE`), `dia_semana` (`smallint`, **0 = lunes … 6 = domingo**), `hora_inicio`, `hora_fin` (`time` sin zona, hora local, `hora_fin > hora_inicio`, sin cruzar la medianoche).
 - Varias franjas por día permitidas (p. ej. mañana y tarde). Se interpreta en `America/Argentina/Buenos_Aires`.
+- **Garantías en la BD (migración `007`, DD-27)**: `ck_horario_atencion_dia_semana_valido` (`dia_semana BETWEEN 0 AND 6`), `ck_horario_atencion_hora_fin_mayor`, `ck_horario_atencion_grilla` (ambas horas en múltiplos de 5 minutos) y la exclusión `horario_atencion_sin_superposicion` (`EXCLUDE USING gist (profesional_id WITH =, dia_semana WITH =, tsrange(DATE '2000-01-03' + hora_inicio, DATE '2000-01-03' + hora_fin, '[)') WITH &&)`): sin franjas superpuestas del mismo profesional y día; las contiguas valen.
 
 ### Bloqueo
 - `id`, `profesional_id`, `inicio`, `fin` (timestamptz UTC, `fin > inicio`), `motivo` (texto corto), `creado_por`.
