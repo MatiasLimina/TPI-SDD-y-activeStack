@@ -45,6 +45,20 @@ def test_mock_sender_enviar_logs_info_with_reminder_id_and_text(
     assert MENSAJE.texto in mensaje
 
 
+def test_mock_sender_enviar_log_omits_patient_id(caplog: pytest.LogCaptureFixture) -> None:
+    with caplog.at_level(logging.INFO):
+        MockSender().enviar(MENSAJE)
+
+    mensajes = [
+        r.getMessage()
+        for r in caplog.records
+        if r.name == "app.infrastructure.notifications.mock_sender"
+    ]
+    assert mensajes
+    assert all(str(MENSAJE.paciente_id) not in m for m in mensajes)
+    assert all("paciente_id" not in m for m in mensajes)
+
+
 def test_crear_sender_mock_returns_a_mock_sender() -> None:
     assert isinstance(crear_sender("mock"), MockSender)
 

@@ -16,9 +16,8 @@ class MockSender:
     def enviar(self, mensaje: MensajeRecordatorio) -> None:
         self.enviados.append(mensaje)
         logger.info(
-            "recordatorio enviado (mock): recordatorio_id=%s paciente_id=%s texto=%s",
+            "recordatorio enviado (mock): recordatorio_id=%s texto=%s",
             mensaje.recordatorio_id,
-            mensaje.paciente_id,
             mensaje.texto,
         )
 
