@@ -8,7 +8,7 @@
 | Puerto y adaptador | `NotificationSender` + `MockSender` | WhatsApp Business API queda como adaptador futuro sin tocar el dominio |
 | Repositorio | Acceso a turnos, recursos | Testear reglas sin BD |
 | Unidad de trabajo / transacción | Crear/reprogramar/cancelar + auditoría + recordatorio | Atomicidad |
-| Cola de trabajo | Redis + worker | Recordatorios asincrónicos |
+| Cola de trabajo | Redis + worker (servicio `worker` de Compose, sin `JWT_SECRET`) | Recordatorios asincrónicos |
 | Restricción de integridad en BD | `EXCLUDE USING gist` | Garantía real de no superposición (RN-AG-09) |
 
 ## Concurrencia y no superposición (riesgo técnico)
@@ -25,17 +25,18 @@ Nota: las restricciones de exclusión no cubren horario de atención ni bloqueos
 
 ```
 proyecto/
-├── docker-compose.yml
+├── docker-compose.yml          # servicios: db, redis, api, worker (python -m app.worker)
 ├── .env.example
 ├── backend/
 │   ├── app/
 │   │   ├── main.py
+│   │   ├── worker.py          # proceso del worker de recordatorios (python -m app.worker)
 │   │   ├── domain/            # entidades, reglas (intervalos, solapes), puertos
 │   │   ├── application/       # casos de uso (crear/reprogramar/cancelar turno)
 │   │   ├── infrastructure/
 │   │   │   ├── db/            # modelos SQLAlchemy, repositorios, migraciones (lineales NNN_nombre.py, con downgrade; DD-17)
 │   │   │   ├── notifications/ # MockSender (futuro WhatsAppSender)
-│   │   │   └── queue/         # cliente Redis, worker
+│   │   │   └── queue/         # ColaRedis (sorted set de recordatorios con vencimiento)
 │   │   ├── api/               # routers FastAPI, schemas, dependencias de auth
 │   │   └── cli/               # comando de alta y desactivación de usuarios (DD-16, C-06)
 │   └── tests/
