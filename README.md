@@ -128,6 +128,9 @@ API completa en contenedores: `docker compose up -d api` y luego `curl http://lo
 Recordatorios: el servicio `worker` (`docker compose up -d worker`, o `python -m app.worker` desde
 `backend/`) re-encola los recordatorios pendientes al iniciar y envía los vencidos con el adaptador
 `mock`. Necesita la migración `006` aplicada (`alembic upgrade head`) y no recibe `JWT_SECRET`.
+Es crash-only: ante un error de base o de Redis termina, y los recordatorios que ya había tomado de
+la cola vuelven recién al reiniciar. Por eso tiene que correr bajo un supervisor (en Compose,
+`restart: unless-stopped`); si lo levantás a mano, reinicialo cuando se caiga.
 `TEST_REDIS_URL` (en `.env.example`, base 15) apunta a una base de Redis distinta de `REDIS_URL`: la
 suite de contrato de la cola la usa y borra solo sus claves de prueba.
 
