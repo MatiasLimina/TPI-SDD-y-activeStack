@@ -7,10 +7,16 @@ todo punto de entrada que modifique turnos (la API) debe registrar al programado
 """
 
 import logging
+from collections.abc import Callable
+from contextlib import AbstractContextManager
 from datetime import datetime, timedelta
+from enum import StrEnum
 from uuid import UUID
 
+from sqlalchemy.orm import Session
+
 from app.application.validacion_turno import Reloj
+from app.domain.notificaciones import NotificationSender, armar_mensaje
 from app.domain.recordatorios import ColaRecordatorios, calcular_programacion
 from app.domain.time import to_utc
 from app.domain.turnos import TurnoCreado, TurnoRegistrado
@@ -83,3 +89,93 @@ class ProgramadorRecordatorios:
             return
         recordatorio_id = self._repositorio.crear_pendiente(turno_id, programado_para, self._canal)
         self.por_publicar.append((recordatorio_id, programado_para))
+
+
+SesionesFactory = Callable[[], AbstractContextManager[Session]]
+"""Abre una sesión por unidad de trabajo (en el worker, `sessionmaker(...)`)."""
+
+LIMITE_POR_CICLO = 100
+
+
+class ResultadoProcesamiento(StrEnum):
+    ENVIADO = "enviado"
+
+
+class ProcesarRecordatorio:
+    """Procesa un recordatorio vencido en una transacción (D8)."""
+
+    def __init__(
+        self,
+        sesiones: SesionesFactory,
+        cola: ColaRecordatorios,
+        sender: NotificationSender,
+        consultorio: str,
+        zona: str,
+    ) -> None:
+        self._sesiones = sesiones
+        self._cola = cola
+        self._sender = sender
+        self._consultorio = consultorio
+        self._zona = zona
+
+    def procesar(self, recordatorio_id: UUID, ahora: datetime) -> ResultadoProcesamiento:
+        with self._sesiones() as session:
+            repositorio = RepositorioRecordatorios(session)
+            try:
+                para_envio = repositorio.bloquear_para_envio(recordatorio_id)
+                assert para_envio is not None
+                mensaje = armar_mensaje(
+                    recordatorio_id,
+                    para_envio.paciente_id,
+                    para_envio.inicio,
+                    self._consultorio,
+                    self._zona,
+                )
+                self._sender.enviar(mensaje)
+                repositorio.marcar_enviado(recordatorio_id)
+                repositorio.commit()
+            except Exception:
+                repositorio.rollback()
+                raise
+        return ResultadoProcesamiento.ENVIADO
+
+
+class ReencolarPendientes:
+    """Vuelve a encolar todos los recordatorios `pendiente` de la base (D11, idempotente)."""
+
+    def __init__(self, sesiones: SesionesFactory, cola: ColaRecordatorios) -> None:
+        self._sesiones = sesiones
+        self._cola = cola
+
+    def ejecutar(self) -> int:
+        with self._sesiones() as session:
+            pendientes = RepositorioRecordatorios(session).listar_pendientes()
+        for pendiente in pendientes:
+            self._cola.encolar(pendiente.id, pendiente.programado_para)
+        return len(pendientes)
+
+
+class WorkerRecordatorios:
+    """`iniciar()` re-encola; `ciclo(ahora)` toma los vencidos y los procesa."""
+
+    def __init__(
+        self,
+        cola: ColaRecordatorios,
+        procesador: ProcesarRecordatorio,
+        reencolar: ReencolarPendientes,
+        limite: int = LIMITE_POR_CICLO,
+    ) -> None:
+        self._cola = cola
+        self._procesador = procesador
+        self._reencolar = reencolar
+        self._limite = limite
+
+    def iniciar(self) -> int:
+        return self._reencolar.ejecutar()
+
+    def ciclo(self, ahora: datetime) -> int:
+        """Procesa los recordatorios vencidos a `ahora`; devuelve cuántos tomó de la cola."""
+        vencidos = self._cola.tomar_vencidos(ahora, self._limite)
+        for recordatorio_id in vencidos:
+            self._procesador.procesar(recordatorio_id, ahora)
+        return len(vencidos)

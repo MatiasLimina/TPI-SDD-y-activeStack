@@ -1,5 +1,6 @@
 """Ayudas de los tests de recordatorios: lectura directa de la tabla y armado de casos de uso."""
 
+from contextlib import nullcontext
 from datetime import UTC, datetime, timedelta, timezone
 from typing import Any
 from uuid import UUID
@@ -9,9 +10,15 @@ from sqlalchemy.orm import Session
 
 from app.application.cancelar_turno import CancelarTurno
 from app.application.crear_turno import CrearTurno, SolicitudTurno
-from app.application.recordatorios import ProgramadorRecordatorios
+from app.application.recordatorios import (
+    ProcesarRecordatorio,
+    ProgramadorRecordatorios,
+    ReencolarPendientes,
+    WorkerRecordatorios,
+)
 from app.application.reprogramar_turno import ReprogramarTurno
-from app.domain.recordatorios import EstadoRecordatorio
+from app.domain.notificaciones import NotificationSender
+from app.domain.recordatorios import ColaRecordatorios, EstadoRecordatorio
 from app.domain.turnos import TurnoCreado
 from app.infrastructure.db.repositorio_recordatorios import RepositorioRecordatorios
 from app.infrastructure.db.repositorio_turnos import RepositorioTurnos
@@ -112,3 +119,23 @@ def crear_sin_programar(
     """Turno creado sin observadores: no tiene recordatorio hasta que el test lo inserte."""
     caso = CrearTurno(RepositorioTurnos(session), lambda: ahora)
     return caso.ejecutar(solicitud(catalogo, inicio, paciente=paciente))
+
+
+CONSULTORIO = "Consultorio Odontológico Ejemplo"
+ZONA = "America/Argentina/Buenos_Aires"
+
+
+def armar_worker(
+    session: Session,
+    cola: ColaRecordatorios,
+    sender: NotificationSender,
+    *,
+    consultorio: str = CONSULTORIO,
+) -> WorkerRecordatorios:
+    """Worker de test: la misma sesión de test para todo y `ahora` explícito en cada ciclo."""
+
+    def sesiones() -> nullcontext[Session]:
+        return nullcontext(session)
+
+    procesador = ProcesarRecordatorio(sesiones, cola, sender, consultorio, ZONA)
+    return WorkerRecordatorios(cola, procesador, ReencolarPendientes(sesiones, cola))
