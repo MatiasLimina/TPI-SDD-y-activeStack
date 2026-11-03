@@ -443,3 +443,4 @@ Diferido por el Discovery (ver `docs/discovery/informe-discovery.md` §D.3 y §D
 - Política de complejidad o largo mínimo de contraseña más allá de "no vacía" (regla nueva sin respaldo en la KB; DD-24)
 - Rol de base de datos de mínimo privilegio para la aplicación: hoy se conecta como dueña de las tablas y podría deshabilitar los triggers append-only de `turno_auditoria` (DD-25)
 - Consulta de disponibilidad / huecos libres (US-007): no figura en D.4, es una suposición de la KB y se acopla naturalmente con el enlace público de reserva diferido (D.3)
+- Persistir el vencimiento del próximo reintento de un recordatorio en la base: hoy vive solo en Redis y, al reiniciar el worker, un reintento pendiente se adelanta y se saltea el backoff (DD-19, DD-28; pregunta abierta en `10_preguntas_abiertas.md`, surgida en la revisión del PR #8)

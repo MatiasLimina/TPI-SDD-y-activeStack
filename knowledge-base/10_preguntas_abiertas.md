@@ -24,6 +24,7 @@ Al 2026-11-02 quedan dos preguntas abiertas, surgidas al proponer C-12 (`recorda
 |---|---|---|
 | Media | **Lectura del estado de los recordatorios** | La matriz de `03_actores_y_roles.md` da `R` a la recepcionista y `R propios` al odontólogo sobre "Recordatorios (estado)", pero ningún change de `CHANGES.md` incluye ese endpoint (C-12 no lo lista y C-13 solo consulta turnos). ¿Se agrega a C-13, a un change nuevo o al backlog? |
 | Baja | **Recordatorio procesado después del inicio del turno** | Por ejemplo, con Redis y el worker caídos durante más de 24 h. La KB solo pide verificar que el turno "siga activo" (`programado`), así que C-12 lo envía igual. ¿Debería descartarse (y con qué estado) si el turno ya empezó? Hoy no existe un estado para eso y agregarlo sería una regla nueva. |
+| Baja | **Backoff perdido al reiniciar el worker** | Surgida en la revisión del PR #8 (C-12). El vencimiento del próximo reintento (+1 min, +2 min; DD-19, DD-28) vive solo en la cola Redis; en la base queda `programado_para` original. Al reiniciar, `ReencolarPendientes` re-encola cada `pendiente` con ese `programado_para`, como pide el spec `recordatorios`, así que un recordatorio con 1 o 2 intentos fallidos se reintenta en el acto y se saltea la espera. El tope de 3 intentos se respeta (`intentos` vive en la base). ¿Se persiste el próximo vencimiento en la base (columna nueva, cambio de spec) o se acepta el adelanto en el MVP? |
 
 ## Datos de competidores "No evidenciado" (de la investigación)
 
