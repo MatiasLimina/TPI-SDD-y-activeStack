@@ -29,3 +29,10 @@ class ColaRedis:
             self._clave, "-inf", ahora.timestamp(), start=0, num=limite
         )
         return [UUID(miembro) for miembro in candidatos if self._cliente.zrem(self._clave, miembro)]
+
+
+def crear_cliente_redis(url: str) -> redis.Redis:
+    """Cliente con timeouts cortos: acotan la espera de la API cuando Redis está caído."""
+    return redis.Redis.from_url(
+        url, decode_responses=True, socket_connect_timeout=2, socket_timeout=2
+    )
