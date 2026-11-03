@@ -24,7 +24,7 @@ Los dos tienen Claude Pro, así que cada uno hace el ciclo OPSX completo de sus 
 - **C-07** `auditoria-turnos`: implementado y archivado en la rama `feat/c-07-auditoria-turnos`, con el PR #3 abierto. **Es lo primero que se mergea**: trae la migración `005`, y C-08 necesita partir de ella (ver §6).
 - **C-08 a C-16**: pendientes.
 
-> **Ojo con el TP de Skills + MCP.** `docs/skills-mcp/plan-preparacion-c08.md` eligió C-08 como el change que se deja "listo para Apply" sin implementar. Con esta versión C-08 **sí se implementa** esta semana. Antes de empezar el Apply, guardá lo que pida el TP (los artefactos del Propose y la revisión de escenarios) y ajustá ese plan, porque varios de sus pasos los tenía asignados Lauti.
+> **TP de Skills + MCP.** `docs/skills-mcp/plan-preparacion-c08.md` eligió C-08 como el change que se deja "listo para Apply". Con esta versión C-08 **sí se implementó** (PR #5); para el TP vale el estado del commit `01c6b1c` (propose y revisión de escenarios, sin código). El plan ya está ajustado: esta semana Nico toma los pasos que tenía Lauti.
 
 ---
 

@@ -41,12 +41,13 @@ Turno       1---* Recordatorio
 - `id`, `nombre` (p. ej. "Sillón 1"), `activo`. Entre 1 y 4 en el segmento objetivo.
 
 ### Prestacion
-- `id`, `nombre`, `duracion_min` (int > 0, múltiplo de 5 y ≤ 480, duración por defecto, RN4; CHECK en BD en C-08, DD-15), `requiere_sillon` (bool, default `true`; RN-AG-10), `activa`.
+- `id`, `nombre`, `duracion_min` (int > 0, múltiplo de 5 y ≤ 480, duración por defecto, RN4; CHECK en BD desde C-08: `ck_prestacion_duracion_min_positiva`, `ck_prestacion_duracion_min_multiplo_5` y `ck_prestacion_duracion_min_maxima`, migración `006`; DD-15, DD-26), `requiere_sillon` (bool, default `true`; RN-AG-10), `activa`.
 - Sin precios ni cobertura en el MVP (ARCA/caja fuera de alcance).
 
 ### HorarioAtencion
-- `id`, `profesional_id`, `dia_semana` (0-6), `hora_inicio`, `hora_fin` (hora local, `hora_fin > hora_inicio`).
+- `id`, `profesional_id` (FK `ON DELETE CASCADE`), `dia_semana` (`smallint`, **0 = lunes … 6 = domingo**), `hora_inicio`, `hora_fin` (`time` sin zona, hora local, `hora_fin > hora_inicio`, sin cruzar la medianoche).
 - Varias franjas por día permitidas (p. ej. mañana y tarde). Se interpreta en `America/Argentina/Buenos_Aires`.
+- **Garantías en la BD (migración `007`, DD-27)**: `ck_horario_atencion_dia_semana_valido` (`dia_semana BETWEEN 0 AND 6`), `ck_horario_atencion_hora_fin_mayor`, `ck_horario_atencion_grilla` (ambas horas en múltiplos de 5 minutos) y la exclusión `horario_atencion_sin_superposicion` (`EXCLUDE USING gist (profesional_id WITH =, dia_semana WITH =, tsrange(DATE '2000-01-03' + hora_inicio, DATE '2000-01-03' + hora_fin, '[)') WITH &&)`): sin franjas superpuestas del mismo profesional y día; las contiguas valen.
 
 ### Bloqueo
 - `id`, `profesional_id`, `inicio`, `fin` (timestamptz UTC, `fin > inicio`), `motivo` (texto corto), `creado_por`.

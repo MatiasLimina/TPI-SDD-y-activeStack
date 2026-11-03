@@ -1,7 +1,7 @@
 """recordatorio: recordatorios previos a los turnos, con integridad en la base
 
-Revision ID: 006
-Revises: 005
+Revision ID: 008
+Revises: 007
 Create Date: 2026-11-02
 """
 
@@ -11,8 +11,8 @@ import sqlalchemy as sa
 from alembic import op
 from sqlalchemy.dialects import postgresql
 
-revision: str = "006"
-down_revision: str | None = "005"
+revision: str = "008"
+down_revision: str | None = "007"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 

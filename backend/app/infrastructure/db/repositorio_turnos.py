@@ -62,7 +62,12 @@ class RepositorioTurnos:
         return Referencias(profesional, paciente, prestacion, sillon)
 
     def _activa[T](self, modelo: type[T], id: UUID, nombre: str, flag: str) -> T:
-        entidad = self._session.get(modelo, id)
+        # FOR SHARE choca con el UPDATE de una desactivación (C-08): si hay una en curso, esta
+        # lectura espera y, ya confirmada, ve `activo = false`. `populate_existing` evita que el
+        # identity map devuelva una versión vieja de la fila.
+        entidad = self._session.get(
+            modelo, id, with_for_update={"read": True}, populate_existing=True
+        )
         if entidad is None:
             raise ReferenciaInvalidaError(nombre, "inexistente")
         if not getattr(entidad, flag):

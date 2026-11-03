@@ -2,18 +2,34 @@
 
 import inspect
 import uuid
+from datetime import UTC, datetime, time
 from pathlib import Path
 
 import pytest
+from fastapi.testclient import TestClient
 from sqlalchemy import func, select, text
 from sqlalchemy.orm import Session
 
+from app.api.turnos import get_reloj
 from app.application.autenticacion import IniciarSesion
 from app.config import REPO_ROOT
 from app.infrastructure.db import seed as seed_module
-from app.infrastructure.db.models import Paciente, Prestacion, Profesional, Sillon, Usuario
+from app.infrastructure.db.models import (
+    HorarioAtencion,
+    Paciente,
+    Prestacion,
+    Profesional,
+    Sillon,
+    Usuario,
+)
 from app.infrastructure.db.repositorio_usuarios import RepositorioUsuarios
-from app.infrastructure.db.seed import SILLONES, SeedSettings, seed_catalogo, seed_usuarios
+from app.infrastructure.db.seed import (
+    PROFESIONALES,
+    SILLONES,
+    SeedSettings,
+    seed_catalogo,
+    seed_usuarios,
+)
 from app.infrastructure.security.contrasenas import Hasher
 from app.infrastructure.security.tokens import EmisorTokens
 from tests.unit.test_env_example import parse_env
@@ -328,3 +344,126 @@ def test_seed_source_does_not_contain_passwords_of_env_example_nor_hashes() -> N
     assert len(valores) == 3
     assert all(valor and valor not in codigo for valor in valores), "secreto en el codigo"
     assert "$argon2" not in codigo
+
+
+# --- horario de atención del seed (C-10, DD-27) ---------------------------------------------
+
+PRIMER_PROFESIONAL = PROFESIONALES[0]["id"]
+FRANJAS_SEMBRADAS = [
+    (dia, inicio, fin)
+    for dia in range(5)
+    for inicio, fin in ((time(9, 0), time(13, 0)), (time(14, 0), time(18, 0)))
+]
+
+
+def _franjas_de(session: Session, profesional_id: uuid.UUID) -> list[HorarioAtencion]:
+    session.expire_all()
+    return list(
+        session.scalars(
+            select(HorarioAtencion)
+            .where(HorarioAtencion.profesional_id == profesional_id)
+            .order_by(HorarioAtencion.dia_semana, HorarioAtencion.hora_inicio)
+        )
+    )
+
+
+def _forma(franjas: list[HorarioAtencion]) -> list[tuple[int, time, time]]:
+    return [(f.dia_semana, f.hora_inicio, f.hora_fin) for f in franjas]
+
+
+@pytest.mark.parametrize("indice", [0, 1])
+def test_seed_carga_diez_franjas_de_lunes_a_viernes_por_profesional(
+    base_vacia: Session, indice: int
+) -> None:
+    seed_catalogo(base_vacia)
+
+    franjas = _franjas_de(base_vacia, PROFESIONALES[indice]["id"])
+
+    assert _forma(franjas) == FRANJAS_SEMBRADAS
+    assert all(f.dia_semana not in (5, 6) for f in franjas)
+
+
+def test_seed_dos_veces_no_duplica_franjas_y_conserva_los_id(base_vacia: Session) -> None:
+    seed_catalogo(base_vacia)
+    ids_primera = {f.id for f in _franjas_de(base_vacia, PRIMER_PROFESIONAL)}
+
+    seed_catalogo(base_vacia)
+
+    assert {f.id for f in _franjas_de(base_vacia, PRIMER_PROFESIONAL)} == ids_primera
+    assert _contar(base_vacia, HorarioAtencion) == 20
+
+
+def test_seed_no_pisa_franjas_editadas_a_mano_y_repone_las_borradas(base_vacia: Session) -> None:
+    seed_catalogo(base_vacia)
+    franjas = _franjas_de(base_vacia, PRIMER_PROFESIONAL)
+    lunes_manana, martes_tarde = franjas[0], franjas[3]
+    id_lunes, id_martes = lunes_manana.id, martes_tarde.id
+    lunes_manana.hora_fin = time(12, 0)
+    base_vacia.delete(martes_tarde)
+    base_vacia.flush()
+
+    seed_catalogo(base_vacia)
+
+    reales = {f.id: f for f in _franjas_de(base_vacia, PRIMER_PROFESIONAL)}
+    assert len(reales) == 10
+    assert reales[id_lunes].hora_fin == time(12, 0)
+    assert (reales[id_martes].dia_semana, reales[id_martes].hora_inicio) == (1, time(14, 0))
+    assert reales[id_martes].hora_fin == time(18, 0)
+
+
+def test_seed_omite_sin_error_la_franja_faltante_que_choca_con_una_cargada_a_mano(
+    base_vacia: Session,
+) -> None:
+    seed_catalogo(base_vacia)
+    martes_tarde = _franjas_de(base_vacia, PRIMER_PROFESIONAL)[3]
+    base_vacia.delete(martes_tarde)
+    base_vacia.flush()  # el DELETE debe ir antes del INSERT que ocuparía su lugar
+    base_vacia.add(
+        HorarioAtencion(
+            profesional_id=PRIMER_PROFESIONAL,
+            dia_semana=1,
+            hora_inicio=time(15, 0),
+            hora_fin=time(19, 0),
+        )
+    )
+    base_vacia.flush()
+
+    seed_catalogo(base_vacia)
+
+    martes = [f for f in _franjas_de(base_vacia, PRIMER_PROFESIONAL) if f.dia_semana == 1]
+    assert _forma(martes) == [(1, time(9, 0), time(13, 0)), (1, time(15, 0), time(19, 0))]
+
+
+def test_con_el_seed_se_puede_agendar_una_consulta_del_primer_profesional(
+    base_vacia: Session, client: TestClient
+) -> None:
+    seed_catalogo(base_vacia)
+    ahora = datetime(2026, 10, 7, 12, 0, tzinfo=UTC)  # 2026-10-07 09:00 hora local
+    client.app.dependency_overrides[get_reloj] = lambda: lambda: ahora  # type: ignore[attr-defined]
+    consulta = next(p for p in seed_module.PRESTACIONES if p["nombre"] == "Consulta")
+
+    respuesta = client.post(
+        "/turnos",
+        json={
+            "profesional_id": str(PRIMER_PROFESIONAL),
+            "paciente_id": str(seed_module.PACIENTES[0]["id"]),
+            "prestacion_id": str(consulta["id"]),
+            "inicio": "2026-10-08T10:00:00-03:00",
+        },
+    )
+
+    assert respuesta.status_code == 201, respuesta.text
+
+
+def test_seed_con_matricula_preexistente_bajo_otro_id_no_falla_y_siembra_las_demas_franjas(
+    base_vacia: Session,
+) -> None:
+    ajeno = Profesional(nombre="Previo", apellido="Manual", matricula="MP-FIC-0001")
+    base_vacia.add(ajeno)
+    base_vacia.flush()
+
+    seed_catalogo(base_vacia)
+
+    assert _franjas_de(base_vacia, PROFESIONALES[0]["id"]) == []  # nunca se sembró ese id
+    assert _forma(_franjas_de(base_vacia, PROFESIONALES[1]["id"])) == FRANJAS_SEMBRADAS
+    assert _franjas_de(base_vacia, ajeno.id) == []
