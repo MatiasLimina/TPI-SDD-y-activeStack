@@ -12,7 +12,8 @@ from sqlalchemy.orm import Session
 from app.api.auth import RecepcionistaAutenticada
 from app.application.auditoria_turnos import AuditorTurnos
 from app.application.cancelar_turno import CancelarTurno
-from app.application.crear_turno import CrearTurno, Reloj, SolicitudTurno
+from app.application.crear_turno import CrearTurno, Reloj, SolicitudTurno, ValidadorTurno
+from app.application.horarios_atencion import ValidadorHorario
 from app.application.reprogramar_turno import (
     OMITIDO,
     ReprogramarTurno,
@@ -31,6 +32,7 @@ from app.domain.turnos import (
 )
 from app.domain.usuarios import UsuarioAutenticado
 from app.infrastructure.db.repositorio_auditoria import RepositorioAuditoria
+from app.infrastructure.db.repositorio_horarios import RepositorioHorarios
 from app.infrastructure.db.repositorio_turnos import RepositorioTurnos
 from app.infrastructure.db.session import get_session
 
@@ -142,6 +144,14 @@ def _auditor(session: Session, usuario: UsuarioAutenticado, reloj: Reloj) -> Aud
     return AuditorTurnos(RepositorioAuditoria(session), usuario.id, reloj)
 
 
+def _validadores(session: Session) -> list[ValidadorTurno]:
+    """Reglas de agenda que se suman a las del alta y la reprogramación, en este orden.
+
+    El horario de atención va primero: C-11 agrega el validador de bloqueos después.
+    """
+    return [ValidadorHorario(RepositorioHorarios(session))]
+
+
 # Las fábricas dependen de `RecepcionistaAutenticada`, el mismo alias que usa cada ruta: FastAPI
 # resuelve el usuario una sola vez por request y sin usuario no se arma el caso de uso.
 def get_crear_turno(
@@ -150,7 +160,12 @@ def get_crear_turno(
     usuario: RecepcionistaAutenticada,
 ) -> CrearTurno:
     auditor = _auditor(session, usuario, reloj)
-    return CrearTurno(RepositorioTurnos(session), reloj, observadores=[auditor.al_crear])
+    return CrearTurno(
+        RepositorioTurnos(session),
+        reloj,
+        validadores=_validadores(session),
+        observadores=[auditor.al_crear],
+    )
 
 
 def get_cancelar_turno(
@@ -169,7 +184,10 @@ def get_reprogramar_turno(
 ) -> ReprogramarTurno:
     auditor = _auditor(session, usuario, reloj)
     return ReprogramarTurno(
-        RepositorioTurnos(session), reloj, observadores=[auditor.al_reprogramar]
+        RepositorioTurnos(session),
+        reloj,
+        validadores=_validadores(session),
+        observadores=[auditor.al_reprogramar],
     )
 
 

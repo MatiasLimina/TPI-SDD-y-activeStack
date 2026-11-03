@@ -265,6 +265,8 @@ def test_openapi_expone_exactamente_las_15_rutas_del_catalogo(client: TestClient
         (metodo.upper(), ruta)
         for ruta, operaciones in caminos.items()
         if ruta.split("/")[1] in {"profesionales", "sillones", "prestaciones"}
+        and not ruta.endswith("/horarios")  # los horarios son de C-10 (test_api_horarios_openapi)
+        and "/horarios/" not in ruta
         for metodo in operaciones
     }
 

@@ -10,10 +10,10 @@ from sqlalchemy import text
 from sqlalchemy.orm import Session
 
 from app.api.turnos import get_reloj
-from app.infrastructure.db.models import Usuario
+from app.infrastructure.db.models import Profesional, Usuario
 from app.infrastructure.security.contrasenas import Hasher
 from app.infrastructure.security.tokens import EmisorTokens
-from tests.integration.factories import Catalogo, crear_catalogo, crear_turno
+from tests.integration.factories import Catalogo, crear_catalogo, crear_turno, dar_horario_amplio
 
 AHORA = datetime(2026, 10, 7, 12, 0, tzinfo=UTC)  # 2026-10-07 09:00 hora local
 INICIO_LOCAL = "2026-10-08T10:00:00-03:00"
@@ -286,6 +286,10 @@ def test_odontologo_de_su_propio_profesional_recibe_403_sin_registros_en_el_cuer
     odontologo: Usuario,
     emisor_test: EmisorTokens,
 ) -> None:
+    # El profesional del odontólogo no viene de `crear_catalogo`: necesita su propio horario
+    profesional = db_session.get(Profesional, odontologo.profesional_id)
+    assert profesional is not None
+    dar_horario_amplio(db_session, profesional)
     turno_id = _crear(api, catalogo, profesional_id=str(odontologo.profesional_id))
 
     respuesta = api.get(f"/turnos/{turno_id}/auditoria", headers=_como(odontologo, emisor_test))
