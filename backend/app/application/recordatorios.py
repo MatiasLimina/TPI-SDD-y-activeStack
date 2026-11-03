@@ -43,6 +43,17 @@ class ProgramadorRecordatorios:
     def al_crear(self, creado: TurnoCreado) -> None:
         self._programar(creado.id, creado.inicio)
 
+    def al_reprogramar(self, anterior: TurnoRegistrado, nuevo: TurnoRegistrado) -> None:
+        """Si cambia el inicio, cancela el pendiente y crea uno nuevo si corresponde (D5).
+
+        Un recordatorio `enviado` o `fallido` es terminal y no se toca: el turno recibe además
+        uno nuevo para la fecha nueva. Si el inicio no cambia, no se toca nada.
+        """
+        if anterior.inicio == nuevo.inicio:
+            return
+        self._repositorio.cancelar_pendiente(nuevo.id)
+        self._programar(nuevo.id, nuevo.inicio)
+
     def al_cancelar(self, anterior: TurnoRegistrado, nuevo: TurnoRegistrado) -> None:
         """Cancela el recordatorio pendiente; no hay nada que publicar (el worker lo descarta)."""
         self._repositorio.cancelar_pendiente(nuevo.id)
