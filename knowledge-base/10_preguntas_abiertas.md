@@ -18,7 +18,12 @@ El resumen de §7 del informe decía "siete fuentes comprobadas" mientras la tab
 
 ## Preguntas abiertas (priorizadas)
 
-Ninguna abierta al 2026-10-07. Las ocho preguntas pendientes se resolvieron (ver "Preguntas resueltas (2026-10-06)" más abajo) y las cinco surgidas al explorar C-03 también (ver "Preguntas resueltas (2026-10-07)").
+Al 2026-11-02 quedan dos preguntas abiertas, surgidas al proponer C-12 (`recordatorios-mock-redis`). Ninguna bloquea ese change: se deciden en otro change o en el backlog. Las demás se resolvieron (ver las secciones "Preguntas resueltas" más abajo).
+
+| Prioridad | Pregunta | Detalle |
+|---|---|---|
+| Media | **Lectura del estado de los recordatorios** | La matriz de `03_actores_y_roles.md` da `R` a la recepcionista y `R propios` al odontólogo sobre "Recordatorios (estado)", pero ningún change de `CHANGES.md` incluye ese endpoint (C-12 no lo lista y C-13 solo consulta turnos). ¿Se agrega a C-13, a un change nuevo o al backlog? |
+| Baja | **Recordatorio procesado después del inicio del turno** | Por ejemplo, con Redis y el worker caídos durante más de 24 h. La KB solo pide verificar que el turno "siga activo" (`programado`), así que C-12 lo envía igual. ¿Debería descartarse (y con qué estado) si el turno ya empezó? Hoy no existe un estado para eso y agregarlo sería una regla nueva. |
 
 ## Datos de competidores "No evidenciado" (de la investigación)
 

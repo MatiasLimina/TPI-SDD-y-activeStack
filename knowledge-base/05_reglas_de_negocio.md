@@ -43,7 +43,7 @@ Códigos `RN-{DOMINIO}-{NN}`. Las reglas del Discovery (RN1-RN6) se conservan co
 - **RN-NO-02**: cancelar un turno cancela su recordatorio pendiente; reprogramarlo lo reprograma.
 - **RN-NO-03** (decisión del equipo, 2026-10-06, DD-13): el recordatorio se programa 24 h antes del turno (`REMINDER_LEAD_HOURS=24`, configurable por variable de entorno). Si el turno se crea o reprograma con menos de 24 h de anticipación, **no** se programa recordatorio.
 - **RN-NO-04**: el contenido de los recordatorios no debe exponer datos clínicos (solo fecha, hora, consultorio) — **Suposición** por privacidad.
-- **RN-NO-05** (decisión del equipo, 2026-10-06, DD-19): el envío se reintenta hasta 3 veces con backoff exponencial; agotados los intentos, el recordatorio queda `fallido`. No hay reintento manual en el MVP.
+- **RN-NO-05** (decisión del equipo, 2026-10-06, DD-19; precisada en DD-26): el envío tiene hasta 3 intentos en total (el primero más 2 reintentos) con backoff exponencial; agotados los intentos, el recordatorio queda `fallido`. No hay reintento manual en el MVP.
 
 ## Dominio: Autenticación y autorización (RN-AU)
 
