@@ -310,7 +310,7 @@ C-01 a C-06 los hizo Matías, y C-07 está implementado y pendiente de merge (PR
 ## FASE 4 — Recordatorios y consulta de agenda
 
 ### [C-12] `recordatorios-mock-redis`
-- **Estado**: `[ ]` pendiente
+- **Estado**: `[x]` completado
 - **Responsable**: Nico · revisa Matías
 - **Scope** (US-012):
   - Puerto `NotificationSender` (dominio) + adaptador `MockSender` (registra el envío, sin mensajería real); `NOTIFICATION_ADAPTER=mock`
