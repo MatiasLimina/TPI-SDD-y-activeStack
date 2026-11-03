@@ -40,10 +40,10 @@ Códigos `RN-{DOMINIO}-{NN}`. Las reglas del Discovery (RN1-RN6) se conservan co
 ## Dominio: Notificaciones (RN-NO)
 
 - **RN-NO-01**: todo turno activo genera un recordatorio previo mediante el **puerto de notificación**; en el MVP el adaptador es **mock**, procesado asincrónicamente vía cola Redis.
-- **RN-NO-02** (precisada en DD-26): cancelar un turno cancela su recordatorio pendiente; reprogramarlo lo reprograma. Si cambia el inicio, se cancela el pendiente y se crea un recordatorio nuevo cuando corresponde (RN-NO-03); si el anterior ya estaba `enviado` o `fallido`, el turno reprogramado recibe un segundo recordatorio para la fecha nueva.
+- **RN-NO-02** (precisada en DD-28): cancelar un turno cancela su recordatorio pendiente; reprogramarlo lo reprograma. Si cambia el inicio, se cancela el pendiente y se crea un recordatorio nuevo cuando corresponde (RN-NO-03); si el anterior ya estaba `enviado` o `fallido`, el turno reprogramado recibe un segundo recordatorio para la fecha nueva.
 - **RN-NO-03** (decisión del equipo, 2026-10-06, DD-13): el recordatorio se programa 24 h antes del turno (`REMINDER_LEAD_HOURS=24`, configurable por variable de entorno). Si el turno se crea o reprograma con menos de 24 h de anticipación, **no** se programa recordatorio.
 - **RN-NO-04**: el contenido de los recordatorios no debe exponer datos clínicos (solo fecha, hora, consultorio) — **Suposición** por privacidad.
-- **RN-NO-05** (decisión del equipo, 2026-10-06, DD-19; precisada en DD-26): el envío tiene hasta 3 intentos en total (el primero más 2 reintentos) con backoff exponencial; agotados los intentos, el recordatorio queda `fallido`. No hay reintento manual en el MVP.
+- **RN-NO-05** (decisión del equipo, 2026-10-06, DD-19; precisada en DD-28): el envío tiene hasta 3 intentos en total (el primero más 2 reintentos) con backoff exponencial; agotados los intentos, el recordatorio queda `fallido`. No hay reintento manual en el MVP.
 
 ## Dominio: Autenticación y autorización (RN-AU)
 

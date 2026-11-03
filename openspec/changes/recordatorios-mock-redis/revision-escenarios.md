@@ -42,7 +42,7 @@
 - **Reglas del scope sin escenario**: ninguna. Todos los ítems del scope y de los "Tests" de C-12 en `CHANGES.md` tienen escenario: encolado al crear, nada con menos de 24 h, ajuste al cancelar y al reprogramar, el worker invoca el puerto (mock), 3 reintentos y `fallido`, un turno cancelado no envía, y re-encolado al reiniciar.
 - **C1**: se cumple. Hay escenarios esperados, de error de negocio y de borde.
 - **C2, contra los specs archivados**: los bloques MODIFIED de `app-configuration` conservan textualmente los 2 escenarios previos de "Configuración leída…" y los 6 de "Fallo explícito…". El requirement "Plantilla de entorno versionada sin secretos" no se modifica y sigue coherente con el ADDED. No hay contradicciones con `agenda-turnos`: se mantienen los códigos `201`/`200`/`409 turno_ya_cancelado`/`422`, y la reprogramación parcial (DD-23a) se usa en "Reprogramación sin cambio de inicio".
-- **C3**: nada pertenece a otro change. No aparecen horarios ni bloqueos (C-10, C-11), agenda (C-13), endpoints de lectura, frontend, mensajería real ni auditoría de recordatorios (descartada con fundamento en RN-CU-01). La migración `006` está coordinada con C-08 por la regla de renumerar.
+- **C3**: nada pertenece a otro change. No aparecen horarios ni bloqueos (C-10, C-11), agenda (C-13), endpoints de lectura, frontend, mensajería real ni auditoría de recordatorios (descartada con fundamento en RN-CU-01). La migración (propuesta como `006`, renumerada a `008` tras integrar C-08 y C-10) está coordinada con ellos por la regla de renumerar.
 - **C4**: el change no agrega endpoints ni códigos. La caída de la cola responde `201`, coherente con el Flujo 6 (errores).
 - **C8**: los datos son ficticios ("Ana Prueba", "Ficticio Pérez", DNI "30111222", "Consultorio Odontológico Ejemplo") y no hay secretos. El change no toca solapamientos, y aun así trae un escenario de concurrencia del worker contra PostgreSQL real (tarea 9.4). RN-NO-04 se cumple: ningún escenario muestra la prestación.
 - **C9**: cada escenario tiene su tarea (3.x, 4.3, 6.1, 7.x, 8.x, 9.x, 10.1, 2.x). Las tareas sin escenario son setup o documentación legítimos: 1.x, 2.4, 4.4, 9.7, 10.2, 11.x.
@@ -51,10 +51,10 @@
 
 | Id | ¿Tiene respaldo en la KB? | ¿Introduce una regla de dominio nueva? | Observación |
 |----|---------------------------|----------------------------------------|-------------|
-| D2 (CHECKs, coherencia estado/intentos, único parcial) | Sí. Estados y canal en 04 §Recordatorio, varchar + CHECK en DD-21, "agotados → `fallido`" en DD-19 y "su recordatorio pendiente" (en singular) en RN-NO-02 | No. Son invariantes derivados | El CHECK `fallido ⇒ intentos = 3` impide en el futuro un `fallido` por otra causa (por ejemplo, un paciente sin contacto). Hoy la KB no lo contempla, así que es correcto. Mencionarlo en DD-26 |
-| D5 (reprogramar actúa solo si cambia `inicio`; fila nueva) | Sí. RN-NO-02, y RN-NO-03 (`programado_para` depende solo del inicio) | No | Consecuencia a aprobar a conciencia: un turno con recordatorio ya `enviado` que se reprograma recibe un **segundo** recordatorio, para la fecha nueva. Se apoya en RN-NO-01 ("todo turno activo genera un recordatorio previo"). Conviene que DD-26 lo diga explícitamente |
+| D2 (CHECKs, coherencia estado/intentos, único parcial) | Sí. Estados y canal en 04 §Recordatorio, varchar + CHECK en DD-21, "agotados → `fallido`" en DD-19 y "su recordatorio pendiente" (en singular) en RN-NO-02 | No. Son invariantes derivados | El CHECK `fallido ⇒ intentos = 3` impide en el futuro un `fallido` por otra causa (por ejemplo, un paciente sin contacto). Hoy la KB no lo contempla, así que es correcto. Mencionarlo en DD-28 |
+| D5 (reprogramar actúa solo si cambia `inicio`; fila nueva) | Sí. RN-NO-02, y RN-NO-03 (`programado_para` depende solo del inicio) | No | Consecuencia a aprobar a conciencia: un turno con recordatorio ya `enviado` que se reprograma recibe un **segundo** recordatorio, para la fecha nueva. Se apoya en RN-NO-01 ("todo turno activo genera un recordatorio previo"). Conviene que DD-28 lo diga explícitamente |
 | D6 (encolado post-commit, best-effort; cancelar no toca Redis) | Sí. Flujo 6, errores ("pendientes persisten en BD y se re-encolan al reiniciar", **Suposición**), y Flujo 6 paso 1 (el worker verifica el turno) | No | Tiene el mismo carácter de suposición que la KB. Ver S4 sobre el hueco cuando Redis pierde datos mientras el worker sigue vivo |
-| D9 (backoff de 1 min y después 2 min) | En parte. DD-19 fija "exponencial" y no da valores | No es una regla de dominio: es un parámetro | El spec vuelve normativos los valores (13:01Z, 13:03Z), así que DD-26 tiene que registrarlos |
+| D9 (backoff de 1 min y después 2 min) | En parte. DD-19 fija "exponencial" y no da valores | No es una regla de dominio: es un parámetro | El spec vuelve normativos los valores (13:01Z, 13:03Z), así que DD-28 tiene que registrarlos |
 | D10 (3 intentos en total) | Sí. DD-19 ("3 intentos") y 04 ("máximo 3"). RN-NO-05 cita DD-19 como fuente | No | Ambigüedad de redacción en RN-NO-05 ("se reintenta hasta 3 veces") **y también en US-012** ("se reintenta 3 veces"), que admiten leer 1 + 3. Ver H3 |
 | D12 (`CONSULTORIO_NOMBRE`, texto fijo, formato `dd/mm/aaaa HH:MM`) | RN-NO-04 exige el consultorio en el contenido. La KB no tiene ninguna fuente de ese dato. SU-07 (monotenant) justifica una variable por despliegue | No. Es configuración y redacción de producto, no una regla. Que el mensaje excluya al profesional y el nombre del paciente sale del "solo fecha, hora, consultorio" de RN-NO-04 | La aprobación tiene que cubrir el texto exacto y el valor por defecto "Consultorio odontológico". La tarea 2.4 actualiza la tabla de variables de 08 |
 | D14 (`ConfiguracionWorker` sin `JWT_SECRET`) | Mínimo privilegio (08 §Seguridad), en línea con RN-CU-03 | No | Sin observaciones |
@@ -69,9 +69,9 @@
 
 ### H2 — La validación de `REMINDER_LEAD_HOURS` cita DD-24, que no la cubre · MENOR
 - **Dónde**: `app-configuration/spec.md`, requirement "Fallo explícito ante configuración obligatoria faltante".
-- **Problema**: el texto dice que "`JWT_EXPIRE_MINUTES` y `REMINDER_LEAD_HOURS` MUST ser enteros mayores que cero… (DD-24)". DD-24 (f) habla solo de `JWT_EXPIRE_MINUTES`. Las reglas "`REMINDER_LEAD_HOURS` entero > 0" y "`CONSULTORIO_NOMBRE` no vacío" tampoco figuran como decisiones en la tabla D1..D15, ni en la lista que la tarea 11.1 registra como DD-26. No son reglas de dominio nuevas (son validación de configuración), pero la cita es incorrecta.
+- **Problema**: el texto dice que "`JWT_EXPIRE_MINUTES` y `REMINDER_LEAD_HOURS` MUST ser enteros mayores que cero… (DD-24)". DD-24 (f) habla solo de `JWT_EXPIRE_MINUTES`. Las reglas "`REMINDER_LEAD_HOURS` entero > 0" y "`CONSULTORIO_NOMBRE` no vacío" tampoco figuran como decisiones en la tabla D1..D15, ni en la lista que la tarea 11.1 registra como DD-28. No son reglas de dominio nuevas (son validación de configuración), pero la cita es incorrecta.
 - **Fuente**: DD-24 (f), control C2.
-- **Sugerencia**: citar DD-26 (o D12/D13) para las variables nuevas. Sumar a D12/D13 "entero > 0 y no numérico inválido, mismo criterio que DD-24 (f)" e incluirlo en la tarea 11.1.
+- **Sugerencia**: citar DD-28 (o D12/D13) para las variables nuevas. Sumar a D12/D13 "entero > 0 y no numérico inválido, mismo criterio que DD-24 (f)" e incluirlo en la tarea 11.1.
 
 ### H3 — La alineación de "3 intentos en total" deja afuera US-012 · MENOR
 - **Dónde**: `tasks.md`, tarea 11.1, y design D10.
@@ -95,7 +95,7 @@
 - **Dónde**: `recordatorios/spec.md`, requirements "Atomicidad del recordatorio con el cambio del turno", "Encolado después de confirmar el cambio", "Cola de recordatorios con vencimiento", "Sin envío para turnos cancelados ni recordatorios no pendientes", "A lo sumo un recordatorio pendiente por turno", "Integridad del recordatorio en la base" y "Worker desplegado como servicio".
 - **Problema**: fijan comportamiento de dominio o de integridad sin citar de dónde sale.
 - **Fuente**: control C2.
-- **Sugerencia**: citar, en el orden de la lista, 05 §Excepciones globales + 08 (unidad de trabajo); Flujo 6 (errores); DD-04 + 08 (cola de trabajo); Flujo 6 paso 1 + RN-NO-02; RN-NO-02 + DD-26 (D2); 04 §Recordatorio + DD-08 + DD-21; DD-04 + DD-26 (D14).
+- **Sugerencia**: citar, en el orden de la lista, 05 §Excepciones globales + 08 (unidad de trabajo); Flujo 6 (errores); DD-04 + 08 (cola de trabajo); Flujo 6 paso 1 + RN-NO-02; RN-NO-02 + DD-28 (D2); 04 §Recordatorio + DD-08 + DD-21; DD-04 + DD-28 (D14).
 
 ### H7 — "Cola caída" y "rechazada no publica" se prueban solo en el alta · MENOR
 - **Dónde**: `recordatorios/spec.md`, requirement "Encolado después de confirmar el cambio".

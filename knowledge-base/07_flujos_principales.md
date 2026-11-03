@@ -58,9 +58,9 @@ Recepcionista -> Frontend -> API -> PostgreSQL (INSERT + EXCLUDE)
 
 1. Worker consume la cola Redis y verifica que el turno siga activo.
 2. Invoca `NotificationSender.send(...)`; el adaptador mock registra el envío (no hay mensajería real).
-3. Marca el recordatorio `enviado` o `fallido` (hasta 3 intentos en total, el primero más 2 reintentos, con backoff exponencial de 1 y 2 min; agotados, `fallido`; sin reintento manual, DD-19, DD-26).
+3. Marca el recordatorio `enviado` o `fallido` (hasta 3 intentos en total, el primero más 2 reintentos, con backoff exponencial de 1 y 2 min; agotados, `fallido`; sin reintento manual, DD-19, DD-28).
 
-**Errores**: Redis caído -> los recordatorios pendientes persisten en BD y se re-encolan al reiniciar el worker (DD-26).
+**Errores**: Redis caído -> los recordatorios pendientes persisten en BD y se re-encolan al reiniciar el worker (DD-28).
 
 ## Flujo 7: Consulta de agenda
 1. `GET /turnos?desde&hasta&profesional&sillon` (el odontólogo queda filtrado a su profesional).

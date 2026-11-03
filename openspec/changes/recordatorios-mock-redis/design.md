@@ -8,8 +8,8 @@ Ver `proposal.md` (Why, Non-goals) y los delta specs `recordatorios` y `app-conf
 - **API** (`backend/app/api/turnos.py`): las fábricas `get_crear_turno`, `get_cancelar_turno` y `get_reprogramar_turno` arman el caso de uso con `get_session`, `get_reloj` (sobreescrito en tests con un reloj fijo) y `RecepcionistaAutenticada`, y registran `AuditorTurnos` como observador (C-07). Las rutas son `def` sincrónicas (corren en el threadpool).
 - **Configuración** (`backend/app/config.py`): `Settings` con `DATABASE_URL` y `JWT_SECRET` obligatorias, `NOTIFICATION_ADAPTER: str = "mock"` sin validar y `REDIS_URL` con valor por defecto. `get_engine()` (`session.py`) construye el engine desde `get_settings()`, así que cualquier proceso que lo use necesita `JWT_SECRET`. `tests/unit/test_env_example.py` exige que cada campo de `Settings` figure en `.env.example`. No se pudo leer `.env.example` al proponer (permiso denegado): el Apply lo inspecciona antes de editarlo.
 - **Infraestructura**: `docker-compose.yml` tiene `db`, `redis` (`redis:7`, sin persistencia configurada) y `api`. No hay servicio `worker` y `redis` (redis-py) no está en `pyproject.toml`. La imagen (`backend/Dockerfile`) instala el paquete `app` y no las migraciones.
-- **Modelo**: `CatalogoMixin` (`id uuid` con `gen_random_uuid()`, `creado_en`, `actualizado_en`) y la convención de nombres de `base.py`. Migraciones lineales `001..005` numeradas a mano (DD-17). `turno` no se borra nunca (DD-08).
-- **Tests**: `db_session` corre dentro de una transacción externa que siempre se revierte (`join_transaction_mode="create_savepoint"`). Los fixtures de concurrencia (`motor_concurrente`, `catalogo_commiteado`) commitean de verdad y limpian con `DELETE FROM turno`, y arman los casos de uso **sin observadores**. `test_migrations.py` afirma `head == "005"`.
+- **Modelo**: `CatalogoMixin` (`id uuid` con `gen_random_uuid()`, `creado_en`, `actualizado_en`) y la convención de nombres de `base.py`. Migraciones lineales `001..007` numeradas a mano (DD-17). `turno` no se borra nunca (DD-08).
+- **Tests**: `db_session` corre dentro de una transacción externa que siempre se revierte (`join_transaction_mode="create_savepoint"`). Los fixtures de concurrencia (`motor_concurrente`, `catalogo_commiteado`) commitean de verdad y limpian con `DELETE FROM turno`, y arman los casos de uso **sin observadores**. `test_migrations.py` afirma `head == "008"`.
 
 ## Goals / Non-Goals
 
@@ -27,7 +27,7 @@ Ver `proposal.md` (Why, Non-goals) y los delta specs `recordatorios` y `app-conf
 
 ## Decisions
 
-Las decisiones marcadas **[A confirmar]** no las fija la KB. Se proponen acá y, cuando el usuario las aprueba, se registran como **DD-26** en `knowledge-base/09_decisiones_y_supuestos.md` (tarea 11.1), junto con D16, que no es una regla de dominio sino la validación de las variables nuevas con el criterio de DD-24 (f), y se registra para que la cita del spec `app-configuration` tenga fuente. Governance ALTO: no se implementa nada antes de esa aprobación.
+Las decisiones marcadas **[A confirmar]** no las fija la KB. Se proponen acá y, cuando el usuario las aprueba, se registran como **DD-28** en `knowledge-base/09_decisiones_y_supuestos.md` (tarea 11.1), junto con D16, que no es una regla de dominio sino la validación de las variables nuevas con el criterio de DD-24 (f), y se registra para que la cita del spec `app-configuration` tenga fuente. Governance ALTO: no se implementa nada antes de esa aprobación.
 
 | Id | Decisión | Fuente |
 |---|---|---|
@@ -46,7 +46,7 @@ Las decisiones marcadas **[A confirmar]** no las fija la KB. Se proponen acá y,
 | D13 | `MockSender` registra en memoria y en el log; `NOTIFICATION_ADAPTER` acepta solo `mock` | `CHANGES.md` §C-12, DD-04 |
 | D14 | Configuración del worker separada (`ConfiguracionWorker`), sin `JWT_SECRET`; `Settings` la extiende | Mínimo privilegio (08 §Seguridad) **[A confirmar]** |
 | D15 | Redis real solo para el contrato del adaptador (`TEST_REDIS_URL`); el resto de los tests usa la cola en memoria, que pasa el mismo contrato | Reglas duras (PostgreSQL real para persistencia; Redis no es la base) |
-| D16 | Validación de las variables nuevas: `REMINDER_LEAD_HOURS` entero mayor que cero (`0`, un negativo o un valor no numérico son inválidos y la aplicación no arranca) y `CONSULTORIO_NOMBRE` no vacío ni formado solo por espacios | Mismo criterio que DD-24 (f) para `JWT_EXPIRE_MINUTES`; RN-CU-03. Se registra en DD-26 junto con las decisiones aprobadas |
+| D16 | Validación de las variables nuevas: `REMINDER_LEAD_HOURS` entero mayor que cero (`0`, un negativo o un valor no numérico son inválidos y la aplicación no arranca) y `CONSULTORIO_NOMBRE` no vacío ni formado solo por espacios | Mismo criterio que DD-24 (f) para `JWT_EXPIRE_MINUTES`; RN-CU-03. Se registra en DD-28 junto con las decisiones aprobadas |
 
 ### 1. Capas y módulos
 - `app/domain/recordatorios.py` (puro): `EstadoRecordatorio` (`StrEnum`: `pendiente`, `enviado`, `fallido`, `cancelado`), `MAX_INTENTOS = 3`, `calcular_programacion(inicio, ahora, anticipacion) -> datetime | None` (D3, en UTC), `espera_reintento(intentos_hechos: int) -> timedelta` (D9) y el puerto `ColaRecordatorios(Protocol)`: `encolar(recordatorio_id: UUID, vence: datetime) -> None` y `tomar_vencidos(ahora: datetime, limite: int) -> list[UUID]`.
@@ -57,7 +57,7 @@ Las decisiones marcadas **[A confirmar]** no las fija la KB. Se proponen acá y,
 - `app/infrastructure/notifications/mock_sender.py`: `MockSender` y `crear_sender(adaptador) -> NotificationSender` (D13).
 - `app/worker.py`: `python -m app.worker` arma la configuración, el engine propio, la cola, el emisor y el reloj del sistema; llama `iniciar()` y después repite `ciclo()` con una pausa de 5 s cuando no hay vencidos, hasta recibir `SIGTERM`/`SIGINT`.
 
-### 2. Modelo y migración `006_recordatorio.py` (D2)
+### 2. Modelo y migración `008_recordatorio.py` (D2)
 ```
 recordatorio
   id               uuid        PK  DEFAULT gen_random_uuid()       (CatalogoMixin)
@@ -77,7 +77,7 @@ recordatorio
 - `estado` y `canal` como `varchar` + CHECK, mismo criterio que `turno.estado` (DD-21). `canal` existe para el adaptador futuro: agregarlo requiere una migración que amplíe el CHECK, lo cual es deliberado.
 - El índice único parcial es la garantía de RN-NO-02 ante errores de programación o carreras: dos programaciones del mismo turno se serializan igual por el `FOR UPDATE` del turno en reprogramar y cancelar, y en el alta el turno es nuevo.
 - `programado_para` no tiene `DEFAULT`: siempre lo calcula la aplicación con el reloj inyectado. `creado_en`/`actualizado_en` usan `now()` como el resto del catálogo, porque son metadatos y no reglas.
-- **Numeración**: `revision = "006"`, `down_revision = "005"`. C-08 (rama `feat/c-08-gestion-recursos-consultorio`) puede crear otra `006`: quien mergea segundo renumera su revisión y el `head` de `test_migrations.py`, y verifica que `alembic heads` muestre una sola cabeza.
+- **Numeración**: `revision = "008"`, `down_revision = "007"`. Se propuso como `006` (sobre `005`); al integrar `main` con C-08 (`006`) y C-10 (`007`) se renumeró a `008`, junto con el `head` de `test_migrations.py` y el nombre de su test, y `alembic heads` muestra una sola cabeza.
 - Alternativas descartadas: `enum` nativo (migraciones más costosas, DD-21); sin coherencia `estado`/`intentos` (un `fallido` con 1 intento sería un dato imposible que nadie detecta); columna `proximo_intento_en` (ver D11: el vencimiento del reintento vive en la cola y se aproxima al reiniciar).
 
 ### 3. Programación en los casos de uso (D3, D4, D5)
@@ -85,7 +85,7 @@ recordatorio
 - `al_crear`: si `calcular_programacion(creado.inicio, ahora, anticipacion)` devuelve un instante, `crear_pendiente` (`add` + `flush`, para que una violación salte antes del commit) y lo anota para publicar.
 - `al_cancelar`: `cancelar_pendiente(turno_id)` = `UPDATE recordatorio SET estado='cancelado' WHERE turno_id=:t AND estado='pendiente'`. Nada que publicar: el worker descarta el id al verlo `cancelado` (D6).
 - `al_reprogramar`: si `anterior.inicio == nuevo.inicio`, no hace nada (D5). Si no, `cancelar_pendiente` y después la misma regla que el alta con `nuevo.inicio`. Se crea una fila nueva en lugar de editar la existente porque un recordatorio `enviado` o `fallido` es terminal, y así hay un solo camino para todos los casos (con o sin pendiente previo, ya enviado). El historial queda en las filas `cancelado`.
-- Consecuencia de D5, a aprobar a conciencia: un turno cuyo recordatorio ya está `enviado` (o quedó `fallido`) y se reprograma con la anticipación suficiente recibe un **segundo** recordatorio, para la fecha nueva; el anterior queda intacto. Se apoya en RN-NO-01 (todo turno activo genera un recordatorio previo) y DD-26 lo dice explícitamente (tarea 11.1).
+- Consecuencia de D5, a aprobar a conciencia: un turno cuyo recordatorio ya está `enviado` (o quedó `fallido`) y se reprograma con la anticipación suficiente recibe un **segundo** recordatorio, para la fecha nueva; el anterior queda intacto. Se apoya en RN-NO-01 (todo turno activo genera un recordatorio previo) y DD-28 lo dice explícitamente (tarea 11.1).
 - El cálculo de D3 usa el mismo `ahora` del reloj inyectado que la validación del turno, así que es determinístico en los tests.
 - Alternativas descartadas: editar `programado_para` del pendiente existente (no cubre el caso "ya enviado" y obliga a dos caminos); recalcular también cuando `inicio` no cambia (crea filas `cancelado` sin motivo y re-encola sin necesidad); programar desde un trigger de la base (la regla de 24 h y el reloj inyectado quedarían fuera del dominio).
 
@@ -147,15 +147,15 @@ recordatorio
 - [Redis caído durante un alta: `publicar` espera hasta `socket_connect_timeout` (2 s) antes de responder] → Latencia acotada y solo con Redis caído. El turno se confirma igual (spec "Cola no disponible al crear").
 - [La programación es opcional a nivel de caso de uso, igual que la auditoría: un caso de uso armado sin el programador no programa] → Las tres fábricas de la API, único punto de entrada, lo registran siempre, y los tests de API lo verifican. Queda anotado en el docstring de los observadores.
 - [Re-encolar al reiniciar ignora el backoff restante de un pendiente con intentos] → Ver D11. El tope de 3 intentos se mantiene porque vive en la base.
-- [Conflicto de numeración `006` con C-08] → Regla de renumerar del equipo. El test de `head` falla si hay dos cabezas.
+- [Conflicto de numeración con C-08 y C-10] → Se resolvió renumerando a `008` (regla del equipo). El test de `head` falla si hay dos cabezas.
 - [El texto y la variable `CONSULTORIO_NOMBRE` pueden no coincidir con lo que el usuario espera] → Marcados **[A confirmar]**. Si cambian, se ajustan el spec y las tareas con `/opsx:update` antes del Apply.
 
 ## Migration Plan
 
-1. `alembic upgrade head` aplica `006` (tabla vacía). **Sin backfill**: los turnos que ya existen no reciben recordatorio. Es coherente con el alcance (el MVP todavía no está en producción), y si hiciera falta sería un script aparte.
+1. `alembic upgrade head` aplica `008` (tabla vacía). **Sin backfill**: los turnos que ya existen no reciben recordatorio. Es coherente con el alcance (el MVP todavía no está en producción), y si hiciera falta sería un script aparte.
 2. Se agregan `REMINDER_LEAD_HOURS`, `NOTIFICATION_ADAPTER` y `CONSULTORIO_NOMBRE` al entorno (todas tienen valor por defecto, así que un `.env` viejo sigue funcionando) y `TEST_REDIS_URL` para correr los tests.
 3. `docker compose up -d worker` levanta el worker, que re-encola los pendientes al iniciar.
-4. Rollback: detener `worker` y `alembic downgrade 005` (borra la tabla y los índices). Se pierde el historial de recordatorios. Las claves de Redis huérfanas se borran con `DEL recordatorios:programados`.
+4. Rollback: detener `worker` y `alembic downgrade 007` (borra la tabla y los índices). Se pierde el historial de recordatorios. Las claves de Redis huérfanas se borran con `DEL recordatorios:programados`.
 
 ## Open Questions
 

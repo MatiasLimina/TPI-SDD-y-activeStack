@@ -260,7 +260,7 @@ Al iniciar, el worker MUST encolar todos los recordatorios en `pendiente` de la 
 - **THEN** entonces el recordatorio queda `enviado` con `intentos` 1
 
 ### Requirement: A lo sumo un recordatorio pendiente por turno
-La base MUST rechazar un segundo recordatorio `pendiente` para el mismo turno, aunque la aplicación no lo valide. Un turno MUST poder tener a la vez varios recordatorios en `cancelado`, `enviado` o `fallido` (RN-NO-02; design D2, a registrar en DD-26).
+La base MUST rechazar un segundo recordatorio `pendiente` para el mismo turno, aunque la aplicación no lo valide. Un turno MUST poder tener a la vez varios recordatorios en `cancelado`, `enviado` o `fallido` (RN-NO-02; design D2, a registrar en DD-28).
 
 #### Scenario: Segundo pendiente rechazado por la base
 - **GIVEN** dado un turno con un recordatorio `pendiente`
@@ -273,7 +273,7 @@ La base MUST rechazar un segundo recordatorio `pendiente` para el mismo turno, a
 - **THEN** entonces la base acepta la inserción
 
 ### Requirement: Integridad del recordatorio en la base
-La base MUST rechazar un recordatorio con `estado` distinto de `pendiente`, `enviado`, `fallido` o `cancelado`, `canal` distinto de `mock`, `intentos` fuera de 0..3, `fallido` sin 3 intentos, `enviado` sin al menos 1 intento, `turno_id` inexistente o `programado_para` nulo. Un turno con recordatorios MUST NOT poder borrarse (04 §Recordatorio, DD-08, DD-21; design D2, a registrar en DD-26).
+La base MUST rechazar un recordatorio con `estado` distinto de `pendiente`, `enviado`, `fallido` o `cancelado`, `canal` distinto de `mock`, `intentos` fuera de 0..3, `fallido` sin 3 intentos, `enviado` sin al menos 1 intento, `turno_id` inexistente o `programado_para` nulo. Un turno con recordatorios MUST NOT poder borrarse (04 §Recordatorio, DD-08, DD-21; design D2, a registrar en DD-28).
 
 #### Scenario: Valores inválidos rechazados
 - **GIVEN** dado un turno existente
@@ -291,7 +291,7 @@ La base MUST rechazar un recordatorio con `estado` distinto de `pendiente`, `env
 - **THEN** entonces es un `timestamptz` igual a 2026-10-08T13:00Z
 
 ### Requirement: Worker desplegado como servicio
-`docker-compose.yml` MUST declarar un servicio `worker`, construido con la misma imagen que la API, que ejecute el proceso de recordatorios. El servicio MUST recibir `DATABASE_URL`, `REDIS_URL`, `APP_TIMEZONE`, `NOTIFICATION_ADAPTER`, `REMINDER_LEAD_HOURS` y `CONSULTORIO_NOMBRE`, depender de `db` y `redis`, y reiniciarse si el proceso termina. El worker MUST NOT recibir `JWT_SECRET`, porque no lo necesita (DD-04; 08 §Seguridad, mínimo privilegio; design D14, a registrar en DD-26).
+`docker-compose.yml` MUST declarar un servicio `worker`, construido con la misma imagen que la API, que ejecute el proceso de recordatorios. El servicio MUST recibir `DATABASE_URL`, `REDIS_URL`, `APP_TIMEZONE`, `NOTIFICATION_ADAPTER`, `REMINDER_LEAD_HOURS` y `CONSULTORIO_NOMBRE`, depender de `db` y `redis`, y reiniciarse si el proceso termina. El worker MUST NOT recibir `JWT_SECRET`, porque no lo necesita (DD-04; 08 §Seguridad, mínimo privilegio; design D14, a registrar en DD-28).
 
 #### Scenario: Servicio worker en Compose
 - **WHEN** se inspecciona `docker-compose.yml`
