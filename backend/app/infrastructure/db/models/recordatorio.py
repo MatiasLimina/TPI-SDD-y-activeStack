@@ -14,7 +14,7 @@ _PENDIENTE = text("estado = 'pendiente'")
 class Recordatorio(CatalogoMixin, Base):
     """Recordatorio previo a un turno (RN-NO-01..05). La base es la fuente de verdad del estado.
 
-    Los nombres de las restricciones son contrato (migración 006). `programado_para` y `canal`
+    Los nombres de las restricciones son contrato (migración 008). `programado_para` y `canal`
     no tienen default: los informa la aplicación con su reloj inyectado.
     """
 
