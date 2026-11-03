@@ -21,6 +21,7 @@ from app.domain.recordatorios import (
     ColaRecordatorios,
     EstadoRecordatorio,
     calcular_programacion,
+    espera_reintento,
 )
 from app.domain.time import to_utc
 from app.domain.turnos import TurnoCreado, TurnoRegistrado
@@ -105,6 +106,8 @@ class ResultadoProcesamiento(StrEnum):
     DESCARTADO = "descartado"
     CANCELADO = "cancelado"
     ENVIADO = "enviado"
+    REINTENTO = "reintento"
+    FALLIDO = "fallido"
 
 
 class ProcesarRecordatorio:
@@ -125,6 +128,12 @@ class ProcesarRecordatorio:
         self._zona = zona
 
     def procesar(self, recordatorio_id: UUID, ahora: datetime) -> ResultadoProcesamiento:
+        """Verifica en la base, con el recordatorio bloqueado, y envía si corresponde.
+
+        Solo las excepciones del emisor cuentan como intento fallido: un error de la base o de
+        Redis se propaga (el worker termina y Compose lo reinicia; D11, crash-only).
+        """
+        vence_reintento: datetime | None = None
         with self._sesiones() as session:
             repositorio = RepositorioRecordatorios(session)
             try:
@@ -146,13 +155,30 @@ class ProcesarRecordatorio:
                     self._consultorio,
                     self._zona,
                 )
-                self._sender.enviar(mensaje)
-                repositorio.marcar_enviado(recordatorio_id)
+                try:
+                    self._sender.enviar(mensaje)
+                except Exception as error:
+                    logger.warning(
+                        "falló el envío del recordatorio %s (%s)",
+                        recordatorio_id,
+                        type(error).__name__,
+                    )
+                    registrado = repositorio.registrar_fallo(recordatorio_id)
+                    if registrado.estado is EstadoRecordatorio.FALLIDO:
+                        resultado = ResultadoProcesamiento.FALLIDO
+                    else:
+                        resultado = ResultadoProcesamiento.REINTENTO
+                        vence_reintento = ahora + espera_reintento(registrado.intentos)
+                else:
+                    repositorio.marcar_enviado(recordatorio_id)
+                    resultado = ResultadoProcesamiento.ENVIADO
                 repositorio.commit()
             except Exception:
                 repositorio.rollback()
                 raise
-        return ResultadoProcesamiento.ENVIADO
+        if vence_reintento is not None:
+            self._cola.encolar(recordatorio_id, vence_reintento)
+        return resultado
 
 
 class ReencolarPendientes:
