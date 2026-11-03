@@ -30,12 +30,31 @@ services:
       JWT_EXPIRE_MINUTES: ${JWT_EXPIRE_MINUTES:-60}
       APP_TIMEZONE: ${APP_TIMEZONE:-America/Argentina/Buenos_Aires}
       NOTIFICATION_ADAPTER: ${NOTIFICATION_ADAPTER:-mock}
+      REMINDER_LEAD_HOURS: ${REMINDER_LEAD_HOURS:-24}
+      CONSULTORIO_NOMBRE: "${CONSULTORIO_NOMBRE:-Consultorio odontológico}"
       CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:5173}
     ports:
       - "8000:8000"
     depends_on:
       db:
         condition: service_healthy
+
+  worker:
+    build: ./backend
+    command: ["python", "-m", "app.worker"]
+    environment:
+      DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-turnos}:${POSTGRES_PASSWORD:-turnos_dev}@db:5432/${POSTGRES_DB:-turnos}
+      REDIS_URL: redis://redis:6379/0
+      APP_TIMEZONE: ${APP_TIMEZONE:-America/Argentina/Buenos_Aires}
+      NOTIFICATION_ADAPTER: ${NOTIFICATION_ADAPTER:-mock}
+      REMINDER_LEAD_HOURS: ${REMINDER_LEAD_HOURS:-24}
+      CONSULTORIO_NOMBRE: "${CONSULTORIO_NOMBRE:-Consultorio odontológico}"
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    restart: unless-stopped
 
 volumes:
   pgdata:

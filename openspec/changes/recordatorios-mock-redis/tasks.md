@@ -64,7 +64,7 @@
 
 ## 10. Servicio `worker` en Docker Compose
 
-- [ ] 10.1 RED→GREEN: `tests/unit/test_docker_compose.py` (PyYAML). Escenario "Servicio worker en Compose": mismo `build` que `api`, comando `python -m app.worker`, las seis variables, `depends_on` con `db` (healthy) y `redis`, `restart: unless-stopped` y sin `JWT_SECRET`. Escenario "La API recibe la anticipación y el consultorio". Editar `docker-compose.yml` y verificar en verde. Verificar también a mano, si Docker está disponible, que `docker compose config` no da errores
+- [x] 10.1 RED→GREEN: `tests/unit/test_docker_compose.py` (PyYAML). Escenario "Servicio worker en Compose": mismo `build` que `api`, comando `python -m app.worker`, las seis variables, `depends_on` con `db` (healthy) y `redis`, `restart: unless-stopped` y sin `JWT_SECRET`. Escenario "La API recibe la anticipación y el consultorio". Editar `docker-compose.yml` y verificar en verde. Verificar también a mano, si Docker está disponible, que `docker compose config` no da errores
 - [ ] 10.2 Actualizar `knowledge-base/08_arquitectura_propuesta.md` (servicio `worker` en la infraestructura y en la estructura de directorios: `app/worker.py`, `infrastructure/queue/`, `infrastructure/notifications/`) y la sección de cómo correr los tests en el README (levantar `redis` y definir `TEST_REDIS_URL`). Verificar que los comandos documentados coinciden con `docker-compose.yml`
 
 ## 11. Decisiones en la KB y verificación integral
