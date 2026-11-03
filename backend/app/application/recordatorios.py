@@ -17,7 +17,11 @@ from sqlalchemy.orm import Session
 
 from app.application.validacion_turno import Reloj
 from app.domain.notificaciones import NotificationSender, armar_mensaje
-from app.domain.recordatorios import ColaRecordatorios, calcular_programacion
+from app.domain.recordatorios import (
+    ColaRecordatorios,
+    EstadoRecordatorio,
+    calcular_programacion,
+)
 from app.domain.time import to_utc
 from app.domain.turnos import TurnoCreado, TurnoRegistrado
 from app.infrastructure.db.repositorio_recordatorios import RepositorioRecordatorios
@@ -98,6 +102,8 @@ LIMITE_POR_CICLO = 100
 
 
 class ResultadoProcesamiento(StrEnum):
+    DESCARTADO = "descartado"
+    CANCELADO = "cancelado"
     ENVIADO = "enviado"
 
 
@@ -123,7 +129,16 @@ class ProcesarRecordatorio:
             repositorio = RepositorioRecordatorios(session)
             try:
                 para_envio = repositorio.bloquear_para_envio(recordatorio_id)
-                assert para_envio is not None
+                if (
+                    para_envio is None
+                    or para_envio.recordatorio.estado is not EstadoRecordatorio.PENDIENTE
+                ):
+                    repositorio.commit()
+                    return ResultadoProcesamiento.DESCARTADO
+                if para_envio.turno_estado != "programado":
+                    repositorio.marcar_cancelado(recordatorio_id)
+                    repositorio.commit()
+                    return ResultadoProcesamiento.CANCELADO
                 mensaje = armar_mensaje(
                     recordatorio_id,
                     para_envio.paciente_id,
