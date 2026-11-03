@@ -20,11 +20,10 @@ def motor_concurrente(engine: Engine) -> Iterator[Engine]:
     motor.dispose()
 
 
-@pytest.fixture
-def catalogo_commiteado(motor_concurrente: Engine) -> Iterator[Catalogo]:
+def _catalogo_commiteado(motor: Engine, *, con_horario: bool) -> Iterator[Catalogo]:
     """Catálogo ficticio único, commiteado en su propia conexión y borrado al final."""
-    with Session(motor_concurrente) as sesion:
-        catalogo = crear_catalogo(sesion)
+    with Session(motor) as sesion:
+        catalogo = crear_catalogo(sesion, con_horario=con_horario)
         sesion.commit()
         ids = {
             Profesional: [p.id for p in catalogo.profesionales],
@@ -35,8 +34,20 @@ def catalogo_commiteado(motor_concurrente: Engine) -> Iterator[Catalogo]:
     try:
         yield catalogo
     finally:
-        with Session(motor_concurrente) as sesion:
+        with Session(motor) as sesion:
             sesion.execute(delete(Turno).where(Turno.profesional_id.in_(ids[Profesional])))
             for modelo in (Prestacion, Paciente, Sillon, Profesional):
                 sesion.execute(delete(modelo).where(modelo.id.in_(ids[modelo])))
             sesion.commit()
+
+
+@pytest.fixture
+def catalogo_commiteado(motor_concurrente: Engine) -> Iterator[Catalogo]:
+    """Catálogo commiteado con horario amplio (las franjas se borran en cascada)."""
+    yield from _catalogo_commiteado(motor_concurrente, con_horario=True)
+
+
+@pytest.fixture
+def catalogo_commiteado_sin_horario(motor_concurrente: Engine) -> Iterator[Catalogo]:
+    """Catálogo commiteado sin franjas, para los tests que cargan las suyas."""
+    yield from _catalogo_commiteado(motor_concurrente, con_horario=False)

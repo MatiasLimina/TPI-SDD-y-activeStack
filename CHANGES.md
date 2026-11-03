@@ -227,7 +227,7 @@ C-01 a C-06 los hizo Matías, y C-07 está implementado y pendiente de merge (PR
   - `knowledge-base/09_decisiones_y_supuestos.md` §DD-16, §DD-24
 
 ### [C-07] `auditoria-turnos`
-- **Estado**: `[ ]` pendiente
+- **Estado**: `[x]` completado
 - **Responsable**: Matías (implementado en `feat/c-07-auditoria-turnos`, PR #3) · revisa Nico
 - **Scope** (US-011):
   - Modelo `TurnoAuditoria` append-only (`turno_id`, `usuario_id`, `accion` `crear|reprogramar|cancelar`, `valores_previos`/`valores_nuevos` jsonb, `ocurrido_en` UTC) + migración (sin UPDATE/DELETE desde la aplicación; opcionalmente trigger que lo impida)
@@ -246,8 +246,8 @@ C-01 a C-06 los hizo Matías, y C-07 está implementado y pendiente de merge (PR
 ## FASE 3 — Configuración, pacientes, horarios y bloqueos
 
 ### [C-08] `gestion-recursos-consultorio`
-- **Estado**: `[ ]` pendiente
-- **Responsable**: Matías · revisa Nico
+- **Estado**: `[x]` completado
+- **Responsable**: Matías (implementado en `feat/c-08-gestion-recursos-consultorio`) · revisa Nico
 - **Scope** (US-001):
   - CRUD de profesionales, sillones y prestaciones: `/profesionales`, `/sillones`, `/prestaciones` (alta, edición, desactivación lógica)
   - Validaciones: `duracion_min > 0`, múltiplo de 5 y ≤ 480 (con CHECK en BD; DD-15), `requiere_sillon`; recurso desactivado no admite turnos nuevos pero conserva historial
@@ -275,7 +275,7 @@ C-01 a C-06 los hizo Matías, y C-07 está implementado y pendiente de merge (PR
   - `knowledge-base/05_reglas_de_negocio.md` §RN-CU-02
 
 ### [C-10] `horarios-atencion`
-- **Estado**: `[ ]` pendiente
+- **Estado**: `[x]` completado
 - **Responsable**: Matías · revisa Nico
 - **Scope** (US-002):
   - Modelo `HorarioAtencion` (`profesional_id`, `dia_semana` 0-6, `hora_inicio`, `hora_fin`, varias franjas por día) + migración
@@ -434,10 +434,12 @@ Diferido por el Discovery (ver `docs/discovery/informe-discovery.md` §D.3 y §D
 - Panel de ausentismo y ocupación de sillones (no-show dashboard)
 - Multisede / multi-sucursal
 - Política de cancelación tardía (decidido DD-14: sin política en el MVP)
+- Reactivación de profesionales, sillones y prestaciones: hoy la desactivación es definitiva por API (DD-26)
 - Reactivación de usuarios: el email de un usuario desactivado queda tomado y no se puede volver a dar de alta (limitación aceptada en DD-24)
 - Rate limiting del login y registro de eventos de seguridad (intentos fallidos) (DD-24)
 - Validación del largo mínimo de `JWT_SECRET` al arrancar (DD-24; hoy PyJWT solo advierte)
 - Ocultar el campo `input` de los `422` de validación (hoy un login incompleto devuelve la contraseña enviada al propio cliente; requiere un manejador global)
 - Largo máximo de contraseña en el login (hoy cada request cuesta un hash argon2 sin rate limiting: DoS; DD-24 / Risks del design de C-06)
 - Política de complejidad o largo mínimo de contraseña más allá de "no vacía" (regla nueva sin respaldo en la KB; DD-24)
+- Rol de base de datos de mínimo privilegio para la aplicación: hoy se conecta como dueña de las tablas y podría deshabilitar los triggers append-only de `turno_auditoria` (DD-25)
 - Consulta de disponibilidad / huecos libres (US-007): no figura en D.4, es una suposición de la KB y se acopla naturalmente con el enlace público de reserva diferido (D.3)

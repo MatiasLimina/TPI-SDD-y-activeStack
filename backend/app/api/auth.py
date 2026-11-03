@@ -85,6 +85,13 @@ def requiere_rol(*roles: Rol) -> Callable[..., UsuarioAutenticado]:
     return dependencia
 
 
+RecepcionistaAutenticada = Annotated[UsuarioAutenticado, Depends(requiere_rol(Rol.RECEPCIONISTA))]
+UsuarioDeAmbosRoles = Annotated[
+    UsuarioAutenticado, Depends(requiere_rol(Rol.RECEPCIONISTA, Rol.ODONTOLOGO))
+]
+# Un alias por módulo, definido una sola vez: FastAPI cachea la dependencia por request.
+
+
 @router.post("/login", response_model=TokenOut)
 def login(datos: LoginIn, caso: Annotated[IniciarSesion, Depends(get_iniciar_sesion)]) -> TokenOut:
     return TokenOut(access_token=caso.ejecutar(datos.email, datos.password))

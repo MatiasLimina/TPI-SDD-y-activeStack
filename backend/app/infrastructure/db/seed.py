@@ -8,14 +8,24 @@ controla quien llama).
 """
 
 import uuid
+from datetime import time
 from typing import Any
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
+from sqlalchemy import SmallInteger, Time, column, exists, select, values
+from sqlalchemy.dialects.postgresql import UUID as PG_UUID
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.orm import Session
 
 from app.config import REPO_ROOT
-from app.infrastructure.db.models import Paciente, Prestacion, Profesional, Sillon, Usuario
+from app.infrastructure.db.models import (
+    HorarioAtencion,
+    Paciente,
+    Prestacion,
+    Profesional,
+    Sillon,
+    Usuario,
+)
 from app.infrastructure.db.session import get_engine
 from app.infrastructure.security.contrasenas import Hasher, get_hasher
 
@@ -104,6 +114,28 @@ PACIENTES: list[Registro] = [
 ]
 
 
+# Horario de ejemplo (C-10, D15): lunes a viernes, mañana y tarde, hora local; `id` fijos
+_FRANJAS_DE_EJEMPLO = ((time(9, 0), time(13, 0)), (time(14, 0), time(18, 0)))
+HORARIOS: list[Registro] = [
+    {
+        "id": uuid.UUID(f"00000000-0000-4000-8000-0000000006{numero:02d}"),
+        "profesional_id": profesional["id"],
+        "dia_semana": dia,
+        "hora_inicio": inicio,
+        "hora_fin": fin,
+    }
+    for numero, (profesional, dia, (inicio, fin)) in enumerate(
+        (
+            (profesional, dia, franja)
+            for profesional in PROFESIONALES
+            for dia in range(5)
+            for franja in _FRANJAS_DE_EJEMPLO
+        ),
+        start=1,
+    )
+]
+
+
 USUARIOS: list[Registro] = [
     {
         "id": uuid.UUID("00000000-0000-4000-8000-000000000501"),
@@ -157,6 +189,29 @@ def seed_catalogo(session: Session) -> None:
         (Paciente, PACIENTES),
     ):
         session.execute(insert(modelo).values(registros).on_conflict_do_nothing())
+    # Solo para profesionales que existen: si la matrícula de uno sembrado ya estaba bajo otro id,
+    # su fila se omitió y sus franjas violarían la FK. Sin target, `DO NOTHING` cubre también la
+    # exclusión de superposición (D18): una franja editada o cargada a mano no se pisa, y la
+    # sembrada que chocaría con ella se omite.
+    campos = ("id", "profesional_id", "dia_semana", "hora_inicio", "hora_fin")
+    sembradas = (
+        values(
+            column("id", PG_UUID),
+            column("profesional_id", PG_UUID),
+            column("dia_semana", SmallInteger),
+            column("hora_inicio", Time),
+            column("hora_fin", Time),
+            name="franja_sembrada",
+        )
+        .data([tuple(h[campo] for campo in campos) for h in HORARIOS])
+        .alias("franja_sembrada")
+    )
+    existentes = select(*(sembradas.c[campo] for campo in campos)).where(
+        exists().where(Profesional.id == sembradas.c.profesional_id)
+    )
+    session.execute(
+        insert(HorarioAtencion).from_select(campos, existentes).on_conflict_do_nothing()
+    )
 
 
 def seed_usuarios(session: Session, contrasenas: SeedSettings, hasher: Hasher) -> None:

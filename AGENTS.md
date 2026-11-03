@@ -41,7 +41,7 @@ La fuente de verdad del dominio vive en `knowledge-base/`. **Leé el archivo rel
 | [09_decisiones_y_supuestos.md](knowledge-base/09_decisiones_y_supuestos.md) | Decisiones DD-xx y supuestos SU-xx |
 | [10_preguntas_abiertas.md](knowledge-base/10_preguntas_abiertas.md) | ⚠️ Preguntas abiertas e inconsistencias |
 
-> ⚠️ Antes de cada change, revisá `10_preguntas_abiertas.md`. Al 2026-10-07 no quedan preguntas abiertas: todas se resolvieron en DD-13..DD-21 (`09_decisiones_y_supuestos.md`).
+> ⚠️ Antes de cada change, revisá `10_preguntas_abiertas.md`. Al 2026-11-02 no quedan preguntas abiertas: todas se resolvieron en DD-13..DD-27 (`09_decisiones_y_supuestos.md`).
 
 ---
 

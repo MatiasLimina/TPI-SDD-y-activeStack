@@ -7,6 +7,12 @@
       "skillPath": "plugins/developer-essentials/skills/auth-implementation-patterns/SKILL.md",
       "computedHash": "43b53312c6bbc9ca6d4a7f1ae97804cb2520a9aec7d7903004eed3b622d7e0d9"
     },
+    "code-review": {
+      "source": "mattpocock/skills",
+      "sourceType": "github",
+      "skillPath": "skills/engineering/code-review/SKILL.md",
+      "computedHash": "c2e0695f4d6bb9e1cc0b4c68d9965d062271cff387000fa59c1c2d31a18c25b8"
+    },
     "fastapi-python": {
       "source": "mindrally/skills",
       "sourceType": "github",

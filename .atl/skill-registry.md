@@ -15,12 +15,21 @@ See `_shared/skill-resolver.md` for the full resolution protocol.
 | Auth systems, JWT, RBAC, session mgmt, securing APIs | auth-implementation-patterns | .agents/skills/auth-implementation-patterns/SKILL.md |
 | Review/validate a change's spec scenarios against the KB, after propose/update and before apply | revisar-escenarios | .agents/skills/revisar-escenarios/SKILL.md |
 | Check Alembic migration numbering across remote branches, before opening/merging a PR with a migration | revisar-migraciones | .agents/skills/revisar-migraciones/SKILL.md |
+| Review a PR / branch diff against repo standards and the change's spec (main use: PR review before approving) | code-review | .agents/skills/code-review/SKILL.md |
 
 All skills are installed **at project level** in `.agents/skills/` (versioned; third-party ones pinned in `skills-lock.json`; `npx skills add <repo> --skill <name>` without `-g`). Paths above are relative to the project root.
 
 `revisar-escenarios` is the project's **own** skill (authored 2026-10-16 with `skill-creator`, not installed from a repo, so it has no entry in `skills-lock.json`). Purpose: report-only review of a change's GIVEN/WHEN/THEN scenarios against RN/DD/SU rules and the change scope in `CHANGES.md`; output goes to `openspec/changes/<change>/revision-escenarios.md`. Usage evidence: `docs/skills-mcp/evidencias/skill-evals/`.
 
 `revisar-migraciones` is the project's second **own** skill (authored 2026-11-03, no `skills-lock.json` entry). Purpose: report-only check that hand-numbered Alembic revisions on every `origin` branch follow `origin/main`'s head; the work is done by `scripts/revisar_migraciones.py` (stdlib only, reads branches via git without checkout).
+
+`code-review` (mattpocock/skills, pinned in `skills-lock.json`, installed 2026-11-03) is the skill for **reviewing pull requests** before the other team member approves them (every change enters `main` through a PR; see `docs/equipo/reparto-de-tareas.md`). It reviews `git diff <fixed-point>...HEAD` along two separate axes, run as two parallel read-only sub-agents: **Standards** (repo rules + a Fowler code-smell baseline) and **Spec** (does the diff implement what the change's spec asked for). How to use it on a PR:
+1. Check out the PR branch (`gh pr checkout <n>`) and `git fetch origin`.
+2. Invoke the skill with fixed point `origin/main` and the change folder as spec path: `openspec/changes/<change>/` or, since the archive runs on the change branch before merge, `openspec/changes/archive/<fecha>-<change>/` (proposal, design, delta specs, tasks), plus the change block in `CHANGES.md`.
+3. The skill asks for an issue tracker and suggests `/setup-matt-pocock-skills`: this project does not use one (specs live in OpenSpec), so ignore it and pass the spec path explicitly.
+4. Findings are a report: posting them as PR comments or requesting changes needs explicit user approval.
+
+Name clash: Claude Code also ships a built-in `/code-review` command (bug-hunting review of the current diff). When asking for this skill, name it explicitly ("la skill code-review del proyecto", via the Skill tool) to get the two-axis Standards/Spec review.
 
 `skill-creator` (anthropics/skills, pinned in `skills-lock.json`) is also installed in `.agents/skills/`; it is an authoring tool, not a coding skill, so it is excluded from the table.
 
@@ -92,6 +101,14 @@ Pre-digested rules per skill. Delegators copy matching blocks into sub-agent pro
 - Integrity: duplicate revision in a branch, multiple heads, unparseable/non-numeric/merge migrations are all problems.
 - Same revision added by two open branches = informational clash (does not change exit code): warn both owners (see `Responsable` in `CHANGES.md`).
 - After renumbering: `alembic heads` must show a single head; rerun the skill.
+
+### code-review
+- Fixed point for a PR is `origin/main`; diff with three dots (`git diff origin/main...HEAD`) so it compares against the merge-base. Verify the ref resolves and the diff is non-empty before spawning sub-agents.
+- Two axes, two fresh parallel sub-agents, never merged or reranked: report under `## Standards` and `## Spec`, ending with findings count and worst issue per axis.
+- Standards sources in this repo: `CLAUDE.md`/`AGENTS.md` (hard rules: tz-aware datetimes in UTC, exclusion constraints + concurrency test, no SQLite/mocked DB in persistence tests, type hints, Conventional Commits, no real patient data, no secrets), `openspec/config.yaml`, `knowledge-base/08_arquitectura_propuesta.md`. Skip what `ruff format`/`ruff check` already enforce.
+- Fowler smell baseline (Mysterious Name, Duplicated Code, Feature Envy, Data Clumps, Primitive Obsession, Repeated Switches, Shotgun Surgery, Divergent Change, Speculative Generality, Message Chains, Middle Man, Refused Bequest) is always a judgement call; a documented repo rule overrides it.
+- Spec source is the change's OpenSpec folder (active or `archive/<fecha>-<change>/`) plus its `CHANGES.md` block; no issue tracker. Spec axis reports missing/partial requirements, scope creep (hard rule: Apply implements only the approved spec) and wrong implementations, quoting the spec line.
+- Report only: never edit code or post to the PR without explicit user approval.
 
 ## Project Conventions
 

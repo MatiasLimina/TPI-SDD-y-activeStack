@@ -53,14 +53,14 @@ No hay integraciones externas obligatorias en el MVP.
 | Recurso | Endpoints principales |
 |---------|-----------------------|
 | Auth | `POST /auth/login`, `POST /auth/refresh` (**Suposición**) |
-| Profesionales | CRUD (recepcionista); `GET` (ambos roles) |
-| Sillones | CRUD (recepcionista) |
-| Prestaciones | CRUD con duración por defecto (recepcionista) |
-| Horarios de atención | CRUD por profesional |
+| Profesionales | `GET /profesionales[/{id}]` (ambos roles); `POST /profesionales`, `PATCH /profesionales/{id}`, `POST /profesionales/{id}/desactivar` (recepcionista; DD-26) |
+| Sillones | `GET /sillones[/{id}]` (ambos roles); `POST /sillones`, `PATCH /sillones/{id}`, `POST /sillones/{id}/desactivar` (recepcionista; DD-26) |
+| Prestaciones | `GET /prestaciones[/{id}]` (ambos roles); `POST /prestaciones` con duración por defecto, `PATCH /prestaciones/{id}`, `POST /prestaciones/{id}/desactivar` (recepcionista; DD-26) |
+| Horarios de atención | `GET /profesionales/{id}/horarios` (recepcionista; el odontólogo, solo el propio); `POST /profesionales/{id}/horarios`, `PATCH` y `DELETE /profesionales/{id}/horarios/{horario_id}` (recepcionista; DD-27) |
 | Bloqueos | `POST/DELETE` (recepcionista cualquiera; odontólogo propios) |
 | Pacientes | CRUD básico (datos ficticios) |
 | Turnos | `GET /turnos?desde&hasta&profesional&sillon`, `POST /turnos`, `PATCH /turnos/{id}/reprogramar`, `POST /turnos/{id}/cancelar` |
 | Disponibilidad | `GET /disponibilidad?profesional&prestacion&fecha` |
-| Auditoría | `GET /auditoria/turnos` (solo lectura, recepcionista) |
+| Auditoría | `GET /turnos/{id}/auditoria` (solo lectura, recepcionista; DD-25) |
 
 Conflicto de solapamiento -> `409 Conflict`; fuera de horario o dentro de bloqueo -> `422`.
