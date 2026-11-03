@@ -13,7 +13,7 @@ from uuid import UUID
 from app.application.validacion_turno import Reloj
 from app.domain.recordatorios import ColaRecordatorios, calcular_programacion
 from app.domain.time import to_utc
-from app.domain.turnos import TurnoCreado
+from app.domain.turnos import TurnoCreado, TurnoRegistrado
 from app.infrastructure.db.repositorio_recordatorios import RepositorioRecordatorios
 
 logger = logging.getLogger(__name__)
@@ -42,6 +42,10 @@ class ProgramadorRecordatorios:
 
     def al_crear(self, creado: TurnoCreado) -> None:
         self._programar(creado.id, creado.inicio)
+
+    def al_cancelar(self, anterior: TurnoRegistrado, nuevo: TurnoRegistrado) -> None:
+        """Cancela el recordatorio pendiente; no hay nada que publicar (el worker lo descarta)."""
+        self._repositorio.cancelar_pendiente(nuevo.id)
 
     def publicar(self, cola: ColaRecordatorios) -> None:
         """Encola los recordatorios creados; llamar solo después del commit.

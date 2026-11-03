@@ -12,6 +12,7 @@ from app.application.crear_turno import CrearTurno, SolicitudTurno
 from app.application.recordatorios import ProgramadorRecordatorios
 from app.application.reprogramar_turno import ReprogramarTurno
 from app.domain.recordatorios import EstadoRecordatorio
+from app.domain.turnos import TurnoCreado
 from app.infrastructure.db.repositorio_recordatorios import RepositorioRecordatorios
 from app.infrastructure.db.repositorio_turnos import RepositorioTurnos
 from tests.integration.factories import Catalogo
@@ -98,3 +99,16 @@ def caso_reprogramar(
     return ReprogramarTurno(
         RepositorioTurnos(session), lambda: ahora, observadores=[prog.al_reprogramar]
     )
+
+
+def crear_sin_programar(
+    session: Session,
+    catalogo: Catalogo,
+    inicio: datetime = INICIO_TURNO,
+    *,
+    ahora: datetime = AHORA,
+    paciente: int = 0,
+) -> TurnoCreado:
+    """Turno creado sin observadores: no tiene recordatorio hasta que el test lo inserte."""
+    caso = CrearTurno(RepositorioTurnos(session), lambda: ahora)
+    return caso.ejecutar(solicitud(catalogo, inicio, paciente=paciente))
