@@ -37,8 +37,9 @@ Para el TP de skills y MCP se agregaron, **sin re-ejecutar** las etapas de la fu
 |---|---|---|---|
 | `skill-creator` (anthropics/skills) | Skill instalada | `.agents/skills/skill-creator/`, fijada en `skills-lock.json` | Herramienta para crear y evaluar la skill propia |
 | `revisar-escenarios` | Skill **propia** | `.agents/skills/revisar-escenarios/` | Revisar los escenarios de un change contra la KB antes de Apply; primer uso: C-06 |
+| `revisar-migraciones` | Skill **propia** | `.agents/skills/revisar-migraciones/` | Detectar antes del merge migraciones de Alembic mal numeradas entre ramas (revisiones escritas a mano: dos ramas con el mismo número dejan dos cabezas). Agregada el 2026-11-03, con el trabajo repartido entre dos personas |
 | Context7 (Upstash) | Servidor MCP (integración, no skill) | `.mcp.json` | Documentación actualizada de PyJWT, pwdlib y FastAPI para el design de C-06 |
 
 El registry (`.atl/skill-registry.md`) se actualizó a mano (fila y compact rules de
-`revisar-escenarios`), sin regenerarlo con `/active-orchestrator:registry`, para no reescribir las reglas
+`revisar-escenarios` y de `revisar-migraciones`), sin regenerarlo con `/active-orchestrator:registry`, para no reescribir las reglas
 compactas existentes. Investigación y comparación: [docs/skills-mcp/investigacion.md](../skills-mcp/investigacion.md).

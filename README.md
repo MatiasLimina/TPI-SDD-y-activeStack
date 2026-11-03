@@ -39,6 +39,7 @@ trabaja con las mismas skills sin instalar nada global.
 | `openspec-*` | `openspec init` | Flujo OPSX: explore, propose, apply, archive, sync, update |
 | `skill-creator` | anthropics/skills | Crear y evaluar skills (con ella se hizo `revisar-escenarios`) |
 | `revisar-escenarios` | **propia** (este repo) | Revisa los escenarios de un change contra la KB antes de Apply |
+| `revisar-migraciones` | **propia** (este repo) | Revisa en las ramas remotas que las migraciones de Alembic estén bien numeradas antes de mergear |
 
 Por qué se eligieron estas y no otras: [docs/fundacion/skills-seleccionadas.md](docs/fundacion/skills-seleccionadas.md).
 
@@ -51,7 +52,7 @@ npx skills add <repo> --skill <nombre>
 El comando la deja en `.agents/skills/`, la registra en `skills-lock.json` y crea un enlace en
 `.claude/skills/` para Claude Code (ese enlace es local y no se versiona). Después de agregar o
 quitar skills hay que reconstruir `.atl/skill-registry.md` con `/active-orchestrator:registry`
-(excepción: la fila de `revisar-escenarios` se agregó a mano; ver `docs/fundacion/skills-seleccionadas.md`).
+(excepción: las filas de las skills propias, `revisar-escenarios` y `revisar-migraciones`, se agregaron a mano; ver `docs/fundacion/skills-seleccionadas.md`).
 
 Al clonar el repo, Claude Code no ve las skills hasta recrear esos enlaces: correr el comando de
 arriba para cada skill listada en `skills-lock.json` (fuente y nombre). OpenCode y los demás
@@ -82,6 +83,29 @@ Se usa una *junction* porque en Windows `ln -s` falla sin modo desarrollador
 "qué skills tenés disponibles": `revisar-escenarios` debe figurar en la lista. Uso, entradas y criterios de
 revisión: sección "Skill propia" de [AGENTS.md](AGENTS.md). Evidencia de las pruebas:
 [docs/skills-mcp/evidencias/skill-evals/](docs/skills-mcp/evidencias/skill-evals/iteration-1/resumen.md).
+
+### Skill propia `revisar-migraciones`
+
+Igual que la anterior: no está en `skills-lock.json` y su fuente versionada es
+`.agents/skills/revisar-migraciones/`. Para que Claude Code la vea después de clonar (Git Bash en Windows):
+
+```bash
+cmd //c "mklink /J .claude\\skills\\revisar-migraciones .agents\\skills\\revisar-migraciones"
+```
+
+En Linux/macOS: `ln -s ../../.agents/skills/revisar-migraciones .claude/skills/revisar-migraciones`.
+
+El chequeo también se puede correr sin agente, desde la raíz del repo (necesita Python ≥ 3.13 y solo usa la
+biblioteca estándar):
+
+```bash
+python .agents/skills/revisar-migraciones/scripts/revisar_migraciones.py
+```
+
+Hace `git fetch --prune`, compara cada rama de `origin` contra `origin/main` sin hacer checkout e informa
+qué migraciones hay que renumerar. Solo ve ramas pusheadas. Sale con código 1 si encuentra algo para
+corregir y con 2 si hay un error de uso o de git. Uso y lectura del informe: sección
+"Skill propia: `revisar-migraciones`" de [AGENTS.md](AGENTS.md).
 
 ## MCP del proyecto
 

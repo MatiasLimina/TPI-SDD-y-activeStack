@@ -54,6 +54,7 @@ La fuente de verdad del dominio vive en `knowledge-base/`. **Leé el archivo rel
 | **Frontend** | React + TypeScript + Vite (C-14..C-16) | Ninguna instalada todavía; reevaluar con `find-skill` al llegar a esos changes |
 | **Orquestación** | Fundación y ciclo OPSX | `active-orchestrator`, `kb-creator`, `roadmap-generator`, `skill-registry`, `agent-instruction`, skills `openspec-*` |
 | **Revisión de specs** | Control de escenarios entre Propose y Apply | `revisar-escenarios` (skill propia), `skill-creator` (para mantenerla) |
+| **Integración de ramas** | Numeración de migraciones de Alembic antes de mergear | `revisar-migraciones` (skill propia) |
 
 Las skills de dominio y las `openspec-*` están instaladas **a nivel proyecto** en `.agents/skills/` (versionadas, con origen fijado en `skills-lock.json`); no dependen de instalaciones globales. Para agregar una: `npx skills add <repo> --skill <nombre>` **sin** `-g`, y después `/active-orchestrator:registry`. Las de orquestación (`active-orchestrator`, `kb-creator`, etc.) son del stack y siguen siendo globales.
 
@@ -69,6 +70,15 @@ Skill del proyecto, creada con `skill-creator` (anthropics/skills). Vive en `.ag
 - **Qué necesita**: el nombre del change, con sus delta specs ya escritos en `openspec/changes/<change>/specs/`. Lee por su cuenta `CHANGES.md` y la KB.
 - **Qué produce**: `openspec/changes/<change>/revision-escenarios.md`, con un veredicto, una tabla de cobertura y hallazgos con severidad y fuente. **Solo reporta**: las correcciones se hacen con `/opsx:update`.
 - **Cómo revisar su resultado**: cada hallazgo BLOQUEANTE o MAYOR cita una regla RN/DD que existe y dice eso. Ningún escenario sugerido introduce una regla que no esté en la KB (si la introduce, debe figurar como pregunta abierta). Nada de lo que marca como faltante pertenece a otro change.
+
+### Skill propia: `revisar-migraciones`
+
+Skill del proyecto (2026-11-03). Vive en `.agents/skills/revisar-migraciones/`, y Claude Code la ve por la unión `.claude/skills/revisar-migraciones` (ver README). Existe porque las revisiones de Alembic son números escritos a mano: dos ramas con el mismo número no chocan en git, pero dejan dos cabezas al mergear.
+
+- **Cuándo usarla**: antes de abrir o mergear un PR que trae una migración, al crear una migración nueva (después de pushear la rama: solo lee `origin`), y después de que se mergee otro change con migración.
+- **Qué necesita**: nada; por defecto revisa todas las ramas de `origin` contra `origin/main`. Opcional: `--rama <nombre>` para un PR puntual.
+- **Qué produce**: un informe en el chat (lo genera `scripts/revisar_migraciones.py`, que lee las ramas con git sin hacer checkout) con el estado de cada migración nueva (OK, RENUMERAR, CADENA ROTA o MODIFICA MAIN), los problemas de integridad (revisiones repetidas, varias cabezas), los choques entre ramas (informativos) y la próxima revisión libre de `main`. Código de salida 0 si está bien, 1 si hay algo para corregir, 2 si hubo un error de uso o de git. **Solo reporta**: la renumeración la hace el responsable del change en su rama.
+- **Cómo revisar su resultado**: la cabeza de `main` que informa coincide con el último archivo de `backend/alembic/versions/` en `main`. Después de renumerar, `alembic heads` muestra una sola cabeza.
 
 ---
 
@@ -109,7 +119,7 @@ Desde C-08 los changes pendientes se reparten entre dos personas (versión 2 del
 
 - **Cada change va en su rama y entra por PR** con la aprobación del otro integrante. Nada se commitea directo en `main`.
 - **Cada responsable hace el ciclo OPSX completo de su change**: propose, `revisar-escenarios`, apply y archive. El archive va en la rama del change, antes del merge.
-- **Migraciones**: C-07 usa `005` y se mergea antes de crear la de C-08. En adelante, el que mergea segundo renumera su revisión de Alembic para que `alembic heads` muestre una sola cabeza.
+- **Migraciones**: C-07 usa `005` y se mergea antes de crear la de C-08. En adelante, el que mergea segundo renumera su revisión de Alembic para que `alembic heads` muestre una sola cabeza. Antes de mergear un PR con migración, correr `revisar-migraciones`.
 
 ---
 
