@@ -104,17 +104,25 @@ class RepositorioRecordatorios:
             intentos=Recordatorio.intentos + 1,
         )
 
-    def registrar_fallo(self, recordatorio_id: UUID) -> RecordatorioRegistrado:
-        """Suma un intento; al llegar a `MAX_INTENTOS` pasa a `fallido`. Devuelve el resultado."""
-        fila = self._actualizar(
-            recordatorio_id,
-            estado=case(
-                (Recordatorio.intentos + 1 >= MAX_INTENTOS, EstadoRecordatorio.FALLIDO.value),
-                else_=Recordatorio.estado,
-            ),
-            intentos=Recordatorio.intentos + 1,
-        )
-        return _a_registrado(fila)
+    def registrar_fallo(
+        self, recordatorio_id: UUID, proximo_intento: datetime | None
+    ) -> RecordatorioRegistrado:
+        """Suma un intento; al llegar a `MAX_INTENTOS` pasa a `fallido`. Devuelve el resultado.
+
+        Si el recordatorio sigue `pendiente` y `proximo_intento` no es `None`, lo persiste en UTC
+        como `programado_para` (el próximo intento programado, DD-29). Al pasar a `fallido`,
+        `programado_para` no cambia.
+        """
+        agota = Recordatorio.intentos + 1 >= MAX_INTENTOS
+        valores: dict[str, object] = {
+            "estado": case((agota, EstadoRecordatorio.FALLIDO.value), else_=Recordatorio.estado),
+            "intentos": Recordatorio.intentos + 1,
+        }
+        if proximo_intento is not None:
+            valores["programado_para"] = case(
+                (agota, Recordatorio.programado_para), else_=to_utc(proximo_intento)
+            )
+        return _a_registrado(self._actualizar(recordatorio_id, **valores))
 
     def marcar_cancelado(self, recordatorio_id: UUID) -> None:
         """Pasa a `cancelado` sin sumar intentos."""

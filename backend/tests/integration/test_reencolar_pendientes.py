@@ -1,6 +1,6 @@
 """Re-encolado de los pendientes al iniciar el worker (D11), con PostgreSQL real."""
 
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from uuid import UUID
 
 import pytest
@@ -9,7 +9,7 @@ from sqlalchemy.orm import Session
 
 from app.api.turnos import get_cola_recordatorios, get_reloj
 from app.domain.recordatorios import EstadoRecordatorio
-from tests.fakes import ColaEnMemoria, ColaQueFalla, EmisorQueRegistra, RelojManual
+from tests.fakes import ColaEnMemoria, ColaQueFalla, EmisorQueFalla, EmisorQueRegistra, RelojManual
 from tests.integration.factories import Catalogo, crear_catalogo
 from tests.integration.helpers_recordatorios import (
     BUENOS_AIRES,
@@ -131,3 +131,30 @@ def test_alta_con_la_cola_caida_se_envia_despues_de_reiniciar_el_worker(
     (fila,) = recordatorios_de(db_session, turno_id)
     assert (fila["estado"], fila["intentos"]) == ("enviado", 1)
     assert len(sender.enviados) == 1
+
+
+def test_el_reinicio_conserva_la_espera_del_reintento(
+    db_session: Session, catalogo: Catalogo
+) -> None:
+    reloj = RelojManual(PROGRAMADO_PARA)
+    turno = crear_sin_programar(db_session, catalogo)
+    recordatorio_id = insertar_recordatorio(db_session, turno.id)
+    emisor = EmisorQueFalla(fallas=1)
+    cola = ColaEnMemoria()
+    cola.encolar(recordatorio_id, PROGRAMADO_PARA)
+    ciclo_a(armar_worker(db_session, cola, emisor, reloj), reloj, PROGRAMADO_PARA)
+    (fila,) = recordatorios_de(db_session, turno.id)
+    assert (fila["estado"], fila["intentos"]) == ("pendiente", 1)
+
+    # Reinicio: Redis perdió su contenido y el worker nuevo re-encola desde la base
+    cola_nueva = ColaEnMemoria()
+    worker = armar_worker(db_session, cola_nueva, emisor, reloj)
+    worker.iniciar()
+    antes_de_la_espera = ciclo_a(worker, reloj, PROGRAMADO_PARA + timedelta(seconds=30))
+    invocaciones_antes = emisor.invocaciones
+    al_vencer_la_espera = ciclo_a(worker, reloj, PROGRAMADO_PARA + timedelta(minutes=1))
+
+    assert (antes_de_la_espera, invocaciones_antes) == (0, 1)
+    assert (al_vencer_la_espera, emisor.invocaciones) == (1, 2)
+    (fila,) = recordatorios_de(db_session, turno.id)
+    assert (fila["estado"], fila["intentos"]) == ("enviado", 2)

@@ -211,9 +211,9 @@ def test_registrar_fallo_adds_attempts_and_becomes_fallido_on_the_third(
 ) -> None:
     recordatorio_id = repositorio.crear_pendiente(turno.id, PROGRAMADO, "mock")
 
-    primero = repositorio.registrar_fallo(recordatorio_id)
-    segundo = repositorio.registrar_fallo(recordatorio_id)
-    tercero = repositorio.registrar_fallo(recordatorio_id)
+    primero = repositorio.registrar_fallo(recordatorio_id, None)
+    segundo = repositorio.registrar_fallo(recordatorio_id, None)
+    tercero = repositorio.registrar_fallo(recordatorio_id, None)
 
     assert [(r.estado, r.intentos) for r in (primero, segundo, tercero)] == [
         (EstadoRecordatorio.PENDIENTE, 1),
@@ -224,11 +224,57 @@ def test_registrar_fallo_adds_attempts_and_becomes_fallido_on_the_third(
     assert (persistido.estado, persistido.intentos) == ("fallido", 3)
 
 
+def test_registrar_fallo_stores_the_next_attempt_in_programado_para_in_utc(
+    db_session: Session, repositorio: RepositorioRecordatorios, turno: Turno
+) -> None:
+    recordatorio_id = repositorio.crear_pendiente(turno.id, PROGRAMADO, "mock")
+    proximo_local = datetime(2026, 10, 7, 10, 1, tzinfo=timezone(timedelta(hours=-3)))
+
+    registrado = repositorio.registrar_fallo(recordatorio_id, proximo_local)
+    siguiente = repositorio.registrar_fallo(recordatorio_id, proximo_local + timedelta(minutes=2))
+
+    assert (registrado.estado, registrado.intentos) == (EstadoRecordatorio.PENDIENTE, 1)
+    assert registrado.programado_para == datetime(2026, 10, 7, 13, 1, tzinfo=UTC)
+    assert registrado.programado_para.utcoffset() == timedelta(0)
+    assert siguiente.programado_para == datetime(2026, 10, 7, 13, 3, tzinfo=UTC)
+    persistido = _leer(db_session, recordatorio_id)
+    assert persistido.programado_para == datetime(2026, 10, 7, 13, 3, tzinfo=UTC)
+
+
+def test_registrar_fallo_on_the_third_attempt_leaves_programado_para_unchanged(
+    db_session: Session, repositorio: RepositorioRecordatorios, turno: Turno
+) -> None:
+    recordatorio_id = repositorio.crear_pendiente(turno.id, PROGRAMADO, "mock")
+    repositorio.registrar_fallo(recordatorio_id, PROGRAMADO + timedelta(minutes=1))
+    ultimo_programado = repositorio.registrar_fallo(
+        recordatorio_id, PROGRAMADO + timedelta(minutes=3)
+    ).programado_para
+
+    tercero = repositorio.registrar_fallo(recordatorio_id, PROGRAMADO + timedelta(minutes=9))
+
+    assert tercero.estado is EstadoRecordatorio.FALLIDO
+    assert ultimo_programado == PROGRAMADO + timedelta(minutes=3)
+    assert tercero.programado_para == ultimo_programado
+    assert _leer(db_session, recordatorio_id).programado_para == ultimo_programado
+
+
+def test_registrar_fallo_without_next_attempt_does_not_touch_programado_para(
+    db_session: Session, repositorio: RepositorioRecordatorios, turno: Turno
+) -> None:
+    recordatorio_id = repositorio.crear_pendiente(turno.id, PROGRAMADO, "mock")
+
+    registrado = repositorio.registrar_fallo(recordatorio_id, None)
+
+    assert registrado.intentos == 1
+    assert registrado.programado_para == PROGRAMADO
+    assert _leer(db_session, recordatorio_id).programado_para == PROGRAMADO
+
+
 def test_marcar_cancelado_sets_cancelado_without_adding_attempts(
     db_session: Session, repositorio: RepositorioRecordatorios, turno: Turno
 ) -> None:
     recordatorio_id = repositorio.crear_pendiente(turno.id, PROGRAMADO, "mock")
-    repositorio.registrar_fallo(recordatorio_id)
+    repositorio.registrar_fallo(recordatorio_id, None)
 
     repositorio.marcar_cancelado(recordatorio_id)
 

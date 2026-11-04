@@ -18,6 +18,7 @@ from sqlalchemy.orm import Session
 from app.application.validacion_turno import Reloj
 from app.domain.notificaciones import NotificationSender, armar_mensaje
 from app.domain.recordatorios import (
+    MAX_INTENTOS,
     ColaRecordatorios,
     EstadoRecordatorio,
     calcular_programacion,
@@ -165,12 +166,19 @@ class ProcesarRecordatorio:
                         recordatorio_id,
                         type(error).__name__,
                     )
-                    registrado = repositorio.registrar_fallo(recordatorio_id)
+                    # La espera corre desde el momento de la falla, no desde el inicio del ciclo
+                    intentos_nuevos = para_envio.recordatorio.intentos + 1
+                    proximo_intento = (
+                        self._reloj() + espera_reintento(intentos_nuevos)
+                        if intentos_nuevos < MAX_INTENTOS
+                        else None
+                    )
+                    registrado = repositorio.registrar_fallo(recordatorio_id, proximo_intento)
                     if registrado.estado is EstadoRecordatorio.FALLIDO:
                         resultado = ResultadoProcesamiento.FALLIDO
                     else:
                         resultado = ResultadoProcesamiento.REINTENTO
-                        vence_reintento = self._reloj() + espera_reintento(registrado.intentos)
+                        vence_reintento = proximo_intento
                 else:
                     repositorio.marcar_enviado(recordatorio_id)
                     resultado = ResultadoProcesamiento.ENVIADO
