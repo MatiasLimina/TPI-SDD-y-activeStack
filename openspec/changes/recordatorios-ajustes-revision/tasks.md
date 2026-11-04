@@ -67,7 +67,7 @@
 
 ## 11. Verificación integral
 
-- [ ] 11.1 `ruff format --check` y `ruff check` sin errores; `pytest` completo en verde (baseline de 1.1 más los tests nuevos) con PostgreSQL y Redis de test levantados; `alembic heads` con una sola cabeza `009`; `alembic upgrade head`, `downgrade 008` y `upgrade head` sin errores sobre una base scratch; `openspec validate recordatorios-ajustes-revision --strict` sin errores
+- [x] 11.1 `ruff format --check` y `ruff check` sin errores; `pytest` completo en verde (baseline de 1.1 más los tests nuevos) con PostgreSQL y Redis de test levantados; `alembic heads` con una sola cabeza `009`; `alembic upgrade head`, `downgrade 008` y `upgrade head` sin errores sobre una base scratch; `openspec validate recordatorios-ajustes-revision --strict` sin errores
 - [ ] 11.2 Checkpoint FINAL_DIFF (lo hace el orquestador): consultar al agente `advisor` sobre `git diff` del change antes de dar el Apply por terminado. Un veredicto BLOCK frena hasta que el usuario confirme; CONCERNS se resuelven o se informan
 
 ## Workflow follow-up
