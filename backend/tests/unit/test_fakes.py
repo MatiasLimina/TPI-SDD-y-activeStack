@@ -1,11 +1,11 @@
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from uuid import UUID
 
 import pytest
 import redis
 
 from app.domain.notificaciones import MensajeRecordatorio
-from tests.fakes import ColaQueFalla, EmisorQueFalla
+from tests.fakes import ColaQueFalla, EmisorQueFalla, EmisorQueRegistra, RelojManual
 
 MENSAJE = MensajeRecordatorio(UUID(int=1), UUID(int=2), "texto ficticio")
 AHORA = datetime(2026, 10, 8, 13, 0, tzinfo=UTC)
@@ -32,3 +32,38 @@ def test_emisor_que_falla_fails_the_first_n_times_and_then_succeeds(fallas: int)
 
     assert emisor.invocaciones == fallas + 1
     assert emisor.enviados == [MENSAJE]
+
+
+def test_reloj_manual_returns_the_adjusted_instant() -> None:
+    reloj = RelojManual(AHORA)
+    assert reloj() == AHORA
+
+    otro = AHORA + timedelta(days=1, minutes=7)
+    reloj.ajustar(otro)
+
+    assert reloj() == otro
+    assert reloj.ahora == otro
+
+
+def test_reloj_manual_avanzar_moves_forward_from_the_current_instant() -> None:
+    reloj = RelojManual(AHORA)
+
+    reloj.avanzar(timedelta(seconds=40))
+    reloj.avanzar(timedelta(minutes=1))
+
+    assert reloj() == AHORA + timedelta(seconds=100)
+
+
+def test_emisor_que_registra_keeps_the_messages_in_order_and_counts_invocations() -> None:
+    emisor = EmisorQueRegistra()
+    otro = MensajeRecordatorio(UUID(int=3), UUID(int=4), "otro texto ficticio")
+
+    emisor.enviar(MENSAJE)
+    emisor.enviar(otro)
+
+    assert emisor.enviados == [MENSAJE, otro]
+    assert emisor.invocaciones == 2
+
+
+def test_emisor_que_falla_is_an_emisor_que_registra() -> None:
+    assert isinstance(EmisorQueFalla(fallas=0), EmisorQueRegistra)

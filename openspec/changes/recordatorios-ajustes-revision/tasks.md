@@ -8,11 +8,11 @@
 
 ## 1. Preparación
 
-- [ ] 1.1 Safety net: con PostgreSQL y Redis de test levantados, correr `pytest` completo y registrar el baseline (cantidad de tests en verde). Si algo falla, frenar y reportarlo como falla preexistente. Verificar con `alembic heads` que la única cabeza es `008`
+- [x] 1.1 Safety net: con PostgreSQL y Redis de test levantados, correr `pytest` completo y registrar el baseline (cantidad de tests en verde). Si algo falla, frenar y reportarlo como falla preexistente. Verificar con `alembic heads` que la única cabeza es `008`
 
 ## 2. Reloj único en el worker (D5, refactor sin cambio de comportamiento)
 
-- [ ] 2.1 RED→GREEN: en `tests/fakes.py`, agregar `RelojManual` (invocable; `ajustar(instante)` y `avanzar(delta)`) y `EmisorQueRegistra` (`enviados`, `invocaciones`), y hacer que `EmisorQueFalla` lo extienda. Cubrirlos en `tests/unit/test_fakes.py`: el reloj devuelve lo ajustado y avanza; el emisor registra en orden. Verificar en verde
+- [x] 2.1 RED→GREEN: en `tests/fakes.py`, agregar `RelojManual` (invocable; `ajustar(instante)` y `avanzar(delta)`) y `EmisorQueRegistra` (`enviados`, `invocaciones`), y hacer que `EmisorQueFalla` lo extienda. Cubrirlos en `tests/unit/test_fakes.py`: el reloj devuelve lo ajustado y avanza; el emisor registra en orden. Verificar en verde
 - [ ] 2.2 Refactor: `ProcesarRecordatorio` recibe `reloj` y `procesar(recordatorio_id)` deja de recibir `ahora`. Por ahora el reloj se usa donde hoy se usa `ahora`. `WorkerRecordatorios` recibe `reloj` y `ciclo()` deja de recibir `ahora`. `app/worker.py`: `construir_worker(config, reloj=...)` y `correr(worker, *, detenido, pausa_s, max_ciclos)` llama `worker.ciclo()`. Ajustar `_Ciclable`, `tests/unit/test_worker.py`, `helpers_recordatorios.armar_worker` (recibe el reloj; helper `ciclo_a(worker, reloj, instante)`) y las 29 llamadas `ciclo(ahora)` de los tests de integración, sin cambiar ninguna aserción. Verificar con `pytest` completo igual al baseline de 1.1
 
 ## 3. `MockSender` sin estado (D6)
