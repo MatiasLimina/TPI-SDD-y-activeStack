@@ -14,8 +14,9 @@ _PENDIENTE = text("estado = 'pendiente'")
 class Recordatorio(CatalogoMixin, Base):
     """Recordatorio previo a un turno (RN-NO-01..05). La base es la fuente de verdad del estado.
 
-    Los nombres de las restricciones son contrato (migración 008). `programado_para` y `canal`
-    no tienen default: los informa la aplicación con su reloj inyectado.
+    Los nombres de las restricciones son contrato (migraciones 008 y 009). `programado_para` es
+    el próximo intento programado (DD-29); `programado_para` y `canal` no tienen default: los
+    informa la aplicación con su reloj inyectado.
     """
 
     __tablename__ = "recordatorio"
@@ -29,6 +30,7 @@ class Recordatorio(CatalogoMixin, Base):
             "(estado <> 'fallido' OR intentos = 3) AND (estado <> 'enviado' OR intentos >= 1)",
             name="intentos_segun_estado",
         ),
+        CheckConstraint("estado <> 'pendiente' OR intentos < 3", name="pendiente_intentos"),
         Index(
             "ux_recordatorio_turno_pendiente",
             "turno_id",
