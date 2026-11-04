@@ -100,7 +100,7 @@ def test_upgrade_head_recordatorio_columns_are_not_null_and_programado_para_has_
 
 
 def test_upgrade_head_creates_recordatorio_check_constraints(scratch_url: str) -> None:
-    command.upgrade(alembic_config(scratch_url), "head")
+    command.upgrade(alembic_config(scratch_url), "008")
 
     esquema = _inspeccionar(scratch_url)
 
@@ -160,13 +160,13 @@ def test_upgrade_head_creates_fk_index_and_partial_programado_para_index(
 
 def test_downgrade_to_007_drops_table_and_reupgrade_restores_it(scratch_url: str) -> None:
     config = alembic_config(scratch_url)
-    command.upgrade(config, "head")
+    command.upgrade(config, "008")
 
     command.downgrade(config, "007")
 
     assert _inspeccionar(scratch_url) == {"tabla": False}
 
-    command.upgrade(config, "head")
+    command.upgrade(config, "008")
 
     restaurado = _inspeccionar(scratch_url)
     assert restaurado["tabla"] is True

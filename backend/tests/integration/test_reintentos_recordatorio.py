@@ -3,6 +3,7 @@
 from datetime import UTC, datetime
 
 import pytest
+from sqlalchemy import text
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
@@ -125,7 +126,12 @@ def test_un_error_que_no_viene_del_emisor_se_propaga_y_deja_el_recordatorio_inta
 ) -> None:
     reloj = RelojManual(PROGRAMADO_PARA)
     cola = ColaEnMemoria()
-    # Un pendiente con 3 intentos es un dato anómalo: sumarle otro viola el CHECK de la base
+    # Un pendiente con 3 intentos es un dato anómalo que desde la 009 la base ya rechaza. Para
+    # provocar un error de la base ajeno al emisor se quita ese CHECK dentro de la transacción
+    # del test (el DDL de PostgreSQL es transaccional y se revierte al terminar).
+    db_session.execute(
+        text("ALTER TABLE recordatorio DROP CONSTRAINT ck_recordatorio_pendiente_intentos")
+    )
     turno, recordatorio_id = _pendiente_encolado(db_session, catalogo, cola, intentos=3)
     db_session.commit()
     worker = armar_worker(db_session, cola, EmisorQueFalla(fallas=10), reloj)
