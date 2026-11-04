@@ -14,11 +14,14 @@ See `_shared/skill-resolver.md` for the full resolution protocol.
 | Any Postgres schema/migration/index/constraint/query/RLS work | supabase-postgres-best-practices | .agents/skills/supabase-postgres-best-practices/SKILL.md |
 | Auth systems, JWT, RBAC, session mgmt, securing APIs | auth-implementation-patterns | .agents/skills/auth-implementation-patterns/SKILL.md |
 | Review/validate a change's spec scenarios against the KB, after propose/update and before apply | revisar-escenarios | .agents/skills/revisar-escenarios/SKILL.md |
+| Check Alembic migration numbering across remote branches, before opening/merging a PR with a migration | revisar-migraciones | .agents/skills/revisar-migraciones/SKILL.md |
 | Review a PR / branch diff against repo standards and the change's spec (main use: PR review before approving) | code-review | .agents/skills/code-review/SKILL.md |
 
 All skills are installed **at project level** in `.agents/skills/` (versioned; third-party ones pinned in `skills-lock.json`; `npx skills add <repo> --skill <name>` without `-g`). Paths above are relative to the project root.
 
 `revisar-escenarios` is the project's **own** skill (authored 2026-10-16 with `skill-creator`, not installed from a repo, so it has no entry in `skills-lock.json`). Purpose: report-only review of a change's GIVEN/WHEN/THEN scenarios against RN/DD/SU rules and the change scope in `CHANGES.md`; output goes to `openspec/changes/<change>/revision-escenarios.md`. Usage evidence: `docs/skills-mcp/evidencias/skill-evals/`.
+
+`revisar-migraciones` is the project's second **own** skill (authored 2026-11-03, no `skills-lock.json` entry). Purpose: report-only check that hand-numbered Alembic revisions on every `origin` branch follow `origin/main`'s head; the work is done by `scripts/revisar_migraciones.py` (stdlib only, reads branches via git without checkout).
 
 `code-review` (mattpocock/skills, pinned in `skills-lock.json`, installed 2026-11-03) is the skill for **reviewing pull requests** before the other team member approves them (every change enters `main` through a PR; see `docs/equipo/reparto-de-tareas.md`). It reviews `git diff <fixed-point>...HEAD` along two separate axes, run as two parallel read-only sub-agents: **Standards** (repo rules + a Fowler code-smell baseline) and **Spec** (does the diff implement what the change's spec asked for). How to use it on a PR:
 1. Check out the PR branch (`gh pr checkout <n>`) and `git fetch origin`.
@@ -90,6 +93,14 @@ Pre-digested rules per skill. Delegators copy matching blocks into sub-agent pro
 - Controls C1-C9 (`references/controles.md`): min. expected + business-error + edge scenario; KB traceability; change scope; HTTP contract (409/422/404, 401 vs 403; source: 05 §Excepciones globales); verifiability; time/UTC/fixed clock; ambiguity; hard rules; tasks per scenario.
 - Never invent domain rules: missing decisions become open questions for `10_preguntas_abiertas.md`.
 - Output: `openspec/changes/<change>/revision-escenarios.md` (append a new "Revisión N" section if it exists) + chat summary with verdict and BLOQUEANTE findings.
+
+### revisar-migraciones
+- Report only: never renumber or commit; the change owner fixes it on their branch (team rule: whoever merges second renumbers).
+- Run `python .agents/skills/revisar-migraciones/scripts/revisar_migraciones.py` from repo root (`--rama <name>` to scope, `--sin-fetch` offline); exit 0 ok, 1 something to fix, 2 usage/git error. Only sees pushed branches: push first.
+- New migration must be `head(main)+1` with `down_revision = head(main)`, or follow another new migration of the same branch; number already in main → RENUMERAR (and every new migration stacked on it); gaps/wrong down_revision → CADENA ROTA; same filename as main with different content → MODIFICA MAIN (never edit merged migrations).
+- Integrity: duplicate revision in a branch, multiple heads, unparseable/non-numeric/merge migrations are all problems.
+- Same revision added by two open branches = informational clash (does not change exit code): warn both owners (see `Responsable` in `CHANGES.md`).
+- After renumbering: `alembic heads` must show a single head; rerun the skill.
 
 ### code-review
 - Fixed point for a PR is `origin/main`; diff with three dots (`git diff origin/main...HEAD`) so it compares against the merge-base. Verify the ref resolves and the diff is non-empty before spawning sub-agents.
