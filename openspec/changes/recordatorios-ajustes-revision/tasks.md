@@ -49,7 +49,7 @@
 
 ## 8. Cola: tomar los vencidos en un solo viaje (D7)
 
-- [ ] 8.1 Red de seguridad: en `tests/integration/test_contrato_cola_recordatorios.py`, escenario "Consumidores simultáneos no comparten elementos" (50 vencidos, dos hilos con una barrera que piden hasta vaciar; la intersección es vacía y la unión son los 50), parametrizado sobre `ColaRedis` y `ColaEnMemoria` (que suma un `threading.Lock`). La implementación actual ya entrega a un solo consumidor, así que puede pasar sin cambios: se escribe antes del refactor para protegerlo. Verificar en verde contra las dos implementaciones
+- [x] 8.1 Red de seguridad: en `tests/integration/test_contrato_cola_recordatorios.py`, escenario "Consumidores simultáneos no comparten elementos" (50 vencidos, dos hilos con una barrera que piden hasta vaciar; la intersección es vacía y la unión son los 50), parametrizado sobre `ColaRedis` y `ColaEnMemoria` (que suma un `threading.Lock`). La implementación actual ya entrega a un solo consumidor, así que puede pasar sin cambios: se escribe antes del refactor para protegerlo. Verificar en verde contra las dos implementaciones
 - [ ] 8.2 Refactor: `ColaRedis.tomar_vencidos` con el script Lua registrado en el constructor (design D7). Verificar que toda la suite de contrato sigue en verde contra Redis real (`TEST_REDIS_URL`), sin cambiar sus aserciones, y que el docstring de `ColaRedis` describe el script
 
 ## 9. La API depende de Redis en Compose (D8)

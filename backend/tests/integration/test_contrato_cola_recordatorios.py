@@ -1,5 +1,6 @@
 """Contrato de la cola de recordatorios: lo cumplen `ColaRedis` (Redis real) y `ColaEnMemoria`."""
 
+import threading
 from collections.abc import Iterator
 from datetime import UTC, datetime, timedelta
 from uuid import UUID, uuid4
@@ -107,3 +108,31 @@ def test_tomar_vencidos_limit_bounds_the_delivered_items(
     assert entregados == esperados
     restantes = cola.tomar_vencidos(T0 + timedelta(minutes=1), 10)
     assert restantes == [R1, R2, R3][limite:]
+
+
+def test_consumidores_simultaneos_no_comparten_elementos(cola: ColaRecordatorios) -> None:
+    """Dos hilos con una barrera piden lotes hasta vaciar la cola: entre ambos, los 50 una vez."""
+    ids = [UUID(int=1000 + i) for i in range(50)]
+    for i, recordatorio_id in enumerate(ids):
+        cola.encolar(recordatorio_id, T0 + timedelta(seconds=i))
+    recibidos: list[list[UUID]] = [[], []]
+    errores: list[BaseException] = []
+    barrera = threading.Barrier(2)
+
+    def consumir(indice: int) -> None:
+        try:
+            barrera.wait(timeout=5)
+            while lote := cola.tomar_vencidos(T0 + timedelta(hours=1), 3):
+                recibidos[indice].extend(lote)
+        except BaseException as error:  # noqa: BLE001 - se re-verifica en el hilo principal
+            errores.append(error)
+
+    hilos = [threading.Thread(target=consumir, args=(i,)) for i in range(2)]
+    for hilo in hilos:
+        hilo.start()
+    for hilo in hilos:
+        hilo.join(timeout=10)
+
+    assert errores == []
+    assert set(recibidos[0]).isdisjoint(recibidos[1])
+    assert sorted(recibidos[0] + recibidos[1]) == sorted(ids)

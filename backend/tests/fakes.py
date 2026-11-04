@@ -1,5 +1,6 @@
 """Dobles de los puertos externos para los tests (cola y emisor de recordatorios)."""
 
+import threading
 from collections.abc import Collection
 from datetime import datetime, timedelta
 from uuid import UUID
@@ -10,22 +11,28 @@ from app.domain.notificaciones import MensajeRecordatorio
 
 
 class ColaEnMemoria:
-    """Cola de recordatorios en memoria que cumple el mismo contrato que `ColaRedis`."""
+    """Cola de recordatorios en memoria que cumple el mismo contrato que `ColaRedis`.
+
+    Un cerrojo hace atómicas las operaciones, como en Redis: cada id sale a un solo consumidor.
+    """
 
     def __init__(self) -> None:
         self.elementos: dict[UUID, datetime] = {}
+        self._cerrojo = threading.Lock()
 
     def encolar(self, recordatorio_id: UUID, vence: datetime) -> None:
-        self.elementos[recordatorio_id] = vence
+        with self._cerrojo:
+            self.elementos[recordatorio_id] = vence
 
     def tomar_vencidos(self, ahora: datetime, limite: int) -> list[UUID]:
-        vencidos = sorted(
-            (vence, recordatorio_id)
-            for recordatorio_id, vence in self.elementos.items()
-            if vence <= ahora
-        )[:limite]
-        for _, recordatorio_id in vencidos:
-            del self.elementos[recordatorio_id]
+        with self._cerrojo:
+            vencidos = sorted(
+                (vence, recordatorio_id)
+                for recordatorio_id, vence in self.elementos.items()
+                if vence <= ahora
+            )[:limite]
+            for _, recordatorio_id in vencidos:
+                del self.elementos[recordatorio_id]
         return [recordatorio_id for _, recordatorio_id in vencidos]
 
 
