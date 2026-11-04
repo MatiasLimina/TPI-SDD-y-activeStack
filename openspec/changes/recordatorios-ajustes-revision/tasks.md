@@ -54,8 +54,8 @@
 
 ## 9. La API depende de Redis en Compose (D8)
 
-- [ ] 9.1 RED→GREEN: en `tests/unit/test_docker_compose.py`, escenario "La API espera a Redis" (`api.depends_on` con `db: service_healthy` y `redis: service_started`). Editar `docker-compose.yml`. Verificar en verde y, si Docker está disponible, que `docker compose config` no da errores
-- [ ] 9.2 Actualizar `knowledge-base/08_arquitectura_propuesta.md` si describe las dependencias de arranque de los servicios. Verificar que coincide con `docker-compose.yml`
+- [x] 9.1 RED→GREEN: en `tests/unit/test_docker_compose.py`, escenario "La API espera a Redis" (`api.depends_on` con `db: service_healthy` y `redis: service_started`). Editar `docker-compose.yml`. Verificar en verde y, si Docker está disponible, que `docker compose config` no da errores
+- [x] 9.2 Actualizar `knowledge-base/08_arquitectura_propuesta.md` si describe las dependencias de arranque de los servicios. Verificar que coincide con `docker-compose.yml`
 
 ## 10. Decisiones y documentación transversal
 

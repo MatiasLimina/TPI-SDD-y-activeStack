@@ -55,6 +55,13 @@ def test_worker_service_depends_on_healthy_db_and_redis(servicios: dict[str, Any
     assert "redis" in depende
 
 
+def test_api_service_waits_for_healthy_db_and_started_redis(servicios: dict[str, Any]) -> None:
+    depende = servicios["api"]["depends_on"]
+
+    assert depende["db"]["condition"] == "service_healthy"
+    assert depende["redis"]["condition"] == "service_started"
+
+
 def test_worker_service_restarts_unless_stopped(servicios: dict[str, Any]) -> None:
     assert servicios["worker"]["restart"] == "unless-stopped"
 
