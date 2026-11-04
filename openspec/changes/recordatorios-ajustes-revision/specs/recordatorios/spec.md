@@ -27,12 +27,12 @@ El worker MUST NOT invocar el puerto de notificación si, con el recordatorio bl
 Si el procesamiento de un recordatorio tomado de la cola termina con un error que no es una falla del envío, el worker MUST devolver a la cola, antes de terminar, los recordatorios que tomó en ese ciclo y no llegó a procesar, con vencimiento en el momento en que los tomó, y MUST propagar el error original aunque la devolución falle. El recordatorio del error MUST NOT devolverse: se recupera de la base al reiniciar (design D4, a registrar en DD-29).
 
 #### Scenario: Error a mitad de lote
-- **GIVEN** dados los recordatorios `pendiente` R1, R2 y R3, de turnos `programado` con inicio 2026-10-09T13:00Z, vencidos a las 2026-10-08T13:00Z, 13:01Z y 13:02Z en la cola, un puerto de notificación que falla solo con R2 y una cola que rechaza con un error de conexión el reintento de R2 y acepta el resto de las operaciones
+- **GIVEN** dados los recordatorios `pendiente` R1, R2 y R3, de turnos `programado` con inicios a partir de 2026-10-09T13:00Z, vencidos a las 2026-10-08T13:00Z, 13:01Z y 13:02Z en la cola, un puerto de notificación que falla solo con R2 y una cola que rechaza con un error de conexión el reintento de R2 y acepta el resto de las operaciones
 - **WHEN** cuando el worker procesa la cola con el reloj en 2026-10-08T13:05Z
 - **THEN** entonces el error de la cola se propaga fuera del ciclo; R1 queda `enviado` con `intentos` 1; R2 queda `pendiente` con `intentos` 1 y `programado_para` 2026-10-08T13:06Z en la base y no está en la cola; y R3 sigue `pendiente` con `intentos` 0 y está de nuevo en la cola con vencimiento 2026-10-08T13:05Z
 
 #### Scenario: La devolución también falla
-- **GIVEN** dados los mismos R1, R2 y R3, de turnos `programado` con inicio 2026-10-09T13:00Z, y un puerto que falla solo con R2, pero una cola que rechaza toda operación de encolado a partir del reintento de R2
+- **GIVEN** dados los mismos R1, R2 y R3, de turnos `programado` con inicios a partir de 2026-10-09T13:00Z, y un puerto que falla solo con R2, pero una cola que rechaza toda operación de encolado a partir del reintento de R2
 - **WHEN** cuando el worker procesa la cola con el reloj en 2026-10-08T13:05Z y después se reinicia con la cola disponible
 - **THEN** entonces el error que se propaga fuera del ciclo es el del reintento de R2; se registra una advertencia sin datos de pacientes; R3 sigue `pendiente` con `intentos` 0 en la base; y al reiniciar la cola contiene R2 con vencimiento 2026-10-08T13:06Z y R3 con vencimiento 2026-10-08T13:02Z
 

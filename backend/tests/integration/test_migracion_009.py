@@ -92,6 +92,8 @@ def test_downgrade_to_008_drops_the_check_and_the_database_accepts_the_row(
     config = alembic_config(scratch_url)
     command.upgrade(config, "head")
     turno_id = _crear_turno(scratch_url)
+    assert current_revision(scratch_url) == "009"
+    assert CHECK in _checks(scratch_url)
 
     command.downgrade(config, "008")
 
