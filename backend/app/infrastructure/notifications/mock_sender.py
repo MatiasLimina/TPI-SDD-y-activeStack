@@ -1,4 +1,4 @@
-"""Adaptador de notificación simulado: registra el envío en memoria y en el log (D13)."""
+"""Adaptador de notificación simulado: registra el envío solo en el log (D13)."""
 
 import logging
 
@@ -8,13 +8,13 @@ logger = logging.getLogger(__name__)
 
 
 class MockSender:
-    """No contacta ningún servicio externo. El texto no contiene datos clínicos (RN-NO-04)."""
+    """No contacta ningún servicio externo y no guarda estado: el worker vive mucho tiempo.
 
-    def __init__(self) -> None:
-        self.enviados: list[MensajeRecordatorio] = []
+    El texto no contiene datos clínicos (RN-NO-04). Los tests que necesitan inspeccionar lo
+    enviado usan `tests.fakes.EmisorQueRegistra`.
+    """
 
     def enviar(self, mensaje: MensajeRecordatorio) -> None:
-        self.enviados.append(mensaje)
         logger.info(
             "recordatorio enviado (mock): recordatorio_id=%s texto=%s",
             mensaje.recordatorio_id,

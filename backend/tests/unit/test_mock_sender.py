@@ -1,3 +1,4 @@
+import copy
 import logging
 from uuid import UUID
 
@@ -11,22 +12,14 @@ MENSAJE = MensajeRecordatorio(
 )
 
 
-def test_mock_sender_enviar_records_the_message() -> None:
+def test_mock_sender_repeated_sends_do_not_accumulate_state() -> None:
     sender = MockSender()
+    estado_inicial = copy.deepcopy(vars(sender))
 
-    sender.enviar(MENSAJE)
+    for i in range(1000):
+        sender.enviar(MensajeRecordatorio(UUID(int=i), UUID(int=20), f"texto ficticio {i}"))
 
-    assert sender.enviados == [MENSAJE]
-
-
-def test_mock_sender_enviar_accumulates_messages_in_order() -> None:
-    sender = MockSender()
-    otro = MensajeRecordatorio(UUID(int=11), UUID(int=21), "otro texto")
-
-    sender.enviar(MENSAJE)
-    sender.enviar(otro)
-
-    assert sender.enviados == [MENSAJE, otro]
+    assert vars(sender) == estado_inicial
 
 
 def test_mock_sender_enviar_logs_info_with_reminder_id_and_text(
