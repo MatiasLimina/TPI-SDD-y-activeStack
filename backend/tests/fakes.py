@@ -43,7 +43,8 @@ class ColaQueRechazaEncolado(ColaEnMemoria):
     """Cola en memoria cuyo encolado falla con el error de conexión de redis-py.
 
     Rechaza el encolado de los ids de `rechaza_ids` y, si se da `rechaza_todo_desde`, todo
-    encolado desde el primer intento con ese id (inclusive). `reabrir()` la deja disponible.
+    encolado desde el primer intento con ese id (inclusive). Los dos se pueden fijar después de
+    sembrar `elementos`. `reabrir()` la deja disponible de nuevo.
     """
 
     def __init__(
@@ -52,20 +53,22 @@ class ColaQueRechazaEncolado(ColaEnMemoria):
         rechaza_todo_desde: UUID | None = None,
     ) -> None:
         super().__init__()
-        self._rechaza_ids = set(rechaza_ids)
-        self._desde = rechaza_todo_desde
+        self.rechaza_ids = set(rechaza_ids)
+        self.rechaza_todo_desde = rechaza_todo_desde
         self._cerrada = False
 
     def encolar(self, recordatorio_id: UUID, vence: datetime) -> None:
-        if recordatorio_id == self._desde:
+        if recordatorio_id == self.rechaza_todo_desde:
             self._cerrada = True
-        if self._cerrada or recordatorio_id in self._rechaza_ids:
-            raise redis.exceptions.ConnectionError("Redis no disponible (doble de test)")
+        if self._cerrada or recordatorio_id in self.rechaza_ids:
+            raise redis.exceptions.ConnectionError(
+                f"Redis no disponible al encolar {recordatorio_id} (doble de test)"
+            )
         super().encolar(recordatorio_id, vence)
 
     def reabrir(self) -> None:
-        self._rechaza_ids = set()
-        self._desde = None
+        self.rechaza_ids = set()
+        self.rechaza_todo_desde = None
         self._cerrada = False
 
 

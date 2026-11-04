@@ -44,8 +44,8 @@
 ## 7. Devolución a la cola ante un error a mitad de lote (D4)
 
 - [x] 7.1 RED→GREEN: en `tests/fakes.py`, un emisor que falla solo con ids dados y una cola en memoria que rechaza con `redis.exceptions.ConnectionError` el encolado de ids dados o todo encolado a partir de un momento. Cubrir los dos dobles en `tests/unit/test_fakes.py`. Verificar en verde
-- [ ] 7.2 RED→GREEN: en `tests/integration/test_procesar_recordatorio.py` (o un archivo nuevo `test_devolucion_cola.py`), escenario "Error a mitad de lote": el `ConnectionError` sale de `ciclo()`; R1 `enviado`; R2 `pendiente` con `intentos` 1 y `programado_para` 13:06Z y fuera de la cola; R3 `pendiente` y de vuelta en la cola con vencimiento 13:05Z. Implementar `_devolver` en `WorkerRecordatorios` (design D4). Verificar en verde
-- [ ] 7.3 RED→GREEN: escenario "La devolución también falla": la excepción propagada es la del reintento de R2 (no la de la devolución), hay un `warning` en `caplog` sin datos de pacientes, y después `iniciar()` con una cola disponible deja R2 con 13:06Z y R3 con 13:02Z. Verificar en verde y que `test_worker.py` "propaga errores inesperados" sigue pasando
+- [x] 7.2 RED→GREEN: en `tests/integration/test_procesar_recordatorio.py` (o un archivo nuevo `test_devolucion_cola.py`), escenario "Error a mitad de lote": el `ConnectionError` sale de `ciclo()`; R1 `enviado`; R2 `pendiente` con `intentos` 1 y `programado_para` 13:06Z y fuera de la cola; R3 `pendiente` y de vuelta en la cola con vencimiento 13:05Z. Implementar `_devolver` en `WorkerRecordatorios` (design D4). Verificar en verde
+- [x] 7.3 RED→GREEN: escenario "La devolución también falla": la excepción propagada es la del reintento de R2 (no la de la devolución), hay un `warning` en `caplog` sin datos de pacientes, y después `iniciar()` con una cola disponible deja R2 con 13:06Z y R3 con 13:02Z. Verificar en verde y que `test_worker.py` "propaga errores inesperados" sigue pasando
 
 ## 8. Cola: tomar los vencidos en un solo viaje (D7)
 

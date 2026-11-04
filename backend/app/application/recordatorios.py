@@ -236,8 +236,34 @@ class WorkerRecordatorios:
         return self._reencolar.ejecutar()
 
     def ciclo(self) -> int:
-        """Procesa los recordatorios vencidos al reloj; devuelve cuántos tomó de la cola."""
-        vencidos = self._cola.tomar_vencidos(self._reloj(), self._limite)
-        for recordatorio_id in vencidos:
-            self._procesador.procesar(recordatorio_id)
+        """Procesa los recordatorios vencidos al reloj; devuelve cuántos tomó de la cola.
+
+        Si procesar uno lanza una excepción, devuelve a la cola, best-effort, los que tomó y no
+        llegó a procesar y relanza la excepción original (el proceso sigue siendo crash-only).
+        """
+        ahora = self._reloj()
+        vencidos = self._cola.tomar_vencidos(ahora, self._limite)
+        for indice, recordatorio_id in enumerate(vencidos):
+            try:
+                self._procesador.procesar(recordatorio_id)
+            except Exception:
+                self._devolver(vencidos[indice + 1 :], ahora)
+                raise
         return len(vencidos)
+
+    def _devolver(self, pendientes: list[UUID], vence: datetime) -> None:
+        """Vuelve a encolar con vencimiento `vence`; ante un error deja de intentar y advierte.
+
+        No reemplaza la excepción original. El recordatorio del error no se devuelve: se
+        recupera de la base al reiniciar, con el vencimiento correcto (DD-29).
+        """
+        for devueltos, recordatorio_id in enumerate(pendientes):
+            try:
+                self._cola.encolar(recordatorio_id, vence)
+            except Exception as error:
+                logger.warning(
+                    "no se pudieron devolver %d recordatorios a la cola (%s)",
+                    len(pendientes) - devueltos,
+                    type(error).__name__,
+                )
+                return
