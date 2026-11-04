@@ -163,7 +163,9 @@ def formatear(numero: int) -> str:
     return str(numero).zfill(ANCHO)
 
 
-def clasificar(mig: Migracion, head_main: int, previas: dict[int, Estado]) -> tuple[Estado, str]:
+def clasificar(
+    mig: Migracion, head_main: int, previas: dict[int, Estado]
+) -> tuple[Estado, str]:
     """Decide si una migración nueva de la rama está bien numerada respecto de main.
 
     - mig: una migración que la rama agrega y que no está en main.
@@ -185,7 +187,10 @@ def clasificar(mig: Migracion, head_main: int, previas: dict[int, Estado]) -> tu
                 f"va encima de `{formatear(abajo)}`, que también hay que renumerar",
             )
         if abajo == mig.numero - 1:
-            return Estado.OK, f"sigue a `{formatear(abajo)}`, otra migración nueva de la rama"
+            return (
+                Estado.OK,
+                f"sigue a `{formatear(abajo)}`, otra migración nueva de la rama",
+            )
     elif mig.numero == head_main + 1 and abajo == head_main:
         return Estado.OK, f"sigue a la cabeza de main (`{cabeza}`)"
     return Estado.CADENA_ROTA, (
@@ -267,7 +272,11 @@ def revisar(args: argparse.Namespace) -> int:
             and base[m.revision].archivo == m.archivo
         ]
         nuevas = sorted(
-            (m for m in lectura.migraciones if m not in iguales_a_main and m not in editadas),
+            (
+                m
+                for m in lectura.migraciones
+                if m not in iguales_a_main and m not in editadas
+            ),
             key=lambda m: (m.numero, m.archivo),
         )
 
@@ -277,7 +286,9 @@ def revisar(args: argparse.Namespace) -> int:
                 "distinta de la versión de main: no editar migraciones ya mergeadas "
                 "(crear una nueva) o actualizar la rama desde main"
             )
-            filas.append(f"| `{rama}` | `{m.archivo}` | ❌ {Estado.MODIFICA_MAIN} | {motivo} |")
+            filas.append(
+                f"| `{rama}` | `{m.archivo}` | ❌ {Estado.MODIFICA_MAIN} | {motivo} |"
+            )
 
         if not nuevas and not editadas:
             atraso = head_main - int(cabezas(lectura.migraciones)[-1])
@@ -303,13 +314,19 @@ def revisar(args: argparse.Namespace) -> int:
         print("## Choques entre ramas (informativo)\n")
         for revision, rs in sorted(choques.items()):
             nombres = ", ".join(f"`{r}`" for r in sorted(set(rs)))
-            print(f"- `{revision}` lo agregan {nombres}: la que mergee segunda renumera.")
+            print(
+                f"- `{revision}` lo agregan {nombres}: la que mergee segunda renumera."
+            )
         print()
 
     if detalles:
         print("## Integridad por rama\n\n" + "\n\n".join(detalles) + "\n")
 
-    veredicto = "hay que corregir antes de mergear." if hay_problemas else "numeración correcta."
+    veredicto = (
+        "hay que corregir antes de mergear."
+        if hay_problemas
+        else "numeración correcta."
+    )
     print(f"**Veredicto:** {veredicto}")
     return 1 if hay_problemas else 0
 
@@ -323,8 +340,12 @@ def main() -> int:
     parser.add_argument("--remoto", default="origin")
     parser.add_argument("--base", default="main")
     parser.add_argument("--dir", default="backend/alembic/versions")
-    parser.add_argument("--rama", action="append", help="Revisar solo estas ramas (sin el remoto)")
-    parser.add_argument("--sin-fetch", action="store_true", help="No correr git fetch --prune")
+    parser.add_argument(
+        "--rama", action="append", help="Revisar solo estas ramas (sin el remoto)"
+    )
+    parser.add_argument(
+        "--sin-fetch", action="store_true", help="No correr git fetch --prune"
+    )
     args = parser.parse_args()
 
     try:
