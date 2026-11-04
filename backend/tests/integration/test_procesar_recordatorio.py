@@ -6,8 +6,7 @@ import pytest
 from sqlalchemy.orm import Session
 
 from app.infrastructure.db.models import Paciente, Prestacion, Profesional, Sillon
-from app.infrastructure.notifications.mock_sender import MockSender
-from tests.fakes import ColaEnMemoria, RelojManual
+from tests.fakes import ColaEnMemoria, EmisorQueRegistra, RelojManual
 from tests.integration.factories import Catalogo, crear_catalogo
 from tests.integration.helpers_recordatorios import (
     BUENOS_AIRES,
@@ -36,7 +35,7 @@ def test_ciclo_con_recordatorio_vencido_lo_envia_una_vez_y_queda_enviado(
     reloj = RelojManual(PROGRAMADO_PARA)
     turno = crear_sin_programar(db_session, catalogo)
     recordatorio_id = insertar_recordatorio(db_session, turno.id)
-    cola, sender = ColaEnMemoria(), MockSender()
+    cola, sender = ColaEnMemoria(), EmisorQueRegistra()
     cola.encolar(recordatorio_id, PROGRAMADO_PARA)
 
     procesados = ciclo_a(armar_worker(db_session, cola, sender, reloj), reloj, PROGRAMADO_PARA)
@@ -54,7 +53,7 @@ def test_ciclo_antes_del_vencimiento_no_envia_y_deja_pendiente(
     reloj = RelojManual(PROGRAMADO_PARA)
     turno = crear_sin_programar(db_session, catalogo)
     recordatorio_id = insertar_recordatorio(db_session, turno.id)
-    cola, sender = ColaEnMemoria(), MockSender()
+    cola, sender = ColaEnMemoria(), EmisorQueRegistra()
     cola.encolar(recordatorio_id, PROGRAMADO_PARA)
 
     procesados = ciclo_a(
@@ -80,7 +79,7 @@ def test_ciclo_procesa_varios_vencidos_y_deja_los_futuros(
     r2 = insertar_recordatorio(
         db_session, segundo.id, programado_para=PROGRAMADO_PARA + timedelta(hours=5)
     )
-    cola, sender = ColaEnMemoria(), MockSender()
+    cola, sender = ColaEnMemoria(), EmisorQueRegistra()
     cola.encolar(r1, PROGRAMADO_PARA)
     cola.encolar(r2, PROGRAMADO_PARA + timedelta(hours=5))
 
@@ -99,7 +98,7 @@ def test_el_mensaje_enviado_tiene_el_texto_exacto_y_va_dirigido_al_paciente(
     reloj = RelojManual(PROGRAMADO_PARA)
     turno = crear_sin_programar(db_session, catalogo)
     recordatorio_id = insertar_recordatorio(db_session, turno.id)
-    cola, sender = ColaEnMemoria(), MockSender()
+    cola, sender = ColaEnMemoria(), EmisorQueRegistra()
     cola.encolar(recordatorio_id, PROGRAMADO_PARA)
 
     ciclo_a(
@@ -128,7 +127,7 @@ def test_el_mensaje_enviado_no_contiene_datos_clinicos_ni_personales(
     catalogo = Catalogo([profesional], [sillon], [paciente], prestacion, prestacion)
     turno = crear_sin_programar(db_session, catalogo)
     recordatorio_id = insertar_recordatorio(db_session, turno.id)
-    cola, sender = ColaEnMemoria(), MockSender()
+    cola, sender = ColaEnMemoria(), EmisorQueRegistra()
     cola.encolar(recordatorio_id, PROGRAMADO_PARA)
 
     ciclo_a(armar_worker(db_session, cola, sender, reloj), reloj, PROGRAMADO_PARA)
@@ -150,7 +149,7 @@ def test_el_mensaje_enviado_no_contiene_datos_clinicos_ni_personales(
 
 def test_ciclo_sin_elementos_en_la_cola_no_hace_nada(db_session: Session) -> None:
     reloj = RelojManual(PROGRAMADO_PARA)
-    sender = MockSender()
+    sender = EmisorQueRegistra()
 
     assert (
         ciclo_a(armar_worker(db_session, ColaEnMemoria(), sender, reloj), reloj, PROGRAMADO_PARA)

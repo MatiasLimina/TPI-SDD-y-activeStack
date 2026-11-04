@@ -9,8 +9,7 @@ from sqlalchemy.orm import Session
 
 from app.api.turnos import get_cola_recordatorios, get_reloj
 from app.domain.recordatorios import EstadoRecordatorio
-from app.infrastructure.notifications.mock_sender import MockSender
-from tests.fakes import ColaEnMemoria, ColaQueFalla, RelojManual
+from tests.fakes import ColaEnMemoria, ColaQueFalla, EmisorQueRegistra, RelojManual
 from tests.integration.factories import Catalogo, crear_catalogo
 from tests.integration.helpers_recordatorios import (
     BUENOS_AIRES,
@@ -56,7 +55,7 @@ def test_iniciar_encola_exactamente_los_pendientes_con_su_programado_para(
     primero, segundo = _sembrar_recordatorios(db_session, catalogo)
     cola = ColaEnMemoria()
 
-    encolados = armar_worker(db_session, cola, MockSender(), reloj).iniciar()
+    encolados = armar_worker(db_session, cola, EmisorQueRegistra(), reloj).iniciar()
 
     assert encolados == 2
     assert cola.elementos == {primero: PROGRAMADO_PARA, segundo: DIA_2}
@@ -68,7 +67,7 @@ def test_iniciar_sin_pendientes_deja_la_cola_vacia(db_session: Session, catalogo
     insertar_recordatorio(db_session, turno.id, estado=EstadoRecordatorio.CANCELADO)
     cola = ColaEnMemoria()
 
-    assert armar_worker(db_session, cola, MockSender(), reloj).iniciar() == 0
+    assert armar_worker(db_session, cola, EmisorQueRegistra(), reloj).iniciar() == 0
     assert cola.elementos == {}
 
 
@@ -78,7 +77,7 @@ def test_iniciar_dos_veces_deja_un_solo_elemento_y_un_unico_envio_al_vencer(
     reloj = RelojManual(PROGRAMADO_PARA)
     turno = crear_sin_programar(db_session, catalogo)
     recordatorio_id = insertar_recordatorio(db_session, turno.id)
-    cola, sender = ColaEnMemoria(), MockSender()
+    cola, sender = ColaEnMemoria(), EmisorQueRegistra()
     worker = armar_worker(db_session, cola, sender, reloj)
 
     worker.iniciar()
@@ -98,7 +97,7 @@ def test_iniciar_encola_un_pendiente_con_intentos_con_su_programado_para(
     recordatorio_id = insertar_recordatorio(db_session, turno.id, intentos=2)
     cola = ColaEnMemoria()
 
-    armar_worker(db_session, cola, MockSender(), reloj).iniciar()
+    armar_worker(db_session, cola, EmisorQueRegistra(), reloj).iniciar()
 
     assert cola.elementos == {recordatorio_id: PROGRAMADO_PARA}
 
@@ -122,7 +121,7 @@ def test_alta_con_la_cola_caida_se_envia_despues_de_reiniciar_el_worker(
     )
     assert respuesta.status_code == 201
     turno_id = UUID(respuesta.json()["id"])
-    cola_nueva, sender = ColaEnMemoria(), MockSender()
+    cola_nueva, sender = ColaEnMemoria(), EmisorQueRegistra()
     assert cola_nueva.elementos == {}
 
     worker = armar_worker(db_session, cola_nueva, sender, reloj)

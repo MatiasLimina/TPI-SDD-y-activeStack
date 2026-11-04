@@ -12,8 +12,7 @@ from app.application.crear_turno import CrearTurno, SolicitudTurno
 from app.application.recordatorios import ProcesarRecordatorio, ResultadoProcesamiento
 from app.domain.notificaciones import MensajeRecordatorio
 from app.infrastructure.db.repositorio_turnos import RepositorioTurnos
-from app.infrastructure.notifications.mock_sender import MockSender
-from tests.fakes import ColaEnMemoria, RelojManual
+from tests.fakes import ColaEnMemoria, EmisorQueRegistra, RelojManual
 from tests.integration.factories import Catalogo
 from tests.integration.helpers_recordatorios import CONSULTORIO, PROGRAMADO_PARA, ZONA
 
@@ -23,7 +22,7 @@ HILOS = 2
 ESPERA_MAX_S = 0.3
 
 
-class SenderQueEsperaAlOtro(MockSender):
+class SenderQueEsperaAlOtro(EmisorQueRegistra):
     """Retiene el primer envío hasta que otro hilo también llegue a enviar (o venza el plazo).
 
     Con el bloqueo correcto el segundo hilo espera en la base y nunca llega: el plazo vence y

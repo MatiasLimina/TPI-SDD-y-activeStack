@@ -17,7 +17,7 @@
 
 ## 3. `MockSender` sin estado (D6)
 
-- [ ] 3.1 Refactor de tests: los tests que inspeccionan `MockSender().enviados` (`test_procesar_recordatorio.py`, `test_procesar_recordatorio_descartes.py`, `test_reencolar_pendientes.py` y `test_concurrencia_recordatorios.py`, donde `SenderQueEsperaAlOtro` pasa a heredar de `EmisorQueRegistra`) usan `EmisorQueRegistra`. Verificar con `pytest` completo en verde y sin cambiar aserciones
+- [x] 3.1 Refactor de tests: los tests que inspeccionan `MockSender().enviados` (`test_procesar_recordatorio.py`, `test_procesar_recordatorio_descartes.py`, `test_reencolar_pendientes.py` y `test_concurrencia_recordatorios.py`, donde `SenderQueEsperaAlOtro` pasa a heredar de `EmisorQueRegistra`) usan `EmisorQueRegistra`. Verificar con `pytest` completo en verde y sin cambiar aserciones
 - [ ] 3.2 RED→GREEN: en `tests/unit/test_mock_sender.py`, escenario "Envíos repetidos no acumulan estado en el adaptador mock" (`vars(sender)` igual antes y después de 1000 envíos) y escenario "El adaptador mock registra el envío" redactado de nuevo (`caplog` con un `INFO` que tiene el id del recordatorio y el texto, sin el id del paciente). Quitar `enviados` de `MockSender` (design D6). Verificar en verde
 
 ## 4. CHECK de pendientes con menos de 3 intentos y migración `009` (D3)
