@@ -8,7 +8,7 @@
 | Puerto y adaptador | `NotificationSender` + `MockSender` | WhatsApp Business API queda como adaptador futuro sin tocar el dominio |
 | Repositorio | Acceso a turnos, recursos | Testear reglas sin BD |
 | Unidad de trabajo / transacción | Crear/reprogramar/cancelar + auditoría + recordatorio | Atomicidad |
-| Cola de trabajo | Redis + worker | Recordatorios asincrónicos |
+| Cola de trabajo | Redis + worker (servicio `worker` de Compose, sin `JWT_SECRET`) | Recordatorios asincrónicos |
 | Restricción de integridad en BD | `EXCLUDE USING gist` | Garantía real de no superposición (RN-AG-09) |
 
 ## Concurrencia y no superposición (riesgo técnico)
@@ -25,17 +25,18 @@ Nota: las restricciones de exclusión no cubren horario de atención ni bloqueos
 
 ```
 proyecto/
-├── docker-compose.yml
+├── docker-compose.yml          # servicios: db, redis, api, worker (python -m app.worker)
 ├── .env.example
 ├── backend/
 │   ├── app/
 │   │   ├── main.py
+│   │   ├── worker.py          # proceso del worker de recordatorios (python -m app.worker)
 │   │   ├── domain/            # entidades, reglas (intervalos, solapes), puertos
 │   │   ├── application/       # casos de uso (crear/reprogramar/cancelar turno)
 │   │   ├── infrastructure/
 │   │   │   ├── db/            # modelos SQLAlchemy, repositorios, migraciones (lineales NNN_nombre.py, con downgrade; DD-17)
 │   │   │   ├── notifications/ # MockSender (futuro WhatsAppSender)
-│   │   │   └── queue/         # cliente Redis, worker
+│   │   │   └── queue/         # ColaRedis (sorted set de recordatorios con vencimiento)
 │   │   ├── api/               # routers FastAPI, schemas, dependencias de auth
 │   │   └── cli/               # comando de alta y desactivación de usuarios (DD-16, C-06)
 │   └── tests/
@@ -68,5 +69,7 @@ proyecto/
 | `JWT_EXPIRE_MINUTES` | Vigencia del token | `60` | No |
 | `REMINDER_LEAD_HOURS` | Anticipación del recordatorio en horas (DD-13); si el turno se crea con menos, no hay recordatorio | `24` | No |
 | `APP_TIMEZONE` | Zona de presentación | `America/Argentina/Buenos_Aires` | No |
-| `NOTIFICATION_ADAPTER` | Adaptador activo | `mock` | No |
+| `NOTIFICATION_ADAPTER` | Adaptador activo; el único valor válido hoy es `mock` (un adaptador real exige ampliar el valor y la migración del canal) | `mock` | No |
+| `CONSULTORIO_NOMBRE` | Nombre del consultorio que se informa en el recordatorio (RN-NO-04); no puede estar vacío | `Consultorio Odontológico Ejemplo` | No |
 | `CORS_ORIGINS` | Orígenes permitidos | `http://localhost:5173` | No |
+| `TEST_REDIS_URL` | Redis de los tests (solo contrato de la cola); usa una base distinta de `REDIS_URL` para no vaciar la cola de desarrollo | `redis://localhost:6379/15` | No |

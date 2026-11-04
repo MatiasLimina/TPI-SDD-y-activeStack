@@ -131,6 +131,6 @@ Solo el alcance D.4. Lo diferido está en `01_vision_y_objetivos.md` (Fuera de a
 - [ ] Cancelar/reprogramar el turno ajusta el recordatorio.
 - [ ] La anticipación es configurable (`REMINDER_LEAD_HOURS`, 24 por defecto; DD-13).
 - [ ] Si el turno se crea o reprograma con menos de 24 h de anticipación, no se programa recordatorio.
-- [ ] El envío fallido se reintenta 3 veces con backoff exponencial; agotados, el recordatorio queda `fallido` (DD-19).
+- [ ] El envío tiene hasta 3 intentos en total (el primero más 2 reintentos) con backoff exponencial; agotados, el recordatorio queda `fallido` (DD-19, DD-28).
 
 **Reglas relacionadas**: RN-NO-01, RN-NO-02, RN-NO-03, RN-NO-04, RN-NO-05

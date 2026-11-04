@@ -1,6 +1,7 @@
 """POST /turnos, cancelar, PATCH reprogramar y traducción de errores de dominio a HTTP."""
 
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
+from functools import lru_cache
 from typing import Annotated, Any
 from uuid import UUID
 
@@ -14,11 +15,14 @@ from app.application.auditoria_turnos import AuditorTurnos
 from app.application.cancelar_turno import CancelarTurno
 from app.application.crear_turno import CrearTurno, Reloj, SolicitudTurno, ValidadorTurno
 from app.application.horarios_atencion import ValidadorHorario
+from app.application.recordatorios import ProgramadorRecordatorios
 from app.application.reprogramar_turno import (
     OMITIDO,
     ReprogramarTurno,
     SolicitudReprogramacion,
 )
+from app.config import get_settings
+from app.domain.recordatorios import ColaRecordatorios
 from app.domain.time import to_local
 from app.domain.turnos import (
     CampoNoEditableError,
@@ -33,8 +37,10 @@ from app.domain.turnos import (
 from app.domain.usuarios import UsuarioAutenticado
 from app.infrastructure.db.repositorio_auditoria import RepositorioAuditoria
 from app.infrastructure.db.repositorio_horarios import RepositorioHorarios
+from app.infrastructure.db.repositorio_recordatorios import RepositorioRecordatorios
 from app.infrastructure.db.repositorio_turnos import RepositorioTurnos
 from app.infrastructure.db.session import get_session
+from app.infrastructure.queue.cola_redis import ColaRedis, crear_cliente_redis
 
 router = APIRouter(prefix="/turnos", tags=["turnos"])
 
@@ -139,6 +145,30 @@ def get_reloj() -> Reloj:
     return lambda: datetime.now(UTC)
 
 
+def get_anticipacion_recordatorio() -> timedelta:
+    """Anticipación del recordatorio (`REMINDER_LEAD_HOURS`); los tests la sobreescriben."""
+    return timedelta(hours=get_settings().REMINDER_LEAD_HOURS)
+
+
+@lru_cache
+def _cola_redis() -> ColaRedis:
+    return ColaRedis(crear_cliente_redis(get_settings().REDIS_URL))
+
+
+def get_cola_recordatorios() -> ColaRecordatorios:
+    """Cola de recordatorios de Redis; los tests la sobreescriben con una cola en memoria."""
+    return _cola_redis()
+
+
+def get_programador(
+    session: Annotated[Session, Depends(get_session)],
+    reloj: Annotated[Reloj, Depends(get_reloj)],
+    anticipacion: Annotated[timedelta, Depends(get_anticipacion_recordatorio)],
+) -> ProgramadorRecordatorios:
+    """Programador del request: lo comparten la fábrica del caso de uso y la ruta (publicar)."""
+    return ProgramadorRecordatorios(RepositorioRecordatorios(session), reloj, anticipacion)
+
+
 def _auditor(session: Session, usuario: UsuarioAutenticado, reloj: Reloj) -> AuditorTurnos:
     """Auditor del request: el autor es el usuario autenticado, nunca un valor del body."""
     return AuditorTurnos(RepositorioAuditoria(session), usuario.id, reloj)
@@ -158,13 +188,14 @@ def get_crear_turno(
     session: Annotated[Session, Depends(get_session)],
     reloj: Annotated[Reloj, Depends(get_reloj)],
     usuario: RecepcionistaAutenticada,
+    programador: Annotated[ProgramadorRecordatorios, Depends(get_programador)],
 ) -> CrearTurno:
     auditor = _auditor(session, usuario, reloj)
     return CrearTurno(
         RepositorioTurnos(session),
         reloj,
         validadores=_validadores(session),
-        observadores=[auditor.al_crear],
+        observadores=[auditor.al_crear, programador.al_crear],
     )
 
 
@@ -172,22 +203,28 @@ def get_cancelar_turno(
     session: Annotated[Session, Depends(get_session)],
     reloj: Annotated[Reloj, Depends(get_reloj)],
     usuario: RecepcionistaAutenticada,
+    programador: Annotated[ProgramadorRecordatorios, Depends(get_programador)],
 ) -> CancelarTurno:
     auditor = _auditor(session, usuario, reloj)
-    return CancelarTurno(RepositorioTurnos(session), reloj, observadores=[auditor.al_cancelar])
+    return CancelarTurno(
+        RepositorioTurnos(session),
+        reloj,
+        observadores=[auditor.al_cancelar, programador.al_cancelar],
+    )
 
 
 def get_reprogramar_turno(
     session: Annotated[Session, Depends(get_session)],
     reloj: Annotated[Reloj, Depends(get_reloj)],
     usuario: RecepcionistaAutenticada,
+    programador: Annotated[ProgramadorRecordatorios, Depends(get_programador)],
 ) -> ReprogramarTurno:
     auditor = _auditor(session, usuario, reloj)
     return ReprogramarTurno(
         RepositorioTurnos(session),
         reloj,
         validadores=_validadores(session),
-        observadores=[auditor.al_reprogramar],
+        observadores=[auditor.al_reprogramar, programador.al_reprogramar],
     )
 
 
@@ -198,8 +235,11 @@ def crear_turno(
     usuario: RecepcionistaAutenticada,
     datos: TurnoIn,
     caso: Annotated[CrearTurno, Depends(get_crear_turno)],
+    programador: Annotated[ProgramadorRecordatorios, Depends(get_programador)],
+    cola: Annotated[ColaRecordatorios, Depends(get_cola_recordatorios)],
 ) -> TurnoOut:
     creado = caso.ejecutar(SolicitudTurno(**datos.model_dump()), creado_por=usuario.id)
+    programador.publicar(cola)  # después del commit; best-effort (D6)
     return TurnoOut.desde_dominio(creado)
 
 
@@ -220,8 +260,11 @@ def reprogramar_turno(
     turno_id: UUID,
     datos: ReprogramacionIn,
     caso: Annotated[ReprogramarTurno, Depends(get_reprogramar_turno)],
+    programador: Annotated[ProgramadorRecordatorios, Depends(get_programador)],
+    cola: Annotated[ColaRecordatorios, Depends(get_cola_recordatorios)],
 ) -> TurnoOut:
     reprogramado = caso.ejecutar(turno_id, datos.a_solicitud())
+    programador.publicar(cola)  # después del commit; best-effort (D6)
     return TurnoOut.desde_registrado(reprogramado)
 
 

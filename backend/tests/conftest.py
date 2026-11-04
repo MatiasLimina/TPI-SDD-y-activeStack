@@ -2,6 +2,7 @@
 
 import os
 from collections.abc import Callable, Iterator
+from datetime import timedelta
 from pathlib import Path
 
 import pytest
@@ -18,15 +19,21 @@ from sqlalchemy.exc import OperationalError
 from sqlalchemy.orm import Session
 
 from app.api.auth import get_emisor_tokens, get_hasher
+from app.api.turnos import get_anticipacion_recordatorio, get_cola_recordatorios
 from app.config import REPO_ROOT
 from app.infrastructure.db.models import Profesional, Usuario
 from app.infrastructure.db.session import get_session
 from app.infrastructure.security.contrasenas import Hasher
 from app.infrastructure.security.tokens import EmisorTokens
 from app.main import create_app
+from tests.fakes import ColaEnMemoria
 
 BACKEND_DIR = Path(__file__).resolve().parents[1]
 DB_HINT = "Levantá la base de test con: docker compose up -d db (y copiá .env.example a .env)."
+REDIS_HINT = (
+    "Levantá Redis con: docker compose up -d redis (y definí TEST_REDIS_URL, "
+    "con una base distinta de REDIS_URL, en .env)."
+)
 
 
 def pytest_collection_modifyitems(items: list[pytest.Item]) -> None:
@@ -41,6 +48,15 @@ def get_test_database_url() -> str:
     )
     if not url:
         pytest.fail(f"TEST_DATABASE_URL no está definida. {DB_HINT}", pytrace=False)
+    return url
+
+
+def get_test_redis_url() -> str:
+    url = os.environ.get("TEST_REDIS_URL") or dotenv_values(REPO_ROOT / ".env").get(
+        "TEST_REDIS_URL"
+    )
+    if not url:
+        pytest.fail(f"TEST_REDIS_URL no está definida. {REDIS_HINT}", pytrace=False)
     return url
 
 
@@ -131,12 +147,22 @@ def token_de(emisor_test: EmisorTokens) -> Callable[[Usuario], str]:
 
 
 @pytest.fixture
-def app_de_test(db_session: Session, hasher_test: Hasher, emisor_test: EmisorTokens) -> FastAPI:
-    """App con sesión, hasher y emisor de test; la comparten los dos clientes."""
+def cola() -> ColaEnMemoria:
+    """Cola de recordatorios en memoria: la API de test no depende de Redis."""
+    return ColaEnMemoria()
+
+
+@pytest.fixture
+def app_de_test(
+    db_session: Session, hasher_test: Hasher, emisor_test: EmisorTokens, cola: ColaEnMemoria
+) -> FastAPI:
+    """App con sesión, hasher, emisor y cola de test; la comparten los dos clientes."""
     app = create_app()
     app.dependency_overrides[get_session] = lambda: db_session
     app.dependency_overrides[get_hasher] = lambda: hasher_test
     app.dependency_overrides[get_emisor_tokens] = lambda: emisor_test
+    app.dependency_overrides[get_cola_recordatorios] = lambda: cola
+    app.dependency_overrides[get_anticipacion_recordatorio] = lambda: timedelta(hours=24)
     return app
 
 

@@ -310,7 +310,7 @@ C-01 a C-06 los hizo Matías, y C-07 está implementado y pendiente de merge (PR
 ## FASE 4 — Recordatorios y consulta de agenda
 
 ### [C-12] `recordatorios-mock-redis`
-- **Estado**: `[ ]` pendiente
+- **Estado**: `[x]` completado
 - **Responsable**: Nico · revisa Matías
 - **Scope** (US-012):
   - Puerto `NotificationSender` (dominio) + adaptador `MockSender` (registra el envío, sin mensajería real); `NOTIFICATION_ADAPTER=mock`
@@ -320,6 +320,7 @@ C-01 a C-06 los hizo Matías, y C-07 está implementado y pendiente de merge (PR
   - Anticipación de 24 h (`REMINDER_LEAD_HOURS=24`); si el turno se crea o reprograma con menos de 24 h, no se programa recordatorio (RN-NO-03, DD-13); contenido sin datos clínicos (RN-NO-04)
   - Reintentos: 3 intentos con backoff exponencial; agotados, `estado = fallido`; sin reintento manual (RN-NO-05, DD-19)
   - Tests: encolado al crear, sin recordatorio con menos de 24 h, ajuste al cancelar/reprogramar, worker invoca el puerto (mock), 3 reintentos y `fallido`, turno cancelado no envía
+  - Seguimiento: `recordatorios-ajustes-revision` (revisión del PR #8, DD-29)
 - **Dependencias**: `C-04, C-05, C-01`
 - **Governance**: ALTO
 - **Leer antes**:

@@ -18,7 +18,11 @@ El resumen de §7 del informe decía "siete fuentes comprobadas" mientras la tab
 
 ## Preguntas abiertas (priorizadas)
 
-Ninguna abierta al 2026-10-07. Las ocho preguntas pendientes se resolvieron (ver "Preguntas resueltas (2026-10-06)" más abajo) y las cinco surgidas al explorar C-03 también (ver "Preguntas resueltas (2026-10-07)").
+Al 2026-11-04 queda una pregunta abierta, surgida al proponer C-12 (`recordatorios-mock-redis`). No bloquea ese change: se decide en otro change o en el backlog. Las demás se resolvieron (ver las secciones "Preguntas resueltas" más abajo).
+
+| Prioridad | Pregunta | Detalle |
+|---|---|---|
+| Media | **Lectura del estado de los recordatorios** | La matriz de `03_actores_y_roles.md` da `R` a la recepcionista y `R propios` al odontólogo sobre "Recordatorios (estado)", pero ningún change de `CHANGES.md` incluye ese endpoint (C-12 no lo lista y C-13 solo consulta turnos). ¿Se agrega a C-13, a un change nuevo o al backlog? |
 
 ## Datos de competidores "No evidenciado" (de la investigación)
 
@@ -96,3 +100,10 @@ Ninguna abierta al 2026-10-07. Las ocho preguntas pendientes se resolvieron (ver
 | ¿`JWT_EXPIRE_MINUTES` en `0` o negativo es válido? | Resuelta: no; entero mayor que cero, default `60` (DD-24) |
 | ¿Cómo recibe la contraseña el CLI de alta y qué pasa si `USUARIO_PASSWORD` está definida pero vacía? | Resuelta: de `USUARIO_PASSWORD` si está definida y no vacía, o por doble prompt sin eco; definida y vacía se rechaza sin crear el usuario (DD-24) |
 | ¿Se puede reactivar un usuario desactivado o volver a dar de alta su email? | Resuelta: no en el MVP; limitación registrada en el backlog (DD-24) |
+
+## Preguntas resueltas (2026-11-04)
+
+| Pregunta | Resolución |
+|---|---|
+| **Recordatorio procesado después del inicio del turno**: ¿debería descartarse si el turno ya empezó, y con qué estado? | Resuelta: el worker no lo envía si `inicio <= ahora` (criterio de RN-AG-13); queda `cancelado` conservando sus intentos, sin estado nuevo (DD-29, RN-NO-01) |
+| **Backoff perdido al reiniciar el worker**: ¿se persiste el próximo vencimiento en la base o se acepta el adelanto? | Resuelta: se persiste en `programado_para`, que pasa a ser el próximo intento programado, calculado con el reloj del momento de la falla; el reinicio conserva la espera (DD-29, RN-NO-05) |

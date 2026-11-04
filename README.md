@@ -99,8 +99,8 @@ Requisitos: Docker (con Docker Compose) y Python 3.13.
 # 1. Variables de entorno (valores ficticios de desarrollo)
 cp .env.example .env
 
-# 2. Base de datos (crea `turnos` y `turnos_test`)
-docker compose up -d db
+# 2. Base de datos (crea `turnos` y `turnos_test`) y Redis (cola de recordatorios)
+docker compose up -d db redis
 
 # 3. Entorno virtual e instalación (desde backend/)
 cd backend
@@ -117,13 +117,22 @@ alembic upgrade head
 python -m app.infrastructure.db.seed
 
 # 5. Tests y lint
-pytest                             # todo (requiere la base levantada)
+pytest                             # todo (requiere db y redis levantados y TEST_REDIS_URL en .env)
 pytest -m "not integration"        # solo unitarios, sin Docker
 ruff format --check . && ruff check .
 ```
 
 API completa en contenedores: `docker compose up -d api` y luego `curl http://localhost:8000/health`
 (devuelve `{"status":"ok","database":"ok"}`).
+
+Recordatorios: el servicio `worker` (`docker compose up -d worker`, o `python -m app.worker` desde
+`backend/`) re-encola los recordatorios pendientes al iniciar y envía los vencidos con el adaptador
+`mock`. Necesita la migración `008` aplicada (`alembic upgrade head`) y no recibe `JWT_SECRET`.
+Es crash-only: ante un error de base o de Redis termina, y los recordatorios que ya había tomado de
+la cola vuelven recién al reiniciar. Por eso tiene que correr bajo un supervisor (en Compose,
+`restart: unless-stopped`); si lo levantás a mano, reinicialo cuando se caiga.
+`TEST_REDIS_URL` (en `.env.example`, base 15) apunta a una base de Redis distinta de `REDIS_URL`: la
+suite de contrato de la cola la usa y borra solo sus claves de prueba.
 
 Si el puerto 5432 ya está ocupado (por ejemplo por un PostgreSQL local en Windows), cambiá
 `POSTGRES_PORT` en `.env` (p. ej. `5433`) y ajustá el puerto en `DATABASE_URL` y `TEST_DATABASE_URL`.

@@ -3,10 +3,17 @@
 from collections.abc import Iterator
 
 import pytest
-from sqlalchemy import Engine, create_engine, delete
+from sqlalchemy import Engine, create_engine, delete, select
 from sqlalchemy.orm import Session
 
-from app.infrastructure.db.models import Paciente, Prestacion, Profesional, Sillon, Turno
+from app.infrastructure.db.models import (
+    Paciente,
+    Prestacion,
+    Profesional,
+    Recordatorio,
+    Sillon,
+    Turno,
+)
 from tests.conftest import get_test_database_url
 from tests.integration.factories import Catalogo, crear_catalogo
 
@@ -35,6 +42,9 @@ def _catalogo_commiteado(motor: Engine, *, con_horario: bool) -> Iterator[Catalo
         yield catalogo
     finally:
         with Session(motor) as sesion:
+            # Los recordatorios van primero: su FK RESTRICT impide borrar los turnos
+            turnos = select(Turno.id).where(Turno.profesional_id.in_(ids[Profesional]))
+            sesion.execute(delete(Recordatorio).where(Recordatorio.turno_id.in_(turnos)))
             sesion.execute(delete(Turno).where(Turno.profesional_id.in_(ids[Profesional])))
             for modelo in (Prestacion, Paciente, Sillon, Profesional):
                 sesion.execute(delete(modelo).where(modelo.id.in_(ids[modelo])))

@@ -56,11 +56,11 @@ Recepcionista -> Frontend -> API -> PostgreSQL (INSERT + EXCLUDE)
 ## Flujo 6: Envío de recordatorio (asincrónico)
 **Disparador**: llega `programado_para`. **Actor**: worker.
 
-1. Worker consume la cola Redis y verifica que el turno siga activo.
+1. Worker consume la cola Redis y, con el recordatorio bloqueado, verifica que siga `pendiente`, que el turno siga activo (`programado`) y que no haya iniciado (`inicio > ahora`, el mismo criterio de "iniciado" que RN-AG-13). Si el turno inició, no envía: el recordatorio queda `cancelado` con sus intentos (DD-29).
 2. Invoca `NotificationSender.send(...)`; el adaptador mock registra el envío (no hay mensajería real).
-3. Marca el recordatorio `enviado` o `fallido` (hasta 3 intentos con backoff exponencial; agotados, `fallido`; sin reintento manual, DD-19).
+3. Marca el recordatorio `enviado` o `fallido` (hasta 3 intentos en total, el primero más 2 reintentos, con backoff exponencial de 1 y 2 min; agotados, `fallido`; sin reintento manual, DD-19, DD-28). Ante cada falla que no agota los intentos, el próximo intento se persiste en `programado_para` (momento de la falla más la espera) y se vuelve a encolar con ese vencimiento, así que un reinicio del worker respeta la espera restante (DD-29).
 
-**Errores**: Redis caído -> los recordatorios pendientes persisten en BD y se re-encolan al reiniciar (**Suposición**).
+**Errores**: Redis caído -> los recordatorios pendientes persisten en BD y se re-encolan al reiniciar el worker (DD-28).
 
 ## Flujo 7: Consulta de agenda
 1. `GET /turnos?desde&hasta&profesional&sillon` (el odontólogo queda filtrado a su profesional).
