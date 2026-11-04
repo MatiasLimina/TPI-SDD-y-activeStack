@@ -1,5 +1,6 @@
 """Dobles de los puertos externos para los tests (cola y emisor de recordatorios)."""
 
+from collections.abc import Collection
 from datetime import datetime, timedelta
 from uuid import UUID
 
@@ -38,6 +39,36 @@ class ColaQueFalla:
         raise redis.exceptions.ConnectionError("Redis no disponible (doble de test)")
 
 
+class ColaQueRechazaEncolado(ColaEnMemoria):
+    """Cola en memoria cuyo encolado falla con el error de conexión de redis-py.
+
+    Rechaza el encolado de los ids de `rechaza_ids` y, si se da `rechaza_todo_desde`, todo
+    encolado desde el primer intento con ese id (inclusive). `reabrir()` la deja disponible.
+    """
+
+    def __init__(
+        self,
+        rechaza_ids: Collection[UUID] = (),
+        rechaza_todo_desde: UUID | None = None,
+    ) -> None:
+        super().__init__()
+        self._rechaza_ids = set(rechaza_ids)
+        self._desde = rechaza_todo_desde
+        self._cerrada = False
+
+    def encolar(self, recordatorio_id: UUID, vence: datetime) -> None:
+        if recordatorio_id == self._desde:
+            self._cerrada = True
+        if self._cerrada or recordatorio_id in self._rechaza_ids:
+            raise redis.exceptions.ConnectionError("Redis no disponible (doble de test)")
+        super().encolar(recordatorio_id, vence)
+
+    def reabrir(self) -> None:
+        self._rechaza_ids = set()
+        self._desde = None
+        self._cerrada = False
+
+
 class RelojManual:
     """Reloj inyectable: invocable, con el instante fijado por el test."""
 
@@ -64,6 +95,20 @@ class EmisorQueRegistra:
     def enviar(self, mensaje: MensajeRecordatorio) -> None:
         self.invocaciones += 1
         self.enviados.append(mensaje)
+
+
+class EmisorQueFallaCon(EmisorQueRegistra):
+    """Emisor que falla solo con los recordatorios de `ids` y registra el resto."""
+
+    def __init__(self, ids: Collection[UUID]) -> None:
+        super().__init__()
+        self._ids = set(ids)
+
+    def enviar(self, mensaje: MensajeRecordatorio) -> None:
+        if mensaje.recordatorio_id in self._ids:
+            self.invocaciones += 1
+            raise RuntimeError("fallo de envío (doble de test)")
+        super().enviar(mensaje)
 
 
 class EmisorQueFalla(EmisorQueRegistra):
