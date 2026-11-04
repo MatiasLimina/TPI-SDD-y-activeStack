@@ -17,11 +17,13 @@ from app.application.recordatorios import (
     WorkerRecordatorios,
 )
 from app.application.reprogramar_turno import ReprogramarTurno
+from app.application.validacion_turno import Reloj
 from app.domain.notificaciones import NotificationSender
 from app.domain.recordatorios import ColaRecordatorios, EstadoRecordatorio
 from app.domain.turnos import TurnoCreado
 from app.infrastructure.db.repositorio_recordatorios import RepositorioRecordatorios
 from app.infrastructure.db.repositorio_turnos import RepositorioTurnos
+from tests.fakes import RelojManual
 from tests.integration.factories import Catalogo
 
 BUENOS_AIRES = timezone(timedelta(hours=-3))
@@ -129,13 +131,20 @@ def armar_worker(
     session: Session,
     cola: ColaRecordatorios,
     sender: NotificationSender,
+    reloj: Reloj,
     *,
     consultorio: str = CONSULTORIO,
 ) -> WorkerRecordatorios:
-    """Worker de test: la misma sesión de test para todo y `ahora` explícito en cada ciclo."""
+    """Worker de test: la misma sesión de test para todo y el reloj inyectado del test."""
 
     def sesiones() -> nullcontext[Session]:
         return nullcontext(session)
 
-    procesador = ProcesarRecordatorio(sesiones, cola, sender, consultorio, ZONA)
-    return WorkerRecordatorios(cola, procesador, ReencolarPendientes(sesiones, cola))
+    procesador = ProcesarRecordatorio(sesiones, cola, sender, consultorio, ZONA, reloj)
+    return WorkerRecordatorios(cola, procesador, ReencolarPendientes(sesiones, cola), reloj)
+
+
+def ciclo_a(worker: WorkerRecordatorios, reloj: RelojManual, instante: datetime) -> int:
+    """Fija el reloj del test en `instante` y corre un ciclo del worker."""
+    reloj.ajustar(instante)
+    return worker.ciclo()

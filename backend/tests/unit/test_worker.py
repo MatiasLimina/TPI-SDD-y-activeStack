@@ -23,29 +23,25 @@ class WorkerFalso:
         self.llamadas.append(("iniciar", None))
         return 0
 
-    def ciclo(self, ahora: datetime) -> int:
-        self.llamadas.append(("ciclo", ahora))
+    def ciclo(self) -> int:
+        self.llamadas.append(("ciclo", None))
         return self._procesados.pop(0) if self._procesados else 0
 
 
-def test_correr_calls_iniciar_once_and_then_ciclo_with_the_injected_clock() -> None:
+def test_correr_calls_iniciar_once_and_then_ciclo() -> None:
     falso = WorkerFalso()
 
-    ciclos = worker.correr(
-        falso, reloj=lambda: AHORA, detenido=threading.Event(), pausa_s=0, max_ciclos=1
-    )
+    ciclos = worker.correr(falso, detenido=threading.Event(), pausa_s=0, max_ciclos=1)
 
     assert ciclos == 1
-    assert falso.llamadas == [("iniciar", None), ("ciclo", AHORA)]
+    assert falso.llamadas == [("iniciar", None), ("ciclo", None)]
 
 
 @pytest.mark.parametrize("max_ciclos", [1, 3])
 def test_correr_stops_after_max_ciclos(max_ciclos: int) -> None:
     falso = WorkerFalso()
 
-    ciclos = worker.correr(
-        falso, reloj=lambda: AHORA, detenido=threading.Event(), pausa_s=0, max_ciclos=max_ciclos
-    )
+    ciclos = worker.correr(falso, detenido=threading.Event(), pausa_s=0, max_ciclos=max_ciclos)
 
     assert ciclos == max_ciclos
     assert [nombre for nombre, _ in falso.llamadas] == ["iniciar"] + ["ciclo"] * max_ciclos
@@ -56,7 +52,7 @@ def test_correr_with_stop_already_requested_does_not_run_any_cycle() -> None:
     detenido = threading.Event()
     detenido.set()
 
-    ciclos = worker.correr(falso, reloj=lambda: AHORA, detenido=detenido, pausa_s=0)
+    ciclos = worker.correr(falso, detenido=detenido, pausa_s=0)
 
     assert ciclos == 0
     assert [nombre for nombre, _ in falso.llamadas] == ["iniciar"]
@@ -66,13 +62,13 @@ def test_correr_exits_cleanly_when_stop_is_requested_during_a_cycle() -> None:
     detenido = threading.Event()
 
     class PideDetenerse(WorkerFalso):
-        def ciclo(self, ahora: datetime) -> int:
+        def ciclo(self) -> int:
             detenido.set()
-            return super().ciclo(ahora)
+            return super().ciclo()
 
     falso = PideDetenerse()
 
-    ciclos = worker.correr(falso, reloj=lambda: AHORA, detenido=detenido, pausa_s=60)
+    ciclos = worker.correr(falso, detenido=detenido, pausa_s=60)
 
     assert ciclos == 1
 
@@ -89,18 +85,18 @@ def test_correr_does_not_pause_when_there_was_work() -> None:
     espiado = EventoEspiado()
     falso = WorkerFalso([3, 0, 0])
 
-    worker.correr(falso, reloj=lambda: AHORA, detenido=espiado, pausa_s=5, max_ciclos=3)
+    worker.correr(falso, detenido=espiado, pausa_s=5, max_ciclos=3)
 
     assert esperas == [5]
 
 
 def test_correr_propagates_unexpected_errors() -> None:
     class Roto(WorkerFalso):
-        def ciclo(self, ahora: datetime) -> int:
+        def ciclo(self) -> int:
             raise RuntimeError("error inesperado de la base")
 
     with pytest.raises(RuntimeError, match="base"):
-        worker.correr(Roto(), reloj=lambda: AHORA, detenido=threading.Event(), pausa_s=0)
+        worker.correr(Roto(), detenido=threading.Event(), pausa_s=0)
 
 
 def test_construir_worker_wires_the_worker_without_connecting() -> None:

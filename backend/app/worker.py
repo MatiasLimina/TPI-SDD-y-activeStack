@@ -36,7 +36,7 @@ PAUSA_S = 5.0
 class _Ciclable(Protocol):
     def iniciar(self) -> int: ...
 
-    def ciclo(self, ahora: datetime) -> int: ...
+    def ciclo(self) -> int: ...
 
 
 @dataclass
@@ -50,8 +50,17 @@ class WorkerArmado:
         self.motor.dispose()
 
 
-def construir_worker(config: ConfiguracionWorker) -> WorkerArmado:
-    """Arma el worker con sus dependencias reales; no abre conexiones hasta usarlas."""
+def _ahora_utc() -> datetime:
+    return datetime.now(UTC)
+
+
+def construir_worker(
+    config: ConfiguracionWorker, reloj: Callable[[], datetime] = _ahora_utc
+) -> WorkerArmado:
+    """Arma el worker con sus dependencias reales; no abre conexiones hasta usarlas.
+
+    El mismo `reloj` va al worker y al procesador: una sola fuente de tiempo.
+    """
     motor = create_engine(config.DATABASE_URL, pool_pre_ping=True, hide_parameters=True)
     cliente = crear_cliente_redis(config.REDIS_URL)
     cola = ColaRedis(cliente)
@@ -62,15 +71,15 @@ def construir_worker(config: ConfiguracionWorker) -> WorkerArmado:
         crear_sender(config.NOTIFICATION_ADAPTER),
         config.CONSULTORIO_NOMBRE,
         config.APP_TIMEZONE,
+        reloj,
     )
-    worker = WorkerRecordatorios(cola, procesador, ReencolarPendientes(sesiones, cola))
+    worker = WorkerRecordatorios(cola, procesador, ReencolarPendientes(sesiones, cola), reloj)
     return WorkerArmado(worker, motor, cliente)
 
 
 def correr(
     worker: _Ciclable,
     *,
-    reloj: Callable[[], datetime],
     detenido: threading.Event,
     pausa_s: float = PAUSA_S,
     max_ciclos: int | None = None,
@@ -83,7 +92,7 @@ def correr(
     worker.iniciar()
     ciclos = 0
     while not detenido.is_set():
-        procesados = worker.ciclo(reloj())
+        procesados = worker.ciclo()
         ciclos += 1
         if max_ciclos is not None and ciclos >= max_ciclos:
             break
@@ -104,7 +113,7 @@ def main() -> int:
     signal.signal(signal.SIGTERM, pedir_detencion)
     signal.signal(signal.SIGINT, pedir_detencion)
     try:
-        correr(armado.worker, reloj=lambda: datetime.now(UTC), detenido=detenido)
+        correr(armado.worker, detenido=detenido)
     finally:
         armado.cerrar()
     return 0

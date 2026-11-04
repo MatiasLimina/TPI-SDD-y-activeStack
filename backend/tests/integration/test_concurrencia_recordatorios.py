@@ -13,7 +13,7 @@ from app.application.recordatorios import ProcesarRecordatorio, ResultadoProcesa
 from app.domain.notificaciones import MensajeRecordatorio
 from app.infrastructure.db.repositorio_turnos import RepositorioTurnos
 from app.infrastructure.notifications.mock_sender import MockSender
-from tests.fakes import ColaEnMemoria
+from tests.fakes import ColaEnMemoria, RelojManual
 from tests.integration.factories import Catalogo
 from tests.integration.helpers_recordatorios import CONSULTORIO, PROGRAMADO_PARA, ZONA
 
@@ -73,14 +73,16 @@ def test_procesamiento_simultaneo_del_mismo_recordatorio_envia_exactamente_una_v
     recordatorio_id = _recordatorio_commiteado(motor_concurrente, catalogo_commiteado)
     fabrica = sessionmaker(bind=motor_concurrente, expire_on_commit=False)
     sender = SenderQueEsperaAlOtro()
-    procesador = ProcesarRecordatorio(fabrica, ColaEnMemoria(), sender, CONSULTORIO, ZONA)
+    procesador = ProcesarRecordatorio(
+        fabrica, ColaEnMemoria(), sender, CONSULTORIO, ZONA, RelojManual(PROGRAMADO_PARA)
+    )
     barrera = threading.Barrier(HILOS)
     resultados: list[Any] = [None] * HILOS
 
     def trabajar(indice: int) -> None:
         barrera.wait(timeout=10)
         try:
-            resultados[indice] = procesador.procesar(recordatorio_id, PROGRAMADO_PARA)
+            resultados[indice] = procesador.procesar(recordatorio_id)
         except Exception as error:  # se inspecciona en el hilo principal
             resultados[indice] = error
 

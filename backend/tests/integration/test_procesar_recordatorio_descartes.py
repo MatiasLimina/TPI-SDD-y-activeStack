@@ -9,7 +9,7 @@ from sqlalchemy.orm import Session
 
 from app.domain.recordatorios import EstadoRecordatorio
 from app.infrastructure.notifications.mock_sender import MockSender
-from tests.fakes import ColaEnMemoria
+from tests.fakes import ColaEnMemoria, RelojManual
 from tests.integration.factories import Catalogo, crear_catalogo
 from tests.integration.helpers_recordatorios import (
     BUENOS_AIRES,
@@ -17,6 +17,7 @@ from tests.integration.helpers_recordatorios import (
     armar_worker,
     caso_cancelar,
     caso_crear,
+    ciclo_a,
     crear_sin_programar,
     insertar_recordatorio,
     programador,
@@ -35,6 +36,7 @@ def catalogo(db_session: Session) -> Catalogo:
 def test_turno_cancelado_con_recordatorio_pendiente_no_envia_y_queda_cancelado(
     db_session: Session, catalogo: Catalogo
 ) -> None:
+    reloj = RelojManual(PROGRAMADO_PARA)
     turno = crear_sin_programar(db_session, catalogo)
     recordatorio_id = insertar_recordatorio(db_session, turno.id)
     db_session.execute(
@@ -43,7 +45,7 @@ def test_turno_cancelado_con_recordatorio_pendiente_no_envia_y_queda_cancelado(
     cola, sender = ColaEnMemoria(), MockSender()
     cola.encolar(recordatorio_id, PROGRAMADO_PARA)
 
-    armar_worker(db_session, cola, sender).ciclo(PROGRAMADO_PARA)
+    ciclo_a(armar_worker(db_session, cola, sender, reloj), reloj, PROGRAMADO_PARA)
 
     assert sender.enviados == []
     (fila,) = recordatorios_de(db_session, turno.id)
@@ -53,6 +55,7 @@ def test_turno_cancelado_con_recordatorio_pendiente_no_envia_y_queda_cancelado(
 def test_recordatorio_cancelado_que_seguia_en_la_cola_no_se_envia(
     db_session: Session, catalogo: Catalogo
 ) -> None:
+    reloj = RelojManual(PROGRAMADO_PARA)
     prog = programador(db_session, AHORA_LOCAL)
     turno = caso_crear(db_session, prog, AHORA_LOCAL).ejecutar(solicitud(catalogo))
     cola, sender = ColaEnMemoria(), MockSender()
@@ -62,7 +65,7 @@ def test_recordatorio_cancelado_que_seguia_en_la_cola_no_se_envia(
         turno.id, None
     )
 
-    armar_worker(db_session, cola, sender).ciclo(PROGRAMADO_PARA)
+    ciclo_a(armar_worker(db_session, cola, sender, reloj), reloj, PROGRAMADO_PARA)
 
     assert sender.enviados == []
     (fila,) = recordatorios_de(db_session, turno.id)
@@ -73,15 +76,16 @@ def test_recordatorio_cancelado_que_seguia_en_la_cola_no_se_envia(
 def test_recordatorio_enviado_encolado_de_nuevo_no_se_envia_dos_veces(
     db_session: Session, catalogo: Catalogo
 ) -> None:
+    reloj = RelojManual(PROGRAMADO_PARA)
     turno = crear_sin_programar(db_session, catalogo)
     recordatorio_id = insertar_recordatorio(db_session, turno.id)
     cola, sender = ColaEnMemoria(), MockSender()
-    worker = armar_worker(db_session, cola, sender)
+    worker = armar_worker(db_session, cola, sender, reloj)
     cola.encolar(recordatorio_id, PROGRAMADO_PARA)
-    worker.ciclo(PROGRAMADO_PARA)
+    ciclo_a(worker, reloj, PROGRAMADO_PARA)
 
     cola.encolar(recordatorio_id, PROGRAMADO_PARA)
-    worker.ciclo(PROGRAMADO_PARA)
+    ciclo_a(worker, reloj, PROGRAMADO_PARA)
 
     assert len(sender.enviados) == 1
     (fila,) = recordatorios_de(db_session, turno.id)
@@ -96,12 +100,13 @@ def test_recordatorio_enviado_encolado_de_nuevo_no_se_envia_dos_veces(
 def test_recordatorio_cancelado_o_fallido_encolado_no_se_envia_y_no_cambia(
     db_session: Session, catalogo: Catalogo, estado: EstadoRecordatorio, intentos: int
 ) -> None:
+    reloj = RelojManual(PROGRAMADO_PARA)
     turno = crear_sin_programar(db_session, catalogo)
     recordatorio_id = insertar_recordatorio(db_session, turno.id, estado=estado, intentos=intentos)
     cola, sender = ColaEnMemoria(), MockSender()
     cola.encolar(recordatorio_id, PROGRAMADO_PARA)
 
-    armar_worker(db_session, cola, sender).ciclo(PROGRAMADO_PARA)
+    ciclo_a(armar_worker(db_session, cola, sender, reloj), reloj, PROGRAMADO_PARA)
 
     assert sender.enviados == []
     (fila,) = recordatorios_de(db_session, turno.id)
@@ -111,6 +116,7 @@ def test_recordatorio_cancelado_o_fallido_encolado_no_se_envia_y_no_cambia(
 def test_id_inexistente_se_descarta_y_el_resto_del_ciclo_se_procesa(
     db_session: Session, catalogo: Catalogo
 ) -> None:
+    reloj = RelojManual(PROGRAMADO_PARA)
     turno = crear_sin_programar(db_session, catalogo)
     recordatorio_id = insertar_recordatorio(db_session, turno.id)
     fantasma = uuid4()
@@ -118,7 +124,9 @@ def test_id_inexistente_se_descarta_y_el_resto_del_ciclo_se_procesa(
     cola.encolar(fantasma, PROGRAMADO_PARA.replace(minute=0))
     cola.encolar(recordatorio_id, PROGRAMADO_PARA.replace(minute=1))
 
-    procesados = armar_worker(db_session, cola, sender).ciclo(PROGRAMADO_PARA.replace(minute=5))
+    procesados = ciclo_a(
+        armar_worker(db_session, cola, sender, reloj), reloj, PROGRAMADO_PARA.replace(minute=5)
+    )
 
     assert procesados == 2
     assert [m.recordatorio_id for m in sender.enviados] == [recordatorio_id]

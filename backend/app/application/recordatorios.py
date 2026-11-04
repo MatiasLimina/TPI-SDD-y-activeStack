@@ -120,14 +120,16 @@ class ProcesarRecordatorio:
         sender: NotificationSender,
         consultorio: str,
         zona: str,
+        reloj: Reloj,
     ) -> None:
         self._sesiones = sesiones
         self._cola = cola
         self._sender = sender
         self._consultorio = consultorio
         self._zona = zona
+        self._reloj = reloj
 
-    def procesar(self, recordatorio_id: UUID, ahora: datetime) -> ResultadoProcesamiento:
+    def procesar(self, recordatorio_id: UUID) -> ResultadoProcesamiento:
         """Verifica en la base, con el recordatorio bloqueado, y envía si corresponde.
 
         Solo las excepciones del emisor cuentan como intento fallido: un error de la base o de
@@ -168,7 +170,7 @@ class ProcesarRecordatorio:
                         resultado = ResultadoProcesamiento.FALLIDO
                     else:
                         resultado = ResultadoProcesamiento.REINTENTO
-                        vence_reintento = ahora + espera_reintento(registrado.intentos)
+                        vence_reintento = self._reloj() + espera_reintento(registrado.intentos)
                 else:
                     repositorio.marcar_enviado(recordatorio_id)
                     resultado = ResultadoProcesamiento.ENVIADO
@@ -197,26 +199,28 @@ class ReencolarPendientes:
 
 
 class WorkerRecordatorios:
-    """`iniciar()` re-encola; `ciclo(ahora)` toma los vencidos y los procesa."""
+    """`iniciar()` re-encola; `ciclo()` toma los vencidos y los procesa."""
 
     def __init__(
         self,
         cola: ColaRecordatorios,
         procesador: ProcesarRecordatorio,
         reencolar: ReencolarPendientes,
+        reloj: Reloj,
         limite: int = LIMITE_POR_CICLO,
     ) -> None:
         self._cola = cola
         self._procesador = procesador
         self._reencolar = reencolar
+        self._reloj = reloj
         self._limite = limite
 
     def iniciar(self) -> int:
         return self._reencolar.ejecutar()
 
-    def ciclo(self, ahora: datetime) -> int:
-        """Procesa los recordatorios vencidos a `ahora`; devuelve cuántos tomó de la cola."""
-        vencidos = self._cola.tomar_vencidos(ahora, self._limite)
+    def ciclo(self) -> int:
+        """Procesa los recordatorios vencidos al reloj; devuelve cuántos tomó de la cola."""
+        vencidos = self._cola.tomar_vencidos(self._reloj(), self._limite)
         for recordatorio_id in vencidos:
-            self._procesador.procesar(recordatorio_id, ahora)
+            self._procesador.procesar(recordatorio_id)
         return len(vencidos)
