@@ -1,5 +1,7 @@
 # Revisión de escenarios — bloqueos-agenda (C-11)
 
+> **Estado (2026-11-04)**: los hallazgos H1-H12 se resolvieron con `/opsx:update` el 2026-11-04, después de que el usuario aprobara las decisiones D1-D9 y D11-D13. **D12 cambió**: el odontólogo recibe `403 profesional_ajeno` antes de la existencia (bloqueo ajeno o inexistente), como DD-27 (i), así que el orden `404` → `403` que citan H5 y la tabla de D12 ya no aplica. **H13 no se aplicó** (opcional). El resto de este informe queda como se escribió.
+
 - Fecha: 2026-11-04
 - Specs revisados:
   - `openspec/changes/bloqueos-agenda/specs/bloqueos-agenda/spec.md` (capacidad nueva: 10 requirements, 47 escenarios)

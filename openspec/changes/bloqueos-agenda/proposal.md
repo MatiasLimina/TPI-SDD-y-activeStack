@@ -11,7 +11,7 @@ Hoy la agenda solo sabe cuándo atiende cada profesional (C-10), pero no cuándo
   - `POST /bloqueos` con `[inicio, fin)` y `motivo` → `201`. La recepcionista indica el `profesional_id`; para el odontólogo el profesional sale del token (Flujo 5) y uno distinto se rechaza con `403 profesional_ajeno`.
   - Bloqueo con turnos activos del mismo profesional en el intervalo → `409 bloqueo_con_turnos` con la lista de turnos afectados, sin persistir nada (RN-HB-03, DD-12). Un turno contiguo (que termina justo al empezar el bloqueo o empieza justo al terminar) no cuenta, y un turno cancelado tampoco.
   - Bloqueo inválido (`fin <= inicio`, motivo vacío) → `422 bloqueo_invalido`; datetime sin zona → `422`; profesional inexistente → `422 referencia_invalida`.
-  - `GET /bloqueos` (la recepcionista ve todos o filtra por `profesional_id`; el odontólogo, solo los suyos) y `DELETE /bloqueos/{id}` (`204`; el odontólogo solo los suyos).
+  - `GET /bloqueos` (la recepcionista ve todos o filtra por `profesional_id`; el odontólogo, solo los suyos) y `DELETE /bloqueos/{id}` (`204`; el odontólogo solo los suyos, y sobre uno ajeno o inexistente recibe `403 profesional_ajeno`, sin revelar si existe).
 - **Validación RN-AG-06 en alta y reprogramación de turnos**: un turno que se superpone con un bloqueo de su profesional se rechaza con `422 turno_en_bloqueo`. Uno que empieza justo al terminar el bloqueo, o termina justo al empezar, es válido. Se evalúa después del horario de atención (C-10) y antes del pre-chequeo de solape (`409`).
 - **Concurrencia**: un bloqueo y un turno simultáneos sobre el mismo intervalo del mismo profesional nunca quedan los dos persistidos. La garantía cruza dos tablas, así que no hay restricción de exclusión que la cubra; se serializa con un lock sobre la fila del profesional (ver `design.md` D13) y se prueba con un test de concurrencia.
 
@@ -39,4 +39,4 @@ Hoy la agenda solo sabe cuándo atiende cada profesional (C-10), pero no cuándo
 - **Recordatorios (C-12)**: sin cambios. Crear un bloqueo no modifica turnos (se rechaza si hay activos). Un turno rechazado por RN-AG-06 corta antes del `INSERT`/`UPDATE`, así que no crea, cancela ni encola recordatorios. Lo cubren escenarios explícitos.
 - **Tests existentes**: los fixtures que borran usuarios deben borrar antes sus bloqueos (FK `creado_por`). La fábrica `crear_catalogo` no cambia.
 - **KB**: registrar las decisiones aprobadas como **DD-30** en `09_decisiones_y_supuestos.md`, precisar la entidad Bloqueo de `04`, la tabla de API de `02` y la fila "Bloqueos de agenda" de la matriz de `03` según D3.
-- **Governance**: MEDIO. Las decisiones marcadas **[A confirmar]** en `design.md` (D1-D9, D11-D13) no las fija la KB y el usuario las tiene que aprobar antes del Apply.
+- **Governance**: MEDIO. Las decisiones de `design.md` que no fija la KB (D1-D9, D11-D13) las aprobó el usuario el 2026-11-04, D12 con `403` antes de la existencia (como DD-27 i). Se registran como DD-30.
