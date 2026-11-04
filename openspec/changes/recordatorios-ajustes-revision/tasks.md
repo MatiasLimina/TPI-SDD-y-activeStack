@@ -25,7 +25,7 @@
 - [x] 4.1 RED→GREEN: `tests/integration/test_migracion_009.py` (base scratch). Escenario "Restricción reversible": `upgrade head` crea `ck_recordatorio_pendiente_intentos`; `downgrade 008` la elimina y la base acepta un `pendiente` con `intentos` 3; un `upgrade` nuevo sobre una base sin ese dato la restaura y la base lo vuelve a rechazar. Ajustar `test_migrations.py` para esperar `"009"`. Si `test_migracion_008.py` afirma sobre `head` algo que `009` cambia, fijarlo a `"008"`. Escribir `backend/alembic/versions/009_recordatorio_pendiente_intentos.py` (`down_revision = "008"`, con `downgrade`). Verificar en verde y que `alembic heads` muestra solo `009`
 - [x] 4.2 RED→GREEN: declarar la `CheckConstraint` en el modelo `Recordatorio` con la convención de nombres de `base.py`. Verificar que `test_modelos_vs_migracion.py` no detecta diferencias
 - [x] 4.3 RED→GREEN: en `tests/integration/test_recordatorio_constraints.py`, sumar `pendiente` con `intentos` 3 al parametrizado de "Valores inválidos rechazados" y agregar el escenario "Un pendiente no llega a 3 intentos" (`UPDATE` de un `pendiente` con 2 intentos a 3 → CHECK; a 3 con `fallido` → aceptado), cada caso en un SAVEPOINT. Verificar en verde
-- [ ] 4.4 Actualizar `knowledge-base/04_modelo_de_datos.md` §Recordatorio con el CHECK `ck_recordatorio_pendiente_intentos` (DD-29) y verificar que coincide con la migración `009`
+- [x] 4.4 Actualizar `knowledge-base/04_modelo_de_datos.md` §Recordatorio con el CHECK `ck_recordatorio_pendiente_intentos` (DD-29) y verificar que coincide con la migración `009`
 
 ## 5. Backoff persistido en `programado_para` (D2, hallazgos 2 y 3)
 
