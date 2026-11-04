@@ -8,12 +8,25 @@ import redis
 CLAVE_POR_DEFECTO = "recordatorios:programados"
 
 
+_TOMAR_VENCIDOS = """
+local ids = redis.call('ZRANGEBYSCORE', KEYS[1], '-inf', ARGV[1], 'LIMIT', 0, ARGV[2])
+if #ids > 0 then redis.call('ZREM', KEYS[1], unpack(ids)) end
+return ids
+"""
+"""Lee y quita los vencidos en un solo viaje. Redis ejecuta el script de forma atómica."""
+
+
 class ColaRedis:
-    """Implementa `ColaRecordatorios`. La base sigue siendo la fuente de verdad del estado."""
+    """Implementa `ColaRecordatorios`. La base sigue siendo la fuente de verdad del estado.
+
+    `tomar_vencidos` usa un script Lua (`_TOMAR_VENCIDOS`): un `ZRANGEBYSCORE` y un `ZREM` de
+    los ids leídos, atómicos, en un solo viaje (`EVALSHA`, con caída automática a `EVAL`).
+    """
 
     def __init__(self, cliente: redis.Redis, clave: str = CLAVE_POR_DEFECTO) -> None:
         self._cliente = cliente
         self._clave = clave
+        self._tomar_vencidos = cliente.register_script(_TOMAR_VENCIDOS)
 
     def encolar(self, recordatorio_id: UUID, vence: datetime) -> None:
         """`ZADD` es idempotente por miembro: volver a encolar reemplaza el vencimiento."""
@@ -22,13 +35,11 @@ class ColaRedis:
     def tomar_vencidos(self, ahora: datetime, limite: int) -> list[UUID]:
         """Entrega por vencimiento hasta `limite` ids vencidos, cada uno a un solo consumidor.
 
-        Un id solo se devuelve si el `ZREM` lo quitó (devolvió 1): con varios workers, el que
-        pierde la carrera no lo recibe. No hace falta Lua ni `WATCH`.
+        El script los lee y los quita de forma atómica: con varios workers, cada id llega a uno.
+        `limite` es chico (100 por ciclo), lejos del tope de argumentos de `unpack`.
         """
-        candidatos = self._cliente.zrangebyscore(
-            self._clave, "-inf", ahora.timestamp(), start=0, num=limite
-        )
-        return [UUID(miembro) for miembro in candidatos if self._cliente.zrem(self._clave, miembro)]
+        miembros = self._tomar_vencidos(keys=[self._clave], args=[ahora.timestamp(), limite])
+        return [UUID(miembro) for miembro in miembros]
 
 
 def crear_cliente_redis(url: str) -> redis.Redis:
