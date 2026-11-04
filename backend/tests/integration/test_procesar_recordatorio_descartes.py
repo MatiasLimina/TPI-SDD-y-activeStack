@@ -1,6 +1,7 @@
 """El worker no envía si el turno está cancelado o el recordatorio ya no está pendiente."""
 
-from datetime import datetime
+import logging
+from datetime import UTC, datetime, timedelta
 from uuid import uuid4
 
 import pytest
@@ -132,3 +133,95 @@ def test_id_inexistente_se_descarta_y_el_resto_del_ciclo_se_procesa(
     (fila,) = recordatorios_de(db_session, turno.id)
     assert fila["estado"] == "enviado"
     assert cola.elementos == {}
+
+
+INICIO_UTC = datetime(2026, 10, 9, 13, 0, tzinfo=UTC)  # inicio del turno de INICIO_TURNO
+
+
+def test_turno_que_empieza_en_el_momento_de_procesar_no_envia_y_queda_cancelado(
+    db_session: Session, catalogo: Catalogo
+) -> None:
+    reloj = RelojManual(PROGRAMADO_PARA)
+    turno = crear_sin_programar(db_session, catalogo)
+    recordatorio_id = insertar_recordatorio(db_session, turno.id)
+    cola, sender = ColaEnMemoria(), EmisorQueRegistra()
+    cola.encolar(recordatorio_id, PROGRAMADO_PARA)
+
+    ciclo_a(armar_worker(db_session, cola, sender, reloj), reloj, INICIO_UTC)
+
+    assert sender.invocaciones == 0
+    (fila,) = recordatorios_de(db_session, turno.id)
+    assert (fila["estado"], fila["intentos"]) == ("cancelado", 0)
+    assert cola.elementos == {}
+
+
+def test_recordatorio_atrasado_que_llega_un_minuto_antes_del_inicio_se_envia(
+    db_session: Session, catalogo: Catalogo
+) -> None:
+    reloj = RelojManual(PROGRAMADO_PARA)
+    turno = crear_sin_programar(db_session, catalogo)
+    recordatorio_id = insertar_recordatorio(db_session, turno.id)
+    cola, sender = ColaEnMemoria(), EmisorQueRegistra()
+    cola.encolar(recordatorio_id, PROGRAMADO_PARA)
+
+    ciclo_a(armar_worker(db_session, cola, sender, reloj), reloj, INICIO_UTC - timedelta(minutes=1))
+
+    assert [m.recordatorio_id for m in sender.enviados] == [recordatorio_id]
+    (fila,) = recordatorios_de(db_session, turno.id)
+    assert (fila["estado"], fila["intentos"]) == ("enviado", 1)
+
+
+def test_recordatorio_reencolado_tras_una_caida_larga_no_se_envia_y_queda_cancelado(
+    db_session: Session, catalogo: Catalogo
+) -> None:
+    reloj = RelojManual(PROGRAMADO_PARA)
+    turno = crear_sin_programar(db_session, catalogo)
+    insertar_recordatorio(db_session, turno.id)
+    cola, sender = ColaEnMemoria(), EmisorQueRegistra()
+    worker = armar_worker(db_session, cola, sender, reloj)
+    worker.iniciar()
+
+    ciclo_a(worker, reloj, INICIO_UTC + timedelta(hours=2))
+
+    assert sender.invocaciones == 0
+    (fila,) = recordatorios_de(db_session, turno.id)
+    assert (fila["estado"], fila["intentos"]) == ("cancelado", 0)
+    assert cola.elementos == {}
+
+
+def test_reintento_pendiente_de_un_turno_iniciado_no_se_envia_y_conserva_sus_intentos(
+    db_session: Session, catalogo: Catalogo
+) -> None:
+    reloj = RelojManual(PROGRAMADO_PARA)
+    turno = crear_sin_programar(db_session, catalogo)
+    reintento = PROGRAMADO_PARA + timedelta(minutes=1)
+    recordatorio_id = insertar_recordatorio(
+        db_session, turno.id, intentos=1, programado_para=reintento
+    )
+    cola, sender = ColaEnMemoria(), EmisorQueRegistra()
+    cola.encolar(recordatorio_id, reintento)
+
+    ciclo_a(armar_worker(db_session, cola, sender, reloj), reloj, INICIO_UTC + timedelta(minutes=5))
+
+    assert sender.invocaciones == 0
+    (fila,) = recordatorios_de(db_session, turno.id)
+    assert (fila["estado"], fila["intentos"]) == ("cancelado", 1)
+    assert cola.elementos == {}
+
+
+def test_el_descarte_por_turno_iniciado_no_registra_datos_del_paciente(
+    db_session: Session, catalogo: Catalogo, caplog: pytest.LogCaptureFixture
+) -> None:
+    reloj = RelojManual(PROGRAMADO_PARA)
+    turno = crear_sin_programar(db_session, catalogo)
+    recordatorio_id = insertar_recordatorio(db_session, turno.id)
+    cola = ColaEnMemoria()
+    cola.encolar(recordatorio_id, PROGRAMADO_PARA)
+
+    with caplog.at_level(logging.INFO, logger="app.application.recordatorios"):
+        ciclo_a(armar_worker(db_session, cola, EmisorQueRegistra(), reloj), reloj, INICIO_UTC)
+
+    mensajes = [r.getMessage() for r in caplog.records if "iniciado" in r.getMessage()]
+    assert len(mensajes) == 1
+    assert str(recordatorio_id) in mensajes[0]
+    assert str(catalogo.pacientes[0].id) not in mensajes[0]

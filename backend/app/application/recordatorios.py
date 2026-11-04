@@ -133,6 +133,8 @@ class ProcesarRecordatorio:
     def procesar(self, recordatorio_id: UUID) -> ResultadoProcesamiento:
         """Verifica en la base, con el recordatorio bloqueado, y envía si corresponde.
 
+        Orden de las verificaciones: pendiente, turno `programado`, turno no iniciado (DD-29).
+
         Solo las excepciones del emisor cuentan como intento fallido: un error de la base o de
         Redis se propaga (el worker termina y Compose lo reinicia; D11, crash-only).
         """
@@ -148,6 +150,13 @@ class ProcesarRecordatorio:
                     repositorio.commit()
                     return ResultadoProcesamiento.DESCARTADO
                 if para_envio.turno_estado != "programado":
+                    repositorio.marcar_cancelado(recordatorio_id)
+                    repositorio.commit()
+                    return ResultadoProcesamiento.CANCELADO
+                if para_envio.inicio <= to_utc(self._reloj()):
+                    # Ya no sería un recordatorio previo (RN-NO-01); mismo criterio de "iniciado"
+                    # que RN-AG-13 (`inicio <= ahora`). Conserva los intentos y no se re-encola.
+                    logger.info("recordatorio %s descartado: turno ya iniciado", recordatorio_id)
                     repositorio.marcar_cancelado(recordatorio_id)
                     repositorio.commit()
                     return ResultadoProcesamiento.CANCELADO
