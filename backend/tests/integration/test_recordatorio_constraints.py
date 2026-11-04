@@ -78,6 +78,7 @@ def test_estado_e_intentos_omitidos_toman_los_defaults(db_session: Session, turn
         ({"estado": "fallido", "intentos": 2}, "ck_recordatorio_intentos_segun_estado"),
         ({"estado": "fallido", "intentos": 0}, "ck_recordatorio_intentos_segun_estado"),
         ({"estado": "enviado", "intentos": 0}, "ck_recordatorio_intentos_segun_estado"),
+        ({"estado": "pendiente", "intentos": 3}, "ck_recordatorio_pendiente_intentos"),
     ],
     ids=[
         "estado-borrador",
@@ -88,6 +89,7 @@ def test_estado_e_intentos_omitidos_toman_los_defaults(db_session: Session, turn
         "fallido-con-2",
         "fallido-con-0",
         "enviado-con-0",
+        "pendiente-con-3",
     ],
 )
 def test_check_rechaza_valores_invalidos_e_incoherentes(
@@ -204,3 +206,34 @@ def test_pasar_un_pendiente_a_cancelado_libera_el_lugar_para_otro_pendiente(
 
     estados = db_session.execute(select(Recordatorio.estado)).scalars().all()
     assert sorted(estados) == ["cancelado", "pendiente"]
+
+
+def _actualizar(session: Session, turno: Turno, **valores: Any) -> None:
+    with session.begin_nested():
+        session.execute(
+            update(Recordatorio).where(Recordatorio.turno_id == turno.id).values(**valores)
+        )
+
+
+def test_un_pendiente_no_llega_a_3_intentos_sin_cambiar_de_estado(
+    db_session: Session, turno: Turno
+) -> None:
+    _insertar(db_session, _fila(turno, intentos=2))
+
+    with pytest.raises(IntegrityError) as excinfo:
+        _actualizar(db_session, turno, intentos=3)
+
+    assert excinfo.value.orig.sqlstate == CHECK
+    assert excinfo.value.orig.diag.constraint_name == "ck_recordatorio_pendiente_intentos"
+    assert db_session.execute(select(Recordatorio.intentos)).scalar_one() == 2
+
+
+def test_un_pendiente_con_2_intentos_pasa_a_3_si_pasa_a_fallido(
+    db_session: Session, turno: Turno
+) -> None:
+    _insertar(db_session, _fila(turno, intentos=2))
+
+    _actualizar(db_session, turno, intentos=3, estado="fallido")
+
+    fila = db_session.execute(select(Recordatorio.estado, Recordatorio.intentos)).one()
+    assert tuple(fila) == ("fallido", 3)
