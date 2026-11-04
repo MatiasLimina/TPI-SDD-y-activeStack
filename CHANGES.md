@@ -320,6 +320,7 @@ C-01 a C-06 los hizo Matías, y C-07 está implementado y pendiente de merge (PR
   - Anticipación de 24 h (`REMINDER_LEAD_HOURS=24`); si el turno se crea o reprograma con menos de 24 h, no se programa recordatorio (RN-NO-03, DD-13); contenido sin datos clínicos (RN-NO-04)
   - Reintentos: 3 intentos con backoff exponencial; agotados, `estado = fallido`; sin reintento manual (RN-NO-05, DD-19)
   - Tests: encolado al crear, sin recordatorio con menos de 24 h, ajuste al cancelar/reprogramar, worker invoca el puerto (mock), 3 reintentos y `fallido`, turno cancelado no envía
+  - Seguimiento: `recordatorios-ajustes-revision` (revisión del PR #8, DD-29)
 - **Dependencias**: `C-04, C-05, C-01`
 - **Governance**: ALTO
 - **Leer antes**:
@@ -443,4 +444,3 @@ Diferido por el Discovery (ver `docs/discovery/informe-discovery.md` §D.3 y §D
 - Política de complejidad o largo mínimo de contraseña más allá de "no vacía" (regla nueva sin respaldo en la KB; DD-24)
 - Rol de base de datos de mínimo privilegio para la aplicación: hoy se conecta como dueña de las tablas y podría deshabilitar los triggers append-only de `turno_auditoria` (DD-25)
 - Consulta de disponibilidad / huecos libres (US-007): no figura en D.4, es una suposición de la KB y se acopla naturalmente con el enlace público de reserva diferido (D.3)
-- Persistir el vencimiento del próximo reintento de un recordatorio en la base: hoy vive solo en Redis y, al reiniciar el worker, un reintento pendiente se adelanta y se saltea el backoff (DD-19, DD-28; pregunta abierta en `10_preguntas_abiertas.md`, surgida en la revisión del PR #8)
