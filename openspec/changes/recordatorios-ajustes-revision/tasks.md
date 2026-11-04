@@ -1,8 +1,8 @@
 # Tasks
 
-> Governance ALTO: no empezar el Apply hasta que el usuario apruebe explícitamente las decisiones **[A confirmar]** de `design.md` (D1, D2, D3 y D4). Si alguna se aprueba con su alternativa, primero `/opsx:update` (spec, design y tareas).
+> Governance ALTO: el usuario aprobó el 2026-11-04 las decisiones D1, D2, D3 y D4 de `design.md`, las cuatro con la opción recomendada. Se registran como DD-29 en la tarea 10.1. Si más adelante alguna cambia, primero `/opsx:update` (spec, design y tareas).
 >
-> Change de seguimiento de C-12, en la rama `feat/c-12-recordatorios-mock-redis` (PR #8). Roadmap id: C-12. No se agrega un bloque nuevo en `CHANGES.md`.
+> Change de seguimiento de C-12, en la rama `feat/c-12-recordatorios-mock-redis` (PR #8). Roadmap id: C-12. No se agrega un bloque nuevo en `CHANGES.md`: solo una línea de seguimiento en el bloque `[C-12]` (tarea 10.3).
 >
 > TDD estricto: en cada tarea RED (un test que falla, verificado al ejecutarlo) → GREEN (el mínimo código) → triangular → refactor con los tests en verde. Todo test de persistencia corre contra PostgreSQL real. Redis real solo en la suite de contrato de la cola (`TEST_REDIS_URL`). Reloj inyectado (`RelojManual`), sin `sleep` reales y con datos ficticios. No leer `.env*`. Nombres `test_<unidad>_<escenario>_<esperado>`. Cada grupo cierra con `ruff format` + `ruff check` sin errores, type hints completos y `pytest` completo en verde. Un commit Conventional Commits con scope `c-12` por grupo.
 
@@ -18,7 +18,7 @@
 ## 3. `MockSender` sin estado (D6)
 
 - [ ] 3.1 Refactor de tests: los tests que inspeccionan `MockSender().enviados` (`test_procesar_recordatorio.py`, `test_procesar_recordatorio_descartes.py`, `test_reencolar_pendientes.py` y `test_concurrencia_recordatorios.py`, donde `SenderQueEsperaAlOtro` pasa a heredar de `EmisorQueRegistra`) usan `EmisorQueRegistra`. Verificar con `pytest` completo en verde y sin cambiar aserciones
-- [ ] 3.2 RED→GREEN: en `tests/unit/test_mock_sender.py`, escenario "Envíos repetidos no acumulan estado en el adaptador mock" (`vars(sender)` igual antes y después de 1000 envíos) y escenario "El adaptador mock registra el envío" redactado de nuevo (`caplog` con un `INFO` que tiene el id del recordatorio y el texto, sin `paciente_id`). Quitar `enviados` de `MockSender` (design D6). Verificar en verde
+- [ ] 3.2 RED→GREEN: en `tests/unit/test_mock_sender.py`, escenario "Envíos repetidos no acumulan estado en el adaptador mock" (`vars(sender)` igual antes y después de 1000 envíos) y escenario "El adaptador mock registra el envío" redactado de nuevo (`caplog` con un `INFO` que tiene el id del recordatorio y el texto, sin el id del paciente). Quitar `enviados` de `MockSender` (design D6). Verificar en verde
 
 ## 4. CHECK de pendientes con menos de 3 intentos y migración `009` (D3)
 
@@ -38,7 +38,8 @@
 ## 6. Sin envío para turnos ya iniciados (D1)
 
 - [ ] 6.1 RED→GREEN: en `tests/integration/test_procesar_recordatorio_descartes.py`, los escenarios del requisito "Sin envío para turnos ya iniciados": inicio igual al reloj → `cancelado` con `intentos` 0, sin invocación y fuera de la cola; reloj un minuto antes del inicio con un recordatorio atrasado → `enviado` con `intentos` 1; caída larga (`iniciar()` y ciclo a 2026-10-09T15:00Z) → `cancelado` con `intentos` 0; reintento con `intentos` 1 de un turno iniciado → `cancelado` con `intentos` 1. Implementar el chequeo después de los de estado, con el reloj leído bajo bloqueo y un `logger.info` sin datos del paciente (design D1). Verificar en verde y que los escenarios de "Sin envío para turnos cancelados ni recordatorios no pendientes" siguen pasando
-- [ ] 6.2 Actualizar `knowledge-base/07_flujos_principales.md` Flujo 6, paso 1 (verifica que el turno siga activo y no haya iniciado; si inició, el recordatorio queda `cancelado`) y la mención en `05_reglas_de_negocio.md` (RN-NO-01 o RN-NO-02, "precisada en DD-29"). Verificar que el texto coincide con el spec
+- [ ] 6.2 Actualizar `knowledge-base/07_flujos_principales.md` Flujo 6, paso 1 (verifica que el turno siga activo y no haya iniciado; si inició, el recordatorio queda `cancelado`) y, en `05_reglas_de_negocio.md`, RN-NO-01 con la marca "precisada en DD-29" (el recordatorio previo no se envía si el turno ya inició; queda `cancelado`). RN-NO-02 no se modifica: su texto trata de la cancelación y la reprogramación del turno y sigue siendo cierto. Verificar que el texto coincide con el spec
+- [ ] 6.3 Actualizar `knowledge-base/04_modelo_de_datos.md` §Recordatorio: el pendiente pasa a `cancelado` al cancelar el turno, al reprogramarlo con cambio de inicio y, desde DD-29, cuando el worker lo procesa con el turno ya iniciado (`inicio <= ahora`), conservando sus `intentos`. Verificar que el texto coincide con el requisito "Sin envío para turnos ya iniciados"
 
 ## 7. Devolución a la cola ante un error a mitad de lote (D4)
 
@@ -58,9 +59,9 @@
 
 ## 10. Decisiones y documentación transversal
 
-- [ ] 10.1 Registrar **DD-29** en `knowledge-base/09_decisiones_y_supuestos.md` con D1..D4 tal como las aprobó el usuario, con alternativas descartadas y consecuencias (el cambio de significado de `programado_para`). Anotar en DD-28 que DD-29 reemplaza dos cosas: la limitación aceptada "el re-encolado al reiniciar ignora el backoff restante" y la alternativa descartada "columna `proximo_intento_en`" (ahora se reusa `programado_para`). Verificar que todas las citas "a registrar en DD-29" del spec tienen fuente
-- [ ] 10.2 En `knowledge-base/10_preguntas_abiertas.md`, mover "Recordatorio procesado después del inicio del turno" y "Backoff perdido al reiniciar el worker" a una sección "Preguntas resueltas (2026-11-03)" con su resolución (DD-29), y actualizar el párrafo de conteo (queda una pregunta abierta: lectura del estado de los recordatorios). Verificar que la tabla de abiertas tiene una sola fila
-- [ ] 10.3 Quitar de `CHANGES.md` (backlog) la línea "Persistir el vencimiento del próximo reintento de un recordatorio en la base..." y verificar con `grep` que no queda ninguna referencia a esa pregunta como pendiente
+- [ ] 10.1 Registrar **DD-29** en `knowledge-base/09_decisiones_y_supuestos.md` con D1..D4 tal como las aprobó el usuario el 2026-11-04 (las cuatro con la opción recomendada), con alternativas descartadas y consecuencias (el cambio de significado de `programado_para`). Anotar en DD-28 que DD-29 reemplaza dos cosas: la limitación aceptada "el re-encolado al reiniciar ignora el backoff restante" y la alternativa descartada "columna `proximo_intento_en`" (ahora se reusa `programado_para`). Verificar que todas las citas "a registrar en DD-29" del spec tienen fuente
+- [ ] 10.2 En `knowledge-base/10_preguntas_abiertas.md`, mover "Recordatorio procesado después del inicio del turno" y "Backoff perdido al reiniciar el worker" a una sección "Preguntas resueltas (2026-11-04)" con su resolución (DD-29), y actualizar el párrafo de conteo (queda una pregunta abierta: lectura del estado de los recordatorios). Verificar que la tabla de abiertas tiene una sola fila
+- [ ] 10.3 Quitar de `CHANGES.md` (backlog) la línea "Persistir el vencimiento del próximo reintento de un recordatorio en la base..." y agregar al bloque `[C-12]` la línea "Seguimiento: `recordatorios-ajustes-revision` (revisión del PR #8, DD-29)". Verificar con `grep` que no queda ninguna referencia a esa pregunta como pendiente y que el bloque `[C-12]` nombra el change de seguimiento
 - [ ] 10.4 Actualizar el aviso de preguntas abiertas de `CLAUDE.md` y `AGENTS.md` (una pregunta abierta no bloqueante, la lectura del estado de los recordatorios; el resto resuelto en DD-13..DD-29). Verificar con `cmp CLAUDE.md AGENTS.md` que siguen idénticos
 - [ ] 10.5 Revisar el README (sección de tests y de servicios) y actualizarlo solo si menciona algo que este change cambia (dependencias de `api` o `MockSender.enviados`). Verificar con `grep`
 
@@ -71,6 +72,6 @@
 
 ## Workflow follow-up
 
-- Correr `revisar-escenarios recordatorios-ajustes-revision` antes del Apply y, si hay hallazgos BLOQUEANTE o MAYOR, ajustar con `/opsx:update`.
-- Obtener la aprobación del usuario sobre D1..D4 (governance ALTO) antes de `/opsx:apply`.
+- `revisar-escenarios recordatorios-ajustes-revision` ya corrió (sin BLOQUEANTE ni MAYOR). Sus hallazgos MENOR H1..H5 se resolvieron con `/opsx:update` el 2026-11-04.
+- El usuario aprobó D1..D4 (governance ALTO) el 2026-11-04. El próximo paso es `/opsx:apply`.
 - El archive (`/opsx:archive recordatorios-ajustes-revision`, que sincroniza el delta en `openspec/specs/recordatorios/spec.md`) se hace en esta misma rama, antes del merge del PR #8. Push solo a pedido del usuario.

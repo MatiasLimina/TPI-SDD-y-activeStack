@@ -32,30 +32,31 @@ Estado actual del código que se toca:
 
 ## Decisions
 
-Governance ALTO. Las decisiones marcadas **[A confirmar]** son reglas nuevas: no se implementan hasta que el usuario las apruebe y, una vez aprobadas, se registran como **DD-29** en `knowledge-base/09_decisiones_y_supuestos.md` (tarea 9.1). D5..D8 son decisiones de implementación sin regla de dominio nueva.
+Governance ALTO. D1..D4 son reglas nuevas. El usuario las **aprobó el 2026-11-04**, en las cuatro con la opción recomendada, y se registran como **DD-29** en `knowledge-base/09_decisiones_y_supuestos.md` durante el Apply (tarea 10.1). D5..D8 son decisiones de implementación sin regla de dominio nueva.
 
 | Id | Decisión | Hallazgo | Fuente |
 |---|---|---|---|
-| D1 | Turno ya iniciado (`inicio <= ahora`) → no se envía y el recordatorio queda `cancelado`, con sus `intentos` | 1 | RN-AG-13, DD-23 (criterio de "iniciado"); el estado final es **[A confirmar]** |
-| D2 | `programado_para` = próximo intento programado; `registrar_fallo` lo persiste con el reloj del momento de la falla | 2, 3 | DD-19, DD-28 (d); cambio de significado **[A confirmar]** |
-| D3 | Migración `009`: CHECK nuevo `estado <> 'pendiente' OR intentos < 3` | 4 | DD-21, DD-28 (a); **[A confirmar]** |
-| D4 | Error a mitad de lote → devolver a la cola, best-effort, lo tomado y no procesado, y relanzar | 5 | DD-28 (crash-only, D11 de C-12); **[A confirmar]** |
+| D1 | Turno ya iniciado (`inicio <= ahora`) → no se envía y el recordatorio queda `cancelado`, con sus `intentos` | 1 | RN-NO-01 (recordatorio previo); RN-AG-13, DD-23 (criterio de "iniciado"); aprobada 2026-11-04, DD-29 |
+| D2 | `programado_para` = próximo intento programado; `registrar_fallo` lo persiste con el reloj del momento de la falla | 2, 3 | DD-19, DD-28 (d); cambio de significado aprobado 2026-11-04, DD-29 |
+| D3 | Migración `009`: CHECK nuevo `estado <> 'pendiente' OR intentos < 3` | 4 | DD-21, DD-28 (a); aprobada 2026-11-04, DD-29 |
+| D4 | Error a mitad de lote → devolver a la cola, best-effort, lo tomado y no procesado, y relanzar | 5 | DD-28 (crash-only, D11 de C-12); aprobada 2026-11-04, DD-29 |
 | D5 | Reloj único inyectado en el worker; `ciclo()` y `procesar(id)` sin `ahora` | 1, 3 | Patrón de reloj inyectado del proyecto |
 | D6 | `MockSender` sin estado: solo log; los tests usan `EmisorQueRegistra` | 6 | DD-04, D13 de C-12 |
 | D7 | `tomar_vencidos` con un script Lua (un viaje, atómico) | 7 | D7 de C-12 (sorted set) |
 | D8 | `api` depende de `redis` con `service_started` en Compose | 8 | 08 (infraestructura) |
 
-### D1. Sin envío para turnos ya iniciados **[A confirmar]**
+### D1. Sin envío para turnos ya iniciados **[Aprobada por el usuario el 2026-11-04]**
 
+- Anclaje en la KB: RN-NO-01 pide un recordatorio **previo** al turno. Uno enviado cuando el turno ya empezó no es previo. El criterio de "iniciado" es el de RN-AG-13 y DD-23 (`inicio <= ahora`), no el de RN-AG-12 (inicio estrictamente anterior), que rige para crear y reprogramar.
 - En `ProcesarRecordatorio.procesar`, después de bloquear y con este orden: (1) inexistente o no `pendiente` → descartado; (2) turno no `programado` → `marcar_cancelado` (igual que hoy); (3) **nuevo**: `inicio <= reloj()` → `marcar_cancelado`, sin envío y sin re-encolar; (4) envío. El estado se mira antes que la hora, igual que `validar_modificable` (DD-23).
 - El `ahora` del chequeo es el reloj leído **con el recordatorio bloqueado**, no el del inicio del ciclo (D5).
 - `marcar_cancelado` no toca `intentos`: un reintento descartado queda `cancelado` con 1 o 2 intentos. El CHECK `ck_recordatorio_intentos_segun_estado` no restringe `cancelado`, y D3 tampoco. Así que no hace falta cambiar ninguna restricción (verificado en `008_recordatorio.py`).
 - Se registra un `logger.info` con el id del recordatorio y el motivo ("turno ya iniciado"), sin datos del paciente.
-- **Opción recomendada**: estado final `cancelado`, sin cambio de esquema para el estado.
-- **Alternativa**: un estado nuevo (por ejemplo `vencido`) que distinga "descartado por tardío" de "cancelado porque se canceló el turno". Como este change ya agrega la migración `009`, ampliar `ck_recordatorio_estado_valido` costaría poco. Pero cambia `EstadoRecordatorio`, el requisito "Integridad del recordatorio en la base", la entidad de `04`, la redacción de RN-NO-02 y la futura lectura del estado (pregunta abierta). Se descarta para el MVP porque hoy nadie lee esa diferencia. Si el endpoint de lectura la necesita, se agrega en ese change.
+- **Opción aprobada (2026-11-04)**: estado final `cancelado`, sin cambio de esquema para el estado. Con esto `cancelado` tiene dos causas (turno cancelado y turno ya iniciado), y la segunda se documenta en `04` §Recordatorio (tarea 6.3) y en DD-29. RN-NO-02 no cambia de texto: sigue describiendo la cancelación y la reprogramación del turno.
+- **Alternativa descartada**: un estado nuevo (por ejemplo `vencido`) que distinga "descartado por tardío" de "cancelado porque se canceló el turno". Como este change ya agrega la migración `009`, ampliar `ck_recordatorio_estado_valido` costaría poco. Pero cambia `EstadoRecordatorio`, el requisito "Integridad del recordatorio en la base", la entidad de `04`, la redacción de RN-NO-02 y la futura lectura del estado (pregunta abierta). Se descarta para el MVP porque hoy nadie lee esa diferencia. Si el endpoint de lectura la necesita, se agrega en ese change.
 - Alternativa descartada: enviar igual (lo que hace C-12). Un recordatorio de un turno que ya empezó no le sirve al paciente y puede confundirlo.
 
-### D2. Backoff persistido en `programado_para` **[A confirmar]**
+### D2. Backoff persistido en `programado_para` **[Aprobada por el usuario el 2026-11-04]**
 
 - **Nuevo significado**: `programado_para` es el **próximo intento programado**. Al crear el recordatorio vale `inicio - REMINDER_LEAD_HOURS` (sin cambios en `ProgramadorRecordatorios`). Tras un intento fallido que no agota los intentos vale `momento_de_la_falla + espera_reintento(intentos)`.
 - `ProcesarRecordatorio`: ante una excepción del emisor lee `momento_falla = self._reloj()` **en ese instante** (hallazgo 3) y calcula `intentos_nuevos = recordatorio.intentos + 1`, con `intentos` leído bajo `FOR UPDATE`, así que es exacto. Si `intentos_nuevos < MAX_INTENTOS`, `proximo = momento_falla + espera_reintento(intentos_nuevos)`; si no, `proximo = None`.
@@ -63,22 +64,22 @@ Governance ALTO. Las decisiones marcadas **[A confirmar]** son reglas nuevas: no
 - Después del commit se encola con el mismo `proximo`. Si ese encolado falla, el próximo vencimiento ya está en la base: `iniciar()` lo recupera con la espera correcta (escenario "El reinicio conserva la espera del reintento").
 - `ReencolarPendientes` no cambia: ya encola con `programado_para`. Cambia lo que significa.
 - `cancelar_pendiente`, `marcar_enviado` y `marcar_cancelado` no tocan `programado_para`.
-- **Opción recomendada**: reusar `programado_para`, sin columna nueva.
-- **Alternativas**: (a) columna nueva `proximo_intento_en` (DD-28 la había descartado porque el vencimiento vivía en la cola). Conserva el `programado_para` original como dato histórico, pero agrega una columna, un índice parcial nuevo para el re-encolado y dos fuentes de "cuándo mirar" que pueden divergir. (b) Aceptar el adelanto al reiniciar, que es el statu quo de DD-28 y deja abierta la pregunta.
-- Consecuencia: se pierde en la fila el instante originalmente programado para un recordatorio con reintentos. Se puede reconstruir como `turno.inicio - REMINDER_LEAD_HOURS` si la configuración no cambió. Hoy nadie lo lee. Se documenta en `04` (tarea 9.2).
+- **Opción aprobada (2026-11-04)**: reusar `programado_para`, sin columna nueva.
+- **Alternativas descartadas**: (a) columna nueva `proximo_intento_en` (DD-28 la había descartado porque el vencimiento vivía en la cola). Conserva el `programado_para` original como dato histórico, pero agrega una columna, un índice parcial nuevo para el re-encolado y dos fuentes de "cuándo mirar" que pueden divergir. (b) Aceptar el adelanto al reiniciar, que es el statu quo de DD-28 y deja abierta la pregunta.
+- Consecuencia: se pierde en la fila el instante originalmente programado para un recordatorio con reintentos. Se puede reconstruir como `turno.inicio - REMINDER_LEAD_HOURS` si la configuración no cambió. Hoy nadie lo lee. Se documenta en `04` (tarea 5.5).
 
-### D3. CHECK `pendiente` con menos de 3 intentos (migración `009`) **[A confirmar]**
+### D3. CHECK `pendiente` con menos de 3 intentos (migración `009`) **[Aprobada por el usuario el 2026-11-04]**
 
 - `backend/alembic/versions/009_recordatorio_pendiente_intentos.py`, `revision = "009"`, `down_revision = "008"`:
   - `upgrade`: `op.create_check_constraint(op.f("ck_recordatorio_pendiente_intentos"), "recordatorio", "estado <> 'pendiente' OR intentos < 3")`.
   - `downgrade`: `op.drop_constraint(op.f("ck_recordatorio_pendiente_intentos"), "recordatorio", type_="check")`.
 - El modelo `Recordatorio` declara la misma `CheckConstraint`, con la convención de nombres de `base.py`, igual que los CHECKs de `008`, para que `test_modelos_vs_migracion.py` siga sin diferencias.
-- **Opción recomendada**: una restricción **nueva y separada**. El `downgrade` es trivial y el nombre del CHECK dice qué hueco cierra.
-- **Alternativa**: reemplazar `ck_recordatorio_intentos_segun_estado` por la versión extendida (`... AND (estado <> 'pendiente' OR intentos < 3)`). Queda una sola regla de coherencia, pero el `upgrade` y el `downgrade` tienen que borrar y recrear el CHECK con dos textos distintos.
+- **Opción aprobada (2026-11-04)**: una restricción **nueva y separada**. El `downgrade` es trivial y el nombre del CHECK dice qué hueco cierra.
+- **Alternativa descartada**: reemplazar `ck_recordatorio_intentos_segun_estado` por la versión extendida (`... AND (estado <> 'pendiente' OR intentos < 3)`). Queda una sola regla de coherencia, pero el `upgrade` y el `downgrade` tienen que borrar y recrear el CHECK con dos textos distintos.
 - Datos existentes: el código nunca deja un `pendiente` con 3 intentos (`registrar_fallo` pasa a `fallido` en el mismo `UPDATE`). Si existiera uno, el `upgrade` falla de forma explícita en lugar de corregir datos en silencio. Es aceptable porque el MVP no está en producción.
 - **Numeración**: si otra rama mergea antes a `main` una migración `009`, el que mergea segundo renumera esta (archivo, `revision`, `down_revision`, el `head` de `test_migrations.py` y el nombre de su test de migración) para que `alembic heads` muestre una sola cabeza (regla del equipo).
 
-### D4. Devolución a la cola de lo tomado y no procesado **[A confirmar]**
+### D4. Devolución a la cola de lo tomado y no procesado **[Aprobada por el usuario el 2026-11-04]**
 
 - `WorkerRecordatorios.ciclo()`:
   ```
@@ -93,8 +94,8 @@ Governance ALTO. Las decisiones marcadas **[A confirmar]** son reglas nuevas: no
 - El recordatorio en el que ocurrió el error **no** se devuelve. Si el error fue de la base, la transacción se revirtió y sigue `pendiente`. Si fue el encolado del reintento, la base ya tiene su próximo intento (D2). En los dos casos `iniciar()` lo recupera con el vencimiento correcto. Devolverlo con `ahora` adelantaría su reintento.
 - No se cambia el puerto `ColaRecordatorios`: `tomar_vencidos` sigue devolviendo solo ids. Por eso el vencimiento devuelto es `ahora` y no el original. Al reiniciar, `iniciar()` lo pisa con `programado_para` de la base (`ZADD` reemplaza el score), así que la diferencia dura como mucho hasta el reinicio.
 - D4 complementa a `iniciar()`, que con D2 ya recupera todo lo `pendiente` con su vencimiento correcto. Su valor es que lo no procesado no desaparece de Redis en un entorno sin reinicio automático, y que vuelve a estar disponible enseguida si el error fue transitorio.
-- **Opción recomendada**: devolver best-effort y relanzar.
-- **Alternativas**: (a) no devolver nada y depender solo del re-encolado al reiniciar. Es más simple y, con D2 y `restart: unless-stopped`, no pierde recordatorios. (b) `tomar_vencidos` devuelve `(id, vence)` para devolver con el vencimiento original. Cambia el contrato del puerto y de la suite de contrato por una diferencia que `iniciar()` ya corrige. (c) Atrapar el error por elemento y seguir con el lote. Se descarta porque rompe el diseño crash-only de DD-28 (un error de la base se repetiría en cada elemento).
+- **Opción aprobada (2026-11-04)**: devolver best-effort y relanzar.
+- **Alternativas descartadas**: (a) no devolver nada y depender solo del re-encolado al reiniciar. Es más simple y, con D2 y `restart: unless-stopped`, no pierde recordatorios. (b) `tomar_vencidos` devuelve `(id, vence)` para devolver con el vencimiento original. Cambia el contrato del puerto y de la suite de contrato por una diferencia que `iniciar()` ya corrige. (c) Atrapar el error por elemento y seguir con el lote. Se descarta porque rompe el diseño crash-only de DD-28 (un error de la base se repetiría en cada elemento).
 
 ### D5. Reloj único en el worker
 
@@ -147,4 +148,4 @@ Governance ALTO. Las decisiones marcadas **[A confirmar]** son reglas nuevas: no
 
 ## Open Questions
 
-Ninguna que cambie los specs, el enfoque o las tareas. Las decisiones D1..D4 esperan la aprobación del usuario (governance ALTO). Si alguna se aprueba con su alternativa, se ajustan el spec y las tareas con `/opsx:update` antes del Apply.
+Ninguna que cambie los specs, el enfoque o las tareas. El usuario aprobó D1..D4 el 2026-11-04 con las opciones recomendadas (governance ALTO), así que el spec y las tareas no cambian de enfoque. Se registran como DD-29 en el Apply (tarea 10.1).

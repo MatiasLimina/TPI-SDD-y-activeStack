@@ -1,7 +1,7 @@
 ## ADDED Requirements
 
 ### Requirement: Sin envío para turnos ya iniciados
-El worker MUST NOT invocar el puerto de notificación si, al verificar el recordatorio bloqueado, el inicio del turno es igual o anterior al momento de la verificación según el reloj (`inicio <= ahora`, el mismo criterio de "iniciado" que RN-AG-13 y DD-23). En ese caso el recordatorio `pendiente` MUST pasar a `cancelado` conservando sus `intentos` y MUST NOT volver a encolarse (design D1, a registrar en DD-29).
+El worker MUST NOT invocar el puerto de notificación si, con el recordatorio bloqueado, el reloj marca el inicio del turno o un instante posterior (`inicio <= ahora`, criterio de "iniciado" de RN-AG-13 y DD-23): ya no sería un recordatorio previo (RN-NO-01). En ese caso el recordatorio `pendiente` MUST pasar a `cancelado` conservando sus `intentos` y MUST NOT volver a encolarse (design D1, a registrar en DD-29).
 
 #### Scenario: Turno que empieza en el momento de procesar
 - **GIVEN** dado un turno `programado` con inicio 2026-10-09T13:00Z y su recordatorio `pendiente`, vencido, con `intentos` 0 en la cola
@@ -16,25 +16,25 @@ El worker MUST NOT invocar el puerto de notificación si, al verificar el record
 #### Scenario: Recordatorio re-encolado después de una caída larga
 - **GIVEN** dado un turno `programado` con inicio 2026-10-09T13:00Z y su recordatorio `pendiente` con `programado_para` 2026-10-08T13:00Z solo en la base, porque Redis y el worker estuvieron caídos más de 24 h
 - **WHEN** cuando el worker inicia y procesa la cola con el reloj en 2026-10-09T15:00Z
-- **THEN** entonces el puerto de notificación no se invoca y el recordatorio queda `cancelado` con `intentos` 0
+- **THEN** entonces el puerto de notificación no se invoca, el recordatorio queda `cancelado` con `intentos` 0 y la cola ya no lo contiene
 
 #### Scenario: Reintento pendiente de un turno ya iniciado
 - **GIVEN** dado un turno `programado` con inicio 2026-10-09T13:00Z y su recordatorio `pendiente` con `intentos` 1 y `programado_para` 2026-10-08T13:01Z en la cola
 - **WHEN** cuando el worker lo procesa con el reloj en 2026-10-09T13:05Z
-- **THEN** entonces el puerto de notificación no se invoca y el recordatorio queda `cancelado` con `intentos` 1
+- **THEN** entonces el puerto de notificación no se invoca, el recordatorio queda `cancelado` con `intentos` 1 y la cola ya no lo contiene
 
 ### Requirement: Devolución a la cola de lo tomado y no procesado
 Si el procesamiento de un recordatorio tomado de la cola termina con un error que no es una falla del envío, el worker MUST devolver a la cola, antes de terminar, los recordatorios que tomó en ese ciclo y no llegó a procesar, con vencimiento en el momento en que los tomó, y MUST propagar el error original aunque la devolución falle. El recordatorio del error MUST NOT devolverse: se recupera de la base al reiniciar (design D4, a registrar en DD-29).
 
 #### Scenario: Error a mitad de lote
-- **GIVEN** dados los recordatorios `pendiente` R1, R2 y R3, de turnos `programado`, vencidos a las 2026-10-08T13:00Z, 13:01Z y 13:02Z en la cola, un puerto de notificación que falla solo con R2 y una cola que rechaza con un error de conexión el reintento de R2 y acepta el resto de las operaciones
+- **GIVEN** dados los recordatorios `pendiente` R1, R2 y R3, de turnos `programado` con inicio 2026-10-09T13:00Z, vencidos a las 2026-10-08T13:00Z, 13:01Z y 13:02Z en la cola, un puerto de notificación que falla solo con R2 y una cola que rechaza con un error de conexión el reintento de R2 y acepta el resto de las operaciones
 - **WHEN** cuando el worker procesa la cola con el reloj en 2026-10-08T13:05Z
 - **THEN** entonces el error de la cola se propaga fuera del ciclo; R1 queda `enviado` con `intentos` 1; R2 queda `pendiente` con `intentos` 1 y `programado_para` 2026-10-08T13:06Z en la base y no está en la cola; y R3 sigue `pendiente` con `intentos` 0 y está de nuevo en la cola con vencimiento 2026-10-08T13:05Z
 
 #### Scenario: La devolución también falla
-- **GIVEN** dados los mismos R1, R2 y R3 y un puerto que falla solo con R2, pero una cola que rechaza toda operación de encolado a partir del reintento de R2
+- **GIVEN** dados los mismos R1, R2 y R3, de turnos `programado` con inicio 2026-10-09T13:00Z, y un puerto que falla solo con R2, pero una cola que rechaza toda operación de encolado a partir del reintento de R2
 - **WHEN** cuando el worker procesa la cola con el reloj en 2026-10-08T13:05Z y después se reinicia con la cola disponible
-- **THEN** entonces el error que se propaga fuera del ciclo es el del reintento de R2; R3 sigue `pendiente` con `intentos` 0 en la base; y al reiniciar la cola contiene R2 con vencimiento 2026-10-08T13:06Z y R3 con vencimiento 2026-10-08T13:02Z
+- **THEN** entonces el error que se propaga fuera del ciclo es el del reintento de R2; se registra una advertencia sin datos de pacientes; R3 sigue `pendiente` con `intentos` 0 en la base; y al reiniciar la cola contiene R2 con vencimiento 2026-10-08T13:06Z y R3 con vencimiento 2026-10-08T13:02Z
 
 ### Requirement: La API depende de Redis en Compose
 El servicio `api` de `docker-compose.yml` MUST depender de `redis` con la condición `service_started`, la misma que usa el `worker`, además de depender de `db` con la condición `service_healthy`, porque la API publica los recordatorios en la cola (design D8).
@@ -61,7 +61,7 @@ El worker MUST tomar de la cola los recordatorios vencidos y, si el recordatorio
 #### Scenario: El adaptador mock registra el envío
 - **GIVEN** dado `NOTIFICATION_ADAPTER=mock` y un recordatorio vencido de un turno `programado`
 - **WHEN** cuando el worker lo procesa
-- **THEN** entonces el adaptador mock registra el envío en el log con el id del recordatorio y su contenido, sin guardar el mensaje en memoria y sin contactar ningún servicio externo de mensajería
+- **THEN** entonces el adaptador mock registra el envío en el log con el id del recordatorio y su contenido, sin el id del paciente, sin guardar el mensaje en memoria y sin contactar ningún servicio externo de mensajería
 
 #### Scenario: Envíos repetidos no acumulan estado en el adaptador mock
 - **GIVEN** dado el adaptador mock recién creado
@@ -72,7 +72,7 @@ El worker MUST tomar de la cola los recordatorios vencidos y, si el recordatorio
 Si el envío falla, el worker MUST incrementar `intentos`, registrar en `programado_para` el próximo intento (el instante de la falla según el reloj en ese momento, más una espera que se duplica: 1 min y luego 2 min) y volver a encolar el recordatorio con ese vencimiento. Al completar 3 intentos fallidos, MUST quedar `fallido`, con `programado_para` sin cambios, y MUST NOT volver a encolarse. Sin reintento manual (RN-NO-05, DD-19; design D2, a registrar en DD-29).
 
 #### Scenario: Primer intento fallido
-- **GIVEN** dado un recordatorio `pendiente` vencido a las 2026-10-08T13:00Z de un turno `programado` y un puerto de notificación que falla
+- **GIVEN** dado un recordatorio `pendiente` vencido a las 2026-10-08T13:00Z de un turno `programado` con inicio 2026-10-09T13:00Z y un puerto de notificación que falla
 - **WHEN** cuando el worker lo procesa a las 2026-10-08T13:00Z
 - **THEN** entonces el recordatorio sigue `pendiente` con `intentos` 1 y `programado_para` 2026-10-08T13:01Z en la base, y vuelve a la cola con vencimiento 2026-10-08T13:01Z
 
@@ -97,7 +97,7 @@ Si el envío falla, el worker MUST incrementar `intentos`, registrar en `program
 - **THEN** entonces el puerto de notificación no se invoca y el recordatorio sigue `fallido` con `intentos` 3
 
 #### Scenario: La espera se cuenta desde el momento de la falla
-- **GIVEN** dados los recordatorios `pendiente` R1 y R2, de turnos `programado`, vencidos a las 2026-10-08T13:00Z en la cola, un puerto que envía bien R1 y falla con R2, y un reloj que marca 2026-10-08T13:00:00Z cuando el worker toma los vencidos y 2026-10-08T13:00:40Z cuando falla el envío de R2
+- **GIVEN** dados los recordatorios `pendiente` R1 y R2, de turnos `programado` con inicio 2026-10-09T13:00Z, vencidos a las 2026-10-08T13:00Z en la cola, un puerto que envía bien R1 y falla con R2, y un reloj que marca 2026-10-08T13:00:00Z cuando el worker toma los vencidos y 2026-10-08T13:00:40Z cuando falla el envío de R2
 - **WHEN** cuando el worker procesa ese lote
 - **THEN** entonces R2 queda `pendiente` con `intentos` 1 y `programado_para` 2026-10-08T13:01:40Z, y vuelve a la cola con vencimiento 2026-10-08T13:01:40Z
 
@@ -120,12 +120,12 @@ Al iniciar, el worker MUST encolar todos los recordatorios en `pendiente` de la 
 - **THEN** entonces el recordatorio queda `enviado` con `intentos` 1
 
 #### Scenario: El reinicio conserva la espera del reintento
-- **GIVEN** dado un recordatorio `pendiente` de un turno `programado` cuyo primer intento falló a las 2026-10-08T13:00Z, con `intentos` 1 y `programado_para` 2026-10-08T13:01Z en la base, la cola vacía y un puerto que ahora responde bien
+- **GIVEN** dado un recordatorio `pendiente` de un turno `programado` con inicio 2026-10-09T13:00Z cuyo primer intento falló a las 2026-10-08T13:00Z, con `intentos` 1 y `programado_para` 2026-10-08T13:01Z en la base, la cola vacía y un puerto que ahora responde bien
 - **WHEN** cuando el worker inicia y procesa la cola a las 2026-10-08T13:00:30Z y otra vez a las 2026-10-08T13:01Z
 - **THEN** entonces en el primer procesamiento el puerto no se invoca y el recordatorio sigue `pendiente` con `intentos` 1, y en el segundo se invoca una vez y el recordatorio queda `enviado` con `intentos` 2
 
 ### Requirement: Integridad del recordatorio en la base
-La base MUST rechazar un recordatorio con `estado` distinto de `pendiente`, `enviado`, `fallido` o `cancelado`, `canal` distinto de `mock`, `intentos` fuera de 0..3, `fallido` sin 3 intentos, `enviado` sin al menos 1 intento, `pendiente` con 3 intentos, `turno_id` inexistente o `programado_para` nulo. Un turno con recordatorios MUST NOT poder borrarse (04 §Recordatorio, DD-08, DD-21; design D2, a registrar en DD-28; design D3, a registrar en DD-29).
+La base MUST rechazar un recordatorio con `estado` distinto de `pendiente`, `enviado`, `fallido` o `cancelado`, `canal` distinto de `mock`, `intentos` fuera de 0..3, `fallido` sin 3 intentos, `enviado` sin al menos 1 intento, `pendiente` con 3 intentos, `turno_id` inexistente o `programado_para` nulo. Un turno con recordatorios MUST NOT poder borrarse (04 §Recordatorio, DD-08, DD-21, DD-28 (a); design D3, a registrar en DD-29).
 
 #### Scenario: Valores inválidos rechazados
 - **GIVEN** dado un turno existente

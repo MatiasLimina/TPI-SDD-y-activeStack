@@ -1,5 +1,7 @@
 # Revisión de escenarios — recordatorios-ajustes-revision (C-12, change de seguimiento)
 
+> **Nota (2026-11-04)**: los hallazgos MENOR H1..H5 se resolvieron con `/opsx:update` el 2026-11-04, junto con las sugerencias H6 y H8. H7 queda a criterio del equipo y no se aplicó. El usuario aprobó D1..D4 ese mismo día con las opciones recomendadas. El resto de este informe se conserva tal como se emitió el 2026-11-03.
+
 - Fecha: 2026-11-03
 - Specs revisados: `openspec/changes/recordatorios-ajustes-revision/specs/recordatorios/spec.md` (delta), contrastado con `openspec/specs/recordatorios/spec.md` (principal) y `openspec/specs/agenda-turnos/spec.md` (criterio de "iniciado")
 - Artefactos leídos: `proposal.md`, `design.md` (D1..D8), `tasks.md`, bloque `[C-12]` y backlog de `CHANGES.md`
