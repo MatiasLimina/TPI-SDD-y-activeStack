@@ -45,7 +45,7 @@
 
 ## 8. Documentación de la API
 
-- [ ] 8.1 RED→GREEN: un test sobre `/openapi.json` afirma el conjunto exacto de rutas `/bloqueos` y `/bloqueos/{bloqueo_id}` con sus métodos (`GET`, `POST`, `DELETE`; sin `PATCH` ni `PUT`, D3) y que la descripción de `profesional_id` del alta documenta que el odontólogo puede omitirlo (D1) y la de `inicio`/`fin`, el intervalo `[inicio, fin)` con zona horaria; verificar en verde
+- [x] 8.1 RED→GREEN: un test sobre `/openapi.json` afirma el conjunto exacto de rutas `/bloqueos` y `/bloqueos/{bloqueo_id}` con sus métodos (`GET`, `POST`, `DELETE`; sin `PATCH` ni `PUT`, D3) y que la descripción de `profesional_id` del alta documenta que el odontólogo puede omitirlo (D1) y la de `inicio`/`fin`, el intervalo `[inicio, fin)` con zona horaria; verificar en verde
 
 ## 9. KB, numeración y cierre
 
