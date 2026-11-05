@@ -443,4 +443,7 @@ Diferido por el Discovery (ver `docs/discovery/informe-discovery.md` §D.3 y §D
 - Largo máximo de contraseña en el login (hoy cada request cuesta un hash argon2 sin rate limiting: DoS; DD-24 / Risks del design de C-06)
 - Política de complejidad o largo mínimo de contraseña más allá de "no vacía" (regla nueva sin respaldo en la KB; DD-24)
 - Rol de base de datos de mínimo privilegio para la aplicación: hoy se conecta como dueña de las tablas y podría deshabilitar los triggers append-only de `turno_auditoria` (DD-25)
+- Bloqueos de agenda por sillón (mantenimiento): la **Suposición** de `04_modelo_de_datos.md` no se implementa en C-11 (DD-30)
+- Edición de un bloqueo (`PATCH /bloqueos/{id}`): hoy se borra y se crea otro (DD-30)
+- Trigger + lock como defensa en profundidad de RN-AG-06 y RN-HB-03: hoy la garantía es de la aplicación y un `INSERT` por SQL directo en `turno` o `bloqueo` puede violarla (DD-30; junto con el rol de base de datos de mínimo privilegio)
 - Consulta de disponibilidad / huecos libres (US-007): no figura en D.4, es una suposición de la KB y se acopla naturalmente con el enlace público de reserva diferido (D.3)

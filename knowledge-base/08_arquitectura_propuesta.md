@@ -19,7 +19,7 @@ Dos reservas simultáneas pueden pasar ambas la validación en aplicación (cond
 3. La validación en aplicación (horario, bloqueo, solape) se mantiene solo para dar mensajes claros, no como garantía. En particular, el pre-chequeo de solape lista **todos** los recursos en conflicto (profesional, sillón, paciente) en el 409; si una carrera lo esquiva, `23P01` se traduce a 409 indicando el recurso deducido de `constraint_name` (DD-21).
 4. Pruebas: test de concurrencia que lance N inserciones simultáneas del mismo horario y verifique exactamente 1 éxito.
 
-Nota: las restricciones de exclusión no cubren horario de atención ni bloqueos; esas reglas se validan en aplicación dentro de la misma transacción (o con triggers, **Suposición** a decidir).
+Nota: las restricciones de exclusión no cubren horario de atención ni bloqueos; esas reglas se validan en aplicación dentro de la misma transacción, con un lock por profesional que serializa las escrituras de franjas y bloqueos con el alta y la reprogramación de turnos (DD-27 k, DD-30), sin triggers: la **Suposición** "o con triggers" quedó resuelta en DD-30. La garantía es de la aplicación, no de la base: un `INSERT` por SQL directo puede violarla ("trigger + lock" como defensa en profundidad está en el backlog de `CHANGES.md`). **Contrato del lock (DD-30)**: quien cree un turno, o lo mueva en el tiempo o de profesional, lee el profesional destino con `FOR SHARE` antes de validar; quien escriba un bloqueo toma `FOR NO KEY UPDATE` sobre el profesional antes de consultar los turnos.
 
 ## Estructura de directorios
 
