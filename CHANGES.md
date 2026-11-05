@@ -95,7 +95,7 @@ C-04, C-07, C-09 y C-12 son obligatorios para el MVP pero cuelgan del camino cr�
 
 ### Plan del equipo (versión 2, desde 2026-11-02)
 
-C-01 a C-06 los hizo Matías, y C-07 está implementado y pendiente de merge (PR #3). Para avanzar lo más posible, los changes pendientes se reparten **solo entre Matías y Nico** (los dos con Claude Pro, cada uno con el ciclo OPSX completo de sus changes). Lauti queda fuera del reparto por ahora. Criterio y reglas de colaboración: [docs/equipo/reparto-de-tareas.md](docs/equipo/reparto-de-tareas.md).
+C-01 a C-07 los hizo Matías (C-07 entró a `main` con el PR #3). Para avanzar lo más posible, los changes pendientes se reparten **solo entre Matías y Nico** (los dos con Claude Pro, cada uno con el ciclo OPSX completo de sus changes). Lauti queda fuera del reparto por ahora. Criterio y reglas de colaboración: [docs/equipo/reparto-de-tareas.md](docs/equipo/reparto-de-tareas.md).
 
 | Ola | Matías | Nico |
 |-----|--------|------|
