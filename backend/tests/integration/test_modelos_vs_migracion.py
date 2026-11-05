@@ -5,6 +5,7 @@ from sqlalchemy import CheckConstraint, Engine, inspect
 
 from app.infrastructure.db.base import Base
 from app.infrastructure.db.models import (
+    Bloqueo,
     Paciente,
     Prestacion,
     Profesional,
@@ -16,7 +17,7 @@ from app.infrastructure.db.models import (
 )
 
 TABLAS_CATALOGO = {"profesional", "sillon", "prestacion", "paciente"}
-TABLAS = TABLAS_CATALOGO | {"turno", "usuario", "turno_auditoria", "recordatorio"}
+TABLAS = TABLAS_CATALOGO | {"turno", "usuario", "turno_auditoria", "recordatorio", "bloqueo"}
 
 
 def test_base_metadata_registers_catalog_turno_usuario_auditoria_and_recordatorio_tables() -> None:
@@ -34,6 +35,7 @@ def test_base_metadata_registers_catalog_turno_usuario_auditoria_and_recordatori
         (Usuario, "usuario"),
         (TurnoAuditoria, "turno_auditoria"),
         (Recordatorio, "recordatorio"),
+        (Bloqueo, "bloqueo"),
     ],
 )
 def test_model_maps_to_expected_table(modelo: type[Base], tabla: str) -> None:

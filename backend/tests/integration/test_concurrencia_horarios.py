@@ -4,9 +4,8 @@ import threading
 from collections.abc import Iterator
 from typing import Any
 
-import pytest
 from fastapi.testclient import TestClient
-from sqlalchemy import Engine, delete, select
+from sqlalchemy import Engine, select
 from sqlalchemy.orm import Session, sessionmaker
 
 from app.api.auth import get_emisor_tokens, get_hasher
@@ -18,22 +17,6 @@ from app.main import create_app
 from tests.integration.factories import Catalogo
 
 LUNES = 0
-
-
-@pytest.fixture
-def recepcionista_commiteada(motor_concurrente: Engine, hasher_test: Hasher) -> Iterator[Usuario]:
-    with Session(motor_concurrente, expire_on_commit=False) as sesion:
-        usuario = Usuario(
-            email="recepcion-concurrente@example.com",
-            password_hash=hasher_test.hash("clave-ficticia-concurrente"),
-            rol="recepcionista",
-        )
-        sesion.add(usuario)
-        sesion.commit()
-    yield usuario
-    with Session(motor_concurrente) as sesion:
-        sesion.execute(delete(Usuario).where(Usuario.id == usuario.id))
-        sesion.commit()
 
 
 def test_dos_altas_http_superpuestas_en_paralelo_dan_un_201_y_un_409(

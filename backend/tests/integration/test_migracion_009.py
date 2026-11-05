@@ -69,7 +69,7 @@ def test_upgrade_head_creates_the_pendiente_intentos_check(scratch_url: str) -> 
 
     checks = _checks(scratch_url)
 
-    assert current_revision(scratch_url) == "009"
+    assert current_revision(scratch_url) == "010"
     assert CHECK in checks
     assert "'pendiente'" in checks[CHECK]
     assert "intentos < 3" in checks[CHECK]
@@ -92,7 +92,7 @@ def test_downgrade_to_008_drops_the_check_and_the_database_accepts_the_row(
     config = alembic_config(scratch_url)
     command.upgrade(config, "head")
     turno_id = _crear_turno(scratch_url)
-    assert current_revision(scratch_url) == "009"
+    assert current_revision(scratch_url) == "010"
     assert CHECK in _checks(scratch_url)
 
     command.downgrade(config, "008")
