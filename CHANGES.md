@@ -290,7 +290,7 @@ C-01 a C-06 los hizo Matías, y C-07 está implementado y pendiente de merge (PR
   - `knowledge-base/06_funcionalidades.md` §US-002
 
 ### [C-11] `bloqueos-agenda`
-- **Estado**: `[ ]` pendiente
+- **Estado**: `[x]` completado
 - **Responsable**: Nico · revisa Matías
 - **Scope** (US-003):
   - Modelo `Bloqueo` (`profesional_id`, `inicio`, `fin`, `motivo`, `creado_por`) + migración
