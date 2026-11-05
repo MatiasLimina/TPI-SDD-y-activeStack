@@ -42,19 +42,23 @@ class CrearBloqueo:
         profesional_id = resolver_profesional(usuario, solicitud.profesional_id)
         if self._repositorio.bloquear_profesional(profesional_id) is None:
             raise ReferenciaInvalidaError("profesional", "inexistente")
-        motivo = validar_bloqueo(solicitud.inicio, solicitud.fin, solicitud.motivo)
-        inicio, fin = to_utc(solicitud.inicio), to_utc(solicitud.fin)
-        turnos = self._repositorio.turnos_activos_en(profesional_id, Intervalo(inicio, fin))
-        if turnos:
-            raise BloqueoConTurnosError(turnos)
-        bloqueo = Bloqueo(
-            profesional_id=profesional_id,
-            inicio=inicio,
-            fin=fin,
-            motivo=motivo,
-            creado_por=usuario.id,
-        )
-        self._repositorio.agregar(bloqueo)
+        try:  # desde acá el lock del profesional está tomado
+            motivo = validar_bloqueo(solicitud.inicio, solicitud.fin, solicitud.motivo)
+            inicio, fin = to_utc(solicitud.inicio), to_utc(solicitud.fin)
+            turnos = self._repositorio.turnos_activos_en(profesional_id, Intervalo(inicio, fin))
+            if turnos:
+                raise BloqueoConTurnosError(turnos)
+            bloqueo = Bloqueo(
+                profesional_id=profesional_id,
+                inicio=inicio,
+                fin=fin,
+                motivo=motivo,
+                creado_por=usuario.id,
+            )
+            self._repositorio.agregar(bloqueo)
+        except Exception:
+            self._repositorio.rollback()  # libera el lock del profesional
+            raise
         self._repositorio.commit()
         return bloqueo
 
@@ -86,7 +90,11 @@ class BorrarBloqueo:
         elif bloqueo is None:
             raise RecursoInexistenteError(TipoRecurso.BLOQUEO)
         self._repositorio.bloquear_profesional(bloqueo.profesional_id)
-        self._repositorio.eliminar(bloqueo)
+        try:  # desde acá el lock del profesional está tomado
+            self._repositorio.eliminar(bloqueo)
+        except Exception:
+            self._repositorio.rollback()  # libera el lock del profesional
+            raise
         self._repositorio.commit()
 
 
