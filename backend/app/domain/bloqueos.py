@@ -1,5 +1,7 @@
 """Bloqueos de agenda (RN-HB-02, RN-HB-03, RN-AG-06): reglas puras, sin base ni HTTP."""
 
+from collections.abc import Sequence
+from dataclasses import dataclass
 from datetime import datetime
 from uuid import UUID
 
@@ -8,6 +10,10 @@ from app.domain.usuarios import Rol, UsuarioAutenticado
 
 MENSAJE_BLOQUEO_INVALIDO = "el bloqueo debe tener fin posterior a inicio y un motivo no vacío"
 MENSAJE_PROFESIONAL_REQUERIDO = "indicá el profesional del bloqueo"
+MENSAJE_BLOQUEO_CON_TURNOS = (
+    "hay turnos activos en el intervalo: reprogramalos o cancelalos antes de bloquear"
+)
+MENSAJE_TURNO_EN_BLOQUEO = "el turno se superpone con un bloqueo de agenda del profesional"
 MENSAJE_BLOQUEO_AJENO = "Solo podés operar sobre tus propios bloqueos"
 
 
@@ -27,6 +33,25 @@ class ProfesionalRequeridoError(Exception):
         super().__init__(mensaje)
         self.codigo = "profesional_requerido"
         self.mensaje = mensaje
+
+
+@dataclass(frozen=True)
+class TurnoAfectado:
+    """Turno activo que impide un bloqueo; sin datos del paciente ni de la prestación (D9)."""
+
+    id: UUID
+    inicio: datetime
+    fin: datetime
+
+
+class BloqueoConTurnosError(Exception):
+    """El intervalo del bloqueo pisa turnos activos del profesional (se traduce a 409)."""
+
+    def __init__(self, turnos: Sequence[TurnoAfectado]) -> None:
+        super().__init__(MENSAJE_BLOQUEO_CON_TURNOS)
+        self.codigo = "bloqueo_con_turnos"
+        self.mensaje = MENSAJE_BLOQUEO_CON_TURNOS
+        self.turnos: tuple[TurnoAfectado, ...] = tuple(turnos)
 
 
 def validar_bloqueo(inicio: datetime, fin: datetime, motivo: str) -> str:

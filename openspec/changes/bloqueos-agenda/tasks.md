@@ -21,7 +21,7 @@
 
 ## 4. Repositorio de bloqueos
 
-- [ ] 4.1 RED→GREEN: `tests/integration/test_repositorio_bloqueos.py` — `bloquear_profesional` devuelve `None` para un UUID desconocido y el profesional (activo o no) si existe; `turnos_activos_en` devuelve los turnos activos del profesional que se superponen `[)`, ordenados por `inicio, id`, y excluye cancelados, contiguos y de otro profesional; `bloqueos_en` es verdadero ante un solape y falso ante uno contiguo o de otro profesional; `listar(None)` ordena por `inicio, id` y `listar(id)` filtra; `obtener` devuelve `None` para un id desconocido; verificar en verde
+- [x] 4.1 RED→GREEN: `tests/integration/test_repositorio_bloqueos.py` — `bloquear_profesional` devuelve `None` para un UUID desconocido y el profesional (activo o no) si existe; `turnos_activos_en` devuelve los turnos activos del profesional que se superponen `[)`, ordenados por `inicio, id`, y excluye cancelados, contiguos y de otro profesional; `bloqueos_en` es verdadero ante un solape y falso ante uno contiguo o de otro profesional; `listar(None)` ordena por `inicio, id` y `listar(id)` filtra; `obtener` devuelve `None` para un id desconocido; verificar en verde
 
 ## 5. Casos de uso y API de bloqueos
 
