@@ -57,7 +57,7 @@ No hay integraciones externas obligatorias en el MVP.
 | Sillones | `GET /sillones[/{id}]` (ambos roles); `POST /sillones`, `PATCH /sillones/{id}`, `POST /sillones/{id}/desactivar` (recepcionista; DD-26) |
 | Prestaciones | `GET /prestaciones[/{id}]` (ambos roles); `POST /prestaciones` con duración por defecto, `PATCH /prestaciones/{id}`, `POST /prestaciones/{id}/desactivar` (recepcionista; DD-26) |
 | Horarios de atención | `GET /profesionales/{id}/horarios` (recepcionista; el odontólogo, solo el propio); `POST /profesionales/{id}/horarios`, `PATCH` y `DELETE /profesionales/{id}/horarios/{horario_id}` (recepcionista; DD-27) |
-| Bloqueos | `POST/DELETE` (recepcionista cualquiera; odontólogo propios) |
+| Bloqueos | `GET /bloqueos?profesional_id=` (recepcionista todos o el filtrado; odontólogo, solo los de su profesional); `POST /bloqueos` (el odontólogo puede omitir `profesional_id`); `DELETE /bloqueos/{id}` (recepcionista cualquiera; odontólogo, los de su profesional); sin `PATCH` (DD-30) |
 | Pacientes | CRUD básico (datos ficticios) |
 | Turnos | `GET /turnos?desde&hasta&profesional&sillon`, `POST /turnos`, `PATCH /turnos/{id}/reprogramar`, `POST /turnos/{id}/cancelar` |
 | Disponibilidad | `GET /disponibilidad?profesional&prestacion&fecha` |

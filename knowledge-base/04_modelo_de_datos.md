@@ -50,8 +50,9 @@ Turno       1---* Recordatorio
 - **Garantías en la BD (migración `007`, DD-27)**: `ck_horario_atencion_dia_semana_valido` (`dia_semana BETWEEN 0 AND 6`), `ck_horario_atencion_hora_fin_mayor`, `ck_horario_atencion_grilla` (ambas horas en múltiplos de 5 minutos) y la exclusión `horario_atencion_sin_superposicion` (`EXCLUDE USING gist (profesional_id WITH =, dia_semana WITH =, tsrange(DATE '2000-01-03' + hora_inicio, DATE '2000-01-03' + hora_fin, '[)') WITH &&)`): sin franjas superpuestas del mismo profesional y día; las contiguas valen.
 
 ### Bloqueo
-- `id`, `profesional_id`, `inicio`, `fin` (timestamptz UTC, `fin > inicio`), `motivo` (texto corto), `creado_por`.
-- Opcionalmente por sillón (**Suposición**, `sillon_id` nullable) para mantenimiento.
+- `id`, `profesional_id` (FK `ON DELETE CASCADE`), `inicio`, `fin` (`timestamptz` UTC, intervalo semiabierto `[inicio, fin)`, `fin > inicio`), `motivo` (`varchar(255)`, obligatorio, sin espacios en los extremos; el largo se mide ya recortado), `creado_por` (`NOT NULL`, FK a `usuario` `ON DELETE RESTRICT`), `creado_en`, `actualizado_en`.
+- **Garantías en la BD (migración `010`, DD-30)**: `ck_bloqueo_fin_mayor` (`fin > inicio`), `ck_bloqueo_motivo_no_vacio` (`btrim(motivo) <> ''`) e índice `ix_bloqueo_profesional_id_inicio` sobre `(profesional_id, inicio)`. Que un bloqueo no pise turnos activos (RN-HB-03) y que un turno no pise un bloqueo (RN-AG-06) lo garantiza la aplicación con un lock por profesional (DD-30), no una restricción de la base.
+- Sin `sillon_id`: el bloqueo por sillón "para mantenimiento" (antes una **Suposición**) no se implementa en el MVP y pasa al backlog (DD-30). Sin edición: para cambiar un bloqueo se borra y se crea otro.
 
 ### Paciente
 - `id`, `nombre`, `apellido`, `documento` (ficticio), `telefono` (ficticio), `email` (opcional), `activo`.

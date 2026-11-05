@@ -406,7 +406,7 @@ Si el body de la reprogramación incluye `paciente_id` o `prestacion_id`, con cu
 - **THEN** entonces la respuesta es `200` y el turno queda de 15:00 a 15:45
 
 ### Requirement: Misma validación que el alta al reprogramar
-Reprogramar MUST aplicar al turno resultante las mismas validaciones que el alta: referencias existentes y activas, duración y grilla de 5 minutos, inicio no anterior al instante actual, coherencia del sillón con la prestación y horario de atención del profesional (requisito "Turno dentro del horario de atención"), todas con `422` (RN-AG-08). Las validaciones que responden `422` MUST evaluarse antes que la verificación de solape, y ante cualquier `422` el turno MUST quedar intacto.
+Reprogramar MUST aplicar al turno resultante las mismas validaciones que el alta: referencias existentes y activas, duración y grilla de 5 minutos, inicio no anterior al instante actual, sillón coherente con la prestación, horario de atención y bloqueos del profesional (RN-AG-05, RN-AG-06), todas con `422` (RN-AG-08). Esas validaciones MUST evaluarse antes que el solape, y ante cualquier `422` el turno MUST quedar intacto. Los escenarios de bloqueos asumen el reloj en 2026-10-07 09:00 local.
 
 #### Scenario: Duración inválida
 - **GIVEN** dado un turno `programado` futuro de 10:00 a 10:45
@@ -465,6 +465,31 @@ Reprogramar MUST aplicar al turno resultante las mismas validaciones que el alta
 - **GIVEN** dado el profesional A con la franja del jueves de 09:00 a 13:00 y un turno `programado` de A de 45 minutos el jueves 2026-10-08 de 10:00 a 10:45
 - **WHEN** cuando se lo reprograma informando `inicio` 2026-10-08 12:15 hora local
 - **THEN** entonces la respuesta es `200` con `inicio` 2026-10-08T12:15-03:00 y `fin` 2026-10-08T13:00-03:00, y en la base el turno quedó así
+
+#### Scenario: Nuevo inicio dentro de un bloqueo
+- **GIVEN** dado un bloqueo del profesional A el jueves 2026-10-08 de 10:00 a 12:00 hora local y un turno `programado` de A el 2026-10-08 de 15:00 a 15:45
+- **WHEN** cuando se lo reprograma informando `inicio` 2026-10-08 10:30 hora local
+- **THEN** entonces la respuesta es `422` con código `turno_en_bloqueo` y el turno sigue de 15:00 a 15:45
+
+#### Scenario: Profesional destino con un bloqueo en el horario
+- **GIVEN** dado un turno `programado` del profesional A el jueves 2026-10-08 de 10:30 a 11:15 y un bloqueo del profesional B el 2026-10-08 de 10:00 a 12:00 hora local
+- **WHEN** cuando se lo reprograma informando `profesional_id` de B
+- **THEN** entonces la respuesta es `422` con código `turno_en_bloqueo` y el turno sigue con el profesional A
+
+#### Scenario: Ampliar la duración hacia un bloqueo
+- **GIVEN** dado un turno `programado` del profesional A el jueves 2026-10-08 de 09:15 a 10:00 y un bloqueo de A el 2026-10-08 de 10:00 a 12:00 hora local
+- **WHEN** cuando se lo reprograma informando solo `duracion_min = 60`
+- **THEN** entonces la respuesta es `422` con código `turno_en_bloqueo` y el turno sigue de 09:15 a 10:00
+
+#### Scenario: Reprogramación que termina justo al empezar un bloqueo
+- **GIVEN** dado un bloqueo del profesional A el jueves 2026-10-08 de 10:00 a 12:00 hora local y un turno `programado` de A de 45 minutos el 2026-10-08 de 15:00 a 15:45
+- **WHEN** cuando se lo reprograma informando `inicio` 2026-10-08 09:15 hora local
+- **THEN** entonces la respuesta es `200` con `inicio` 2026-10-08T09:15:00-03:00 y `fin` 2026-10-08T10:00:00-03:00, y en la base el turno quedó así
+
+#### Scenario: Reprogramación rechazada por un bloqueo conserva el recordatorio
+- **GIVEN** dado un turno `programado` del profesional A el viernes 2026-10-09 de 15:00 a 15:45 con su recordatorio `pendiente`, y un bloqueo de A el 2026-10-09 de 10:00 a 12:00 hora local
+- **WHEN** cuando se lo reprograma informando `inicio` 2026-10-09 10:30 hora local
+- **THEN** entonces la respuesta es `422` con código `turno_en_bloqueo`, el recordatorio sigue `pendiente` con el mismo `programado_para`, no se crea otro y no se registra auditoría de reprogramación
 
 ### Requirement: Sin solape al reprogramar, excluyendo al propio turno
 El turno resultante MUST NOT solaparse con otro turno activo del mismo profesional, sillón o paciente (RN-AG-01, RN-AG-02, RN-AG-14); el intento MUST responder `409` listando todos los recursos en conflicto y dejar el turno intacto. El propio turno MUST NOT contar para esta verificación, por lo que solaparse con su intervalo anterior es válido; los turnos cancelados tampoco cuentan.
@@ -707,3 +732,66 @@ Al crear y al reprogramar, el intervalo `[inicio, fin)` del turno, en hora local
 - **GIVEN** dado el profesional A sin franjas el sábado
 - **WHEN** cuando se crea un turno de A el sábado 2026-10-10 a las 10:00 hora local con `duracion_min = 42`
 - **THEN** entonces la respuesta es `422` con código `duracion_invalida`, no `fuera_de_horario`
+
+### Requirement: Turno fuera de los bloqueos de agenda
+Al crear y al reprogramar, el intervalo `[inicio, fin)` del turno MUST NOT superponerse con un bloqueo de agenda de su profesional; un turno contiguo al bloqueo (empieza justo al terminar o termina justo al empezar) es válido (RN-AG-06, RN-AG-03). Si se superpone → `422 turno_en_bloqueo` sin persistir. Se evalúa después del horario de atención y antes del solape. Los escenarios asumen el reloj en 2026-10-07 09:00 local y una franja que cubre el turno.
+
+#### Scenario: Turno dentro de un bloqueo
+- **GIVEN** dado un bloqueo del profesional A el jueves 2026-10-08 de 10:00 a 12:00 hora local
+- **WHEN** cuando una recepcionista autenticada crea un turno de A de 45 minutos el 2026-10-08 a las 10:30 hora local
+- **THEN** entonces la respuesta es `422` con `{"detail": {"codigo": "turno_en_bloqueo", "mensaje": "el turno se superpone con un bloqueo de agenda del profesional"}}` y no se persiste ningún turno
+
+#### Scenario: Turno que empieza antes y termina dentro del bloqueo
+- **GIVEN** dado un bloqueo del profesional A el jueves 2026-10-08 de 10:00 a 12:00 hora local
+- **WHEN** cuando se crea un turno de A de 45 minutos el 2026-10-08 a las 09:30 hora local
+- **THEN** entonces la respuesta es `422` con código `turno_en_bloqueo` y no se persiste ningún turno
+
+#### Scenario: Turno que empieza dentro y termina después del bloqueo
+- **GIVEN** dado un bloqueo del profesional A el jueves 2026-10-08 de 10:00 a 12:00 hora local
+- **WHEN** cuando se crea un turno de A de 45 minutos el 2026-10-08 a las 11:30 hora local
+- **THEN** entonces la respuesta es `422` con código `turno_en_bloqueo` y no se persiste ningún turno
+
+#### Scenario: Turno que contiene al bloqueo
+- **GIVEN** dado un bloqueo del profesional A el jueves 2026-10-08 de 10:00 a 10:15 hora local
+- **WHEN** cuando se crea un turno de A de 60 minutos el 2026-10-08 a las 09:45 hora local
+- **THEN** entonces la respuesta es `422` con código `turno_en_bloqueo` y no se persiste ningún turno
+
+#### Scenario: Turno que empieza justo al terminar el bloqueo
+- **GIVEN** dado un bloqueo del profesional A el jueves 2026-10-08 de 10:00 a 12:00 hora local
+- **WHEN** cuando se crea un turno de A de 45 minutos el 2026-10-08 a las 12:00 hora local
+- **THEN** entonces la respuesta es `201` con `inicio` 2026-10-08T12:00:00-03:00
+
+#### Scenario: Turno que termina justo al empezar el bloqueo
+- **GIVEN** dado un bloqueo del profesional A el jueves 2026-10-08 de 10:00 a 12:00 hora local
+- **WHEN** cuando se crea un turno de A de 45 minutos el 2026-10-08 a las 09:15 hora local
+- **THEN** entonces la respuesta es `201` con `fin` 2026-10-08T10:00:00-03:00
+
+#### Scenario: Bloqueo de otro profesional
+- **GIVEN** dado un bloqueo del profesional B el jueves 2026-10-08 de 10:00 a 12:00 hora local
+- **WHEN** cuando se crea un turno de A de 45 minutos el 2026-10-08 a las 10:30 hora local
+- **THEN** entonces la respuesta es `201`
+
+#### Scenario: Bloqueo de varios días
+- **GIVEN** dado un bloqueo del profesional A desde 2026-10-08T00:00:00-03:00 hasta 2026-10-10T00:00:00-03:00
+- **WHEN** cuando se crea un turno de A el viernes 2026-10-09 a las 15:00 hora local
+- **THEN** entonces la respuesta es `422` con código `turno_en_bloqueo` y no se persiste ningún turno
+
+#### Scenario: Fuera de horario y dentro de un bloqueo
+- **GIVEN** dado el profesional A con la franja del jueves de 09:00 a 13:00 y un bloqueo de A el 2026-10-08 de 12:00 a 14:00 hora local
+- **WHEN** cuando se crea un turno de A de 45 minutos el 2026-10-08 a las 12:30 hora local
+- **THEN** entonces la respuesta es `422` con código `fuera_de_horario`, no `turno_en_bloqueo`, y no se persiste ningún turno
+
+#### Scenario: Dentro de un bloqueo y en conflicto
+- **GIVEN** dado un turno activo del profesional A el jueves 2026-10-08 de 09:30 a 10:15 y un bloqueo de A de 10:15 a 12:00 hora local
+- **WHEN** cuando se crea otro turno de A de 45 minutos el 2026-10-08 a las 10:00 hora local
+- **THEN** entonces la respuesta es `422` con código `turno_en_bloqueo`, no `409`, y no se persiste ningún turno
+
+#### Scenario: Validaciones previas antes que el bloqueo
+- **GIVEN** dado un bloqueo del profesional A el jueves 2026-10-08 de 10:00 a 12:00 hora local
+- **WHEN** cuando se crea un turno de A el 2026-10-08 a las 10:30 hora local con `duracion_min = 42`
+- **THEN** entonces la respuesta es `422` con código `duracion_invalida`, no `turno_en_bloqueo`, y no se persiste ningún turno
+
+#### Scenario: Turno rechazado sin recordatorio
+- **GIVEN** dado un bloqueo del profesional A el viernes 2026-10-09 de 10:00 a 12:00 hora local
+- **WHEN** cuando se crea un turno de A el 2026-10-09 a las 10:30 hora local
+- **THEN** entonces la respuesta es `422` con código `turno_en_bloqueo`, no se persiste ningún turno ni recordatorio, no se registra auditoría y no se encola nada en la cola de recordatorios

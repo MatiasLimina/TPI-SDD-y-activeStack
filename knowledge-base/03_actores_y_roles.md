@@ -21,7 +21,7 @@ C = crear, R = leer, U = actualizar, D = eliminar/cancelar.
 | Sillones | CRUD | R |
 | Prestaciones | CRUD | R |
 | Horarios de atención | CRUD (todos los profesionales) | R (propios) |
-| Bloqueos de agenda | CRUD (todos) | CRD solo propios |
+| Bloqueos de agenda | CRD (todos; sin edición, DD-30) | CRD solo propios (los de su profesional) |
 | Pacientes | CRU (baja lógica, **Suposición**) | R (pacientes de sus turnos, **Suposición**) |
 | Turnos | C, R (todos), U (reprogramar), D (cancelar) | R solo propios |
 | Recordatorios (estado) | R | R propios |

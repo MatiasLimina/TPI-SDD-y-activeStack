@@ -17,7 +17,6 @@ from app.application.horarios_atencion import (
     EditarFranja,
 )
 from app.domain.horarios import (
-    MENSAJE_PROFESIONAL_AJENO,
     Franja,
     FranjaSuperpuestaError,
     ProfesionalAjenoError,
@@ -158,10 +157,8 @@ def registrar_manejadores_horarios(app: FastAPI) -> None:
         )
 
     @app.exception_handler(ProfesionalAjenoError)
-    def _profesional_ajeno(_: Request, __: ProfesionalAjenoError) -> JSONResponse:
+    def _profesional_ajeno(_: Request, error: ProfesionalAjenoError) -> JSONResponse:
         return JSONResponse(
             status_code=status.HTTP_403_FORBIDDEN,
-            content={
-                "detail": {"codigo": "profesional_ajeno", "mensaje": MENSAJE_PROFESIONAL_AJENO}
-            },
+            content={"detail": {"codigo": "profesional_ajeno", "mensaje": error.mensaje}},
         )

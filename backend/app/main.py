@@ -6,6 +6,8 @@ from fastapi import FastAPI
 from app.api.auditoria import router as auditoria_router
 from app.api.auth import registrar_manejadores_auth
 from app.api.auth import router as auth_router
+from app.api.bloqueos import registrar_manejadores_bloqueos
+from app.api.bloqueos import router as bloqueos_router
 from app.api.health import router as health_router
 from app.api.horarios import registrar_manejadores_horarios
 from app.api.horarios import router as horarios_router
@@ -36,10 +38,12 @@ def create_app() -> FastAPI:
     app.include_router(sillones_router)
     app.include_router(prestaciones_router)
     app.include_router(horarios_router)
+    app.include_router(bloqueos_router)
     registrar_manejadores(app)
     registrar_manejadores_auth(app)
     registrar_manejadores_recursos(app)
     registrar_manejadores_horarios(app)
+    registrar_manejadores_bloqueos(app)
     return app
 
 

@@ -12,6 +12,7 @@ from sqlalchemy.orm import Session
 
 from app.api.auth import RecepcionistaAutenticada
 from app.application.auditoria_turnos import AuditorTurnos
+from app.application.bloqueos_agenda import ValidadorBloqueos
 from app.application.cancelar_turno import CancelarTurno
 from app.application.crear_turno import CrearTurno, Reloj, SolicitudTurno, ValidadorTurno
 from app.application.horarios_atencion import ValidadorHorario
@@ -36,6 +37,7 @@ from app.domain.turnos import (
 )
 from app.domain.usuarios import UsuarioAutenticado
 from app.infrastructure.db.repositorio_auditoria import RepositorioAuditoria
+from app.infrastructure.db.repositorio_bloqueos import RepositorioBloqueos
 from app.infrastructure.db.repositorio_horarios import RepositorioHorarios
 from app.infrastructure.db.repositorio_recordatorios import RepositorioRecordatorios
 from app.infrastructure.db.repositorio_turnos import RepositorioTurnos
@@ -177,9 +179,13 @@ def _auditor(session: Session, usuario: UsuarioAutenticado, reloj: Reloj) -> Aud
 def _validadores(session: Session) -> list[ValidadorTurno]:
     """Reglas de agenda que se suman a las del alta y la reprogramación, en este orden.
 
-    El horario de atención va primero: C-11 agrega el validador de bloqueos después.
+    El horario de atención va primero y los bloqueos (RN-AG-06) después: ambos dan 422 y van
+    antes del pre-chequeo de solape (409). Un validador nuevo se suma al final.
     """
-    return [ValidadorHorario(RepositorioHorarios(session))]
+    return [
+        ValidadorHorario(RepositorioHorarios(session)),
+        ValidadorBloqueos(RepositorioBloqueos(session)),
+    ]
 
 
 # Las fábricas dependen de `RecepcionistaAutenticada`, el mismo alias que usa cada ruta: FastAPI
