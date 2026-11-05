@@ -46,10 +46,10 @@ Recepcionista -> Frontend -> API -> PostgreSQL (INSERT + EXCLUDE)
 
 **Errores**: turno ya cancelado -> 409, sin modificar el turno (DD-22); turno ya iniciado o pasado -> 409 (RN-AG-13). Sin política de cancelación tardía en el MVP (DD-14).
 
-## Flujo 5: Bloquear franja (odontólogo)
-**Disparador**: el odontólogo no atiende en cierta franja. **Actor**: odontólogo.
+## Flujo 5: Bloquear franja (odontólogo o recepcionista)
+**Disparador**: el profesional no atiende en cierta franja. **Actor**: odontólogo (sobre su agenda) o recepcionista (sobre la de cualquier profesional).
 
-1. `POST /bloqueos` con `[inicio, fin)` y motivo; la API fuerza `profesional_id` = el del token.
+1. `POST /bloqueos` con `[inicio, fin)` y motivo. El odontólogo puede omitir `profesional_id` (se usa el suyo) y uno distinto da `403 profesional_ajeno`; la recepcionista debe informarlo (`422 profesional_requerido` si falta). Ver DD-30 (a).
 2. Validación contra turnos activos existentes: si hay alguno en `[inicio, fin)`, se rechaza con `409` y la lista de turnos afectados (RN-HB-03).
 3. El bloqueo se refleja en la agenda y en la disponibilidad.
 
