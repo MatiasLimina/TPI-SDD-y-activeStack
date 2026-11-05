@@ -5,13 +5,16 @@ from datetime import datetime
 from uuid import UUID
 
 from app.domain.bloqueos import (
+    MENSAJE_BLOQUEO_AJENO,
     BloqueoConTurnosError,
     resolver_profesional,
     validar_bloqueo,
 )
+from app.domain.horarios import ProfesionalAjenoError
+from app.domain.recursos import RecursoInexistenteError, TipoRecurso
 from app.domain.time import to_utc
 from app.domain.turnos import Intervalo, ReferenciaInvalidaError
-from app.domain.usuarios import UsuarioAutenticado
+from app.domain.usuarios import Rol, UsuarioAutenticado
 from app.infrastructure.db.models import Bloqueo
 from app.infrastructure.db.repositorio_bloqueos import RepositorioBloqueos
 
@@ -53,3 +56,34 @@ class CrearBloqueo:
         self._repositorio.agregar(bloqueo)
         self._repositorio.commit()
         return bloqueo
+
+
+class ConsultarBloqueos:
+    def __init__(self, repositorio: RepositorioBloqueos) -> None:
+        self._repositorio = repositorio
+
+    def ejecutar(self, usuario: UsuarioAutenticado, profesional_id: UUID | None) -> list[Bloqueo]:
+        """La recepcionista ve todos o los del filtro; el odontólogo, solo los de su profesional.
+
+        Un filtro ajeno del odontólogo se rechaza antes de buscar nada (no revela existencia).
+        """
+        if usuario.rol == Rol.ODONTOLOGO:
+            profesional_id = resolver_profesional(usuario, profesional_id)
+        return self._repositorio.listar(profesional_id)
+
+
+class BorrarBloqueo:
+    def __init__(self, repositorio: RepositorioBloqueos) -> None:
+        self._repositorio = repositorio
+
+    def ejecutar(self, usuario: UsuarioAutenticado, bloqueo_id: UUID) -> None:
+        """Borra el bloqueo; al odontólogo un id ajeno o inexistente le da el mismo 403 (D12)."""
+        bloqueo = self._repositorio.obtener(bloqueo_id)
+        if usuario.rol == Rol.ODONTOLOGO:
+            if bloqueo is None or bloqueo.profesional_id != usuario.profesional_id:
+                raise ProfesionalAjenoError(MENSAJE_BLOQUEO_AJENO)
+        elif bloqueo is None:
+            raise RecursoInexistenteError(TipoRecurso.BLOQUEO)
+        self._repositorio.bloquear_profesional(bloqueo.profesional_id)
+        self._repositorio.eliminar(bloqueo)
+        self._repositorio.commit()

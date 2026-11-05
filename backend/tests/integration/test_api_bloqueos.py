@@ -595,3 +595,189 @@ def test_bloqueo_retroactivo_sobre_un_turno_pasado_recibe_409(
         (t1, "2026-10-06T10:30:00-03:00", "2026-10-06T11:15:00-03:00")
     )
     assert _bloqueos(db_session) == []
+
+
+# --- Requisito: Bloqueos superpuestos del mismo profesional ----------------------------------
+
+
+def _bloquear(
+    api: TestClient, profesional: Profesional | UUID | None, inicio: str, fin: str, motivo: str
+) -> dict[str, Any]:
+    respuesta = api.post("/bloqueos", json=_body(profesional, inicio, fin, motivo))
+    assert respuesta.status_code == 201, respuesta.text
+    return dict(respuesta.json())
+
+
+def test_un_bloqueo_dentro_de_otro_del_mismo_profesional_se_acepta_y_quedan_los_dos(
+    api: TestClient,
+    como: Callable[[Usuario], TestClient],
+    db_session: Session,
+    odontologo: Usuario,
+) -> None:
+    propio = odontologo.profesional_id
+    assert propio is not None
+    _bloquear(api, propio, _local(8, 9), _local(8, 18), "Congreso")
+
+    respuesta = como(odontologo).post(
+        "/bloqueos", json=_body(None, _local(8, 10), _local(8, 11), "Trámite")
+    )
+
+    assert respuesta.status_code == 201
+    assert [(b.motivo, b.profesional_id) for b in _bloqueos(db_session)] == [
+        ("Congreso", propio),
+        ("Trámite", propio),
+    ]
+
+
+# --- Requisito: Consulta de bloqueos ---------------------------------------------------------
+
+
+def test_recepcionista_lista_todos_los_bloqueos_ordenados_por_inicio(
+    api: TestClient, catalogo: Catalogo
+) -> None:
+    a, b = catalogo.profesionales
+    de_a = _bloquear(api, a, _local(9, 10), _local(9, 11), "Curso")
+    de_b = _bloquear(api, b, _local(8, 15), _local(8, 16), "Trámite")
+
+    respuesta = api.get("/bloqueos")
+
+    assert respuesta.status_code == 200
+    assert respuesta.json() == [de_b, de_a]
+
+
+def test_recepcionista_filtra_los_bloqueos_por_profesional(
+    api: TestClient, catalogo: Catalogo
+) -> None:
+    a, b = catalogo.profesionales
+    de_a = _bloquear(api, a, _local(9, 10), _local(9, 11), "Curso")
+    _bloquear(api, b, _local(8, 15), _local(8, 16), "Trámite")
+
+    respuesta = api.get("/bloqueos", params={"profesional_id": str(a.id)})
+
+    assert respuesta.status_code == 200
+    assert respuesta.json() == [de_a]
+
+
+def test_la_consulta_incluye_los_bloqueos_pasados_primero(
+    api: TestClient, catalogo: Catalogo
+) -> None:
+    a = catalogo.profesionales[0]
+    del_8 = _bloquear(api, a, _local(8, 10), _local(8, 11), "Curso")
+    del_6 = _bloquear(api, a, _local(6, 10), _local(6, 11), "Trámite")
+
+    respuesta = api.get("/bloqueos", params={"profesional_id": str(a.id)})
+
+    assert respuesta.json() == [del_6, del_8]
+
+
+def test_el_filtro_por_un_profesional_inexistente_da_lista_vacia(
+    api: TestClient, catalogo: Catalogo
+) -> None:
+    _bloquear(api, catalogo.profesionales[0], _local(8, 10), _local(8, 11), "Curso")
+
+    respuesta = api.get("/bloqueos", params={"profesional_id": str(uuid4())})
+
+    assert (respuesta.status_code, respuesta.json()) == (200, [])
+
+
+def test_odontologo_ve_solo_los_bloqueos_de_su_profesional_con_y_sin_filtro(
+    api: TestClient,
+    como: Callable[[Usuario], TestClient],
+    catalogo: Catalogo,
+    odontologo: Usuario,
+) -> None:
+    propio = odontologo.profesional_id
+    assert propio is not None
+    de_a = _bloquear(api, propio, _local(8, 10), _local(8, 11), "Curso")
+    _bloquear(api, catalogo.profesionales[1], _local(8, 10), _local(8, 11), "Trámite")
+    cliente = como(odontologo)
+
+    sin_filtro = cliente.get("/bloqueos")
+    con_el_suyo = cliente.get("/bloqueos", params={"profesional_id": str(propio)})
+
+    assert (sin_filtro.status_code, sin_filtro.json()) == (200, [de_a])
+    assert (con_el_suyo.status_code, con_el_suyo.json()) == (200, [de_a])
+
+
+def test_odontologo_que_filtra_por_otro_profesional_recibe_403(
+    como: Callable[[Usuario], TestClient], catalogo: Catalogo, odontologo: Usuario
+) -> None:
+    respuesta = como(odontologo).get(
+        "/bloqueos", params={"profesional_id": str(catalogo.profesionales[1].id)}
+    )
+
+    assert (respuesta.status_code, respuesta.json()) == (403, CUERPO_AJENO)
+
+
+def test_filtro_mal_formado_recibe_422(api: TestClient) -> None:
+    assert api.get("/bloqueos", params={"profesional_id": "no-es-un-id"}).status_code == 422
+
+
+# --- Requisito: Borrado de un bloqueo --------------------------------------------------------
+
+
+def test_recepcionista_borra_un_bloqueo_y_deja_de_listarse(
+    api: TestClient, db_session: Session, catalogo: Catalogo
+) -> None:
+    a = catalogo.profesionales[0]
+    bloqueo = _bloquear(api, a, _local(8, 10), _local(8, 12), "Congreso")
+
+    respuesta = api.delete(f"/bloqueos/{bloqueo['id']}")
+
+    assert (respuesta.status_code, respuesta.content) == (204, b"")
+    assert api.get("/bloqueos").json() == []
+    assert _bloqueos(db_session) == []
+
+
+def test_odontologo_borra_un_bloqueo_de_su_agenda_creado_por_la_recepcion(
+    api: TestClient,
+    como: Callable[[Usuario], TestClient],
+    db_session: Session,
+    odontologo: Usuario,
+) -> None:
+    bloqueo = _bloquear(api, odontologo.profesional_id, _local(8, 10), _local(8, 12), "Congreso")
+
+    respuesta = como(odontologo).delete(f"/bloqueos/{bloqueo['id']}")
+
+    assert (respuesta.status_code, respuesta.content) == (204, b"")
+    assert _bloqueos(db_session) == []
+
+
+def test_odontologo_no_borra_un_bloqueo_de_otro_profesional(
+    api: TestClient,
+    como: Callable[[Usuario], TestClient],
+    db_session: Session,
+    catalogo: Catalogo,
+    odontologo: Usuario,
+) -> None:
+    de_b = _bloquear(api, catalogo.profesionales[1], _local(8, 10), _local(8, 12), "Congreso")
+
+    respuesta = como(odontologo).delete(f"/bloqueos/{de_b['id']}")
+
+    assert (respuesta.status_code, respuesta.json()) == (403, CUERPO_AJENO)
+    assert [str(b.id) for b in _bloqueos(db_session)] == [de_b["id"]]
+
+
+def test_odontologo_con_un_bloqueo_inexistente_recibe_403_y_no_404(
+    api: TestClient,
+    como: Callable[[Usuario], TestClient],
+    db_session: Session,
+    odontologo: Usuario,
+) -> None:
+    propio = _bloquear(api, odontologo.profesional_id, _local(8, 10), _local(8, 12), "Congreso")
+
+    respuesta = como(odontologo).delete(f"/bloqueos/{uuid4()}")
+
+    assert (respuesta.status_code, respuesta.json()) == (403, CUERPO_AJENO)
+    assert [str(b.id) for b in _bloqueos(db_session)] == [propio["id"]]
+
+
+def test_recepcionista_con_un_bloqueo_inexistente_recibe_404(api: TestClient) -> None:
+    respuesta = api.delete(f"/bloqueos/{uuid4()}")
+
+    assert respuesta.status_code == 404
+    assert respuesta.json() == {"detail": {"codigo": "recurso_inexistente", "recurso": "bloqueo"}}
+
+
+def test_borrar_con_un_identificador_mal_formado_recibe_422(api: TestClient) -> None:
+    assert api.delete("/bloqueos/no-es-un-id").status_code == 422

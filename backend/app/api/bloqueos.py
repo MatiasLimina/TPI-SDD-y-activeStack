@@ -4,13 +4,18 @@ from datetime import datetime
 from typing import Annotated
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, FastAPI, Request, status
+from fastapi import APIRouter, Depends, FastAPI, Query, Request, Response, status
 from fastapi.responses import JSONResponse
 from pydantic import AwareDatetime, BaseModel, Field, StringConstraints
 from sqlalchemy.orm import Session
 
 from app.api.auth import UsuarioDeAmbosRoles
-from app.application.bloqueos_agenda import CrearBloqueo, SolicitudBloqueo
+from app.application.bloqueos_agenda import (
+    BorrarBloqueo,
+    ConsultarBloqueos,
+    CrearBloqueo,
+    SolicitudBloqueo,
+)
 from app.domain.bloqueos import (
     BloqueoConTurnosError,
     BloqueoInvalidoError,
@@ -75,6 +80,14 @@ def get_crear(session: Annotated[Session, Depends(get_session)]) -> CrearBloqueo
     return CrearBloqueo(RepositorioBloqueos(session))
 
 
+def get_consultar(session: Annotated[Session, Depends(get_session)]) -> ConsultarBloqueos:
+    return ConsultarBloqueos(RepositorioBloqueos(session))
+
+
+def get_borrar(session: Annotated[Session, Depends(get_session)]) -> BorrarBloqueo:
+    return BorrarBloqueo(RepositorioBloqueos(session))
+
+
 @router.post("", status_code=status.HTTP_201_CREATED, response_model=BloqueoOut)
 def crear_bloqueo(
     usuario: UsuarioDeAmbosRoles,
@@ -82,6 +95,31 @@ def crear_bloqueo(
     caso: Annotated[CrearBloqueo, Depends(get_crear)],
 ) -> BloqueoOut:
     return BloqueoOut.desde_modelo(caso.ejecutar(usuario, datos.a_solicitud()))
+
+
+@router.get("", response_model=list[BloqueoOut])
+def listar_bloqueos(
+    usuario: UsuarioDeAmbosRoles,
+    caso: Annotated[ConsultarBloqueos, Depends(get_consultar)],
+    profesional_id: Annotated[
+        UUID | None,
+        Query(
+            description="Filtra por profesional. El odontólogo solo puede indicar el suyo "
+            "(otro da 403) y, si lo omite, ve los suyos."
+        ),
+    ] = None,
+) -> list[BloqueoOut]:
+    return [BloqueoOut.desde_modelo(b) for b in caso.ejecutar(usuario, profesional_id)]
+
+
+@router.delete("/{bloqueo_id}", status_code=status.HTTP_204_NO_CONTENT)
+def borrar_bloqueo(
+    usuario: UsuarioDeAmbosRoles,
+    bloqueo_id: UUID,
+    caso: Annotated[BorrarBloqueo, Depends(get_borrar)],
+) -> Response:
+    caso.ejecutar(usuario, bloqueo_id)
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
 def registrar_manejadores_bloqueos(app: FastAPI) -> None:
