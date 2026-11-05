@@ -6,6 +6,7 @@ from uuid import UUID
 
 from app.domain.bloqueos import (
     MENSAJE_BLOQUEO_AJENO,
+    MENSAJE_TURNO_EN_BLOQUEO,
     BloqueoConTurnosError,
     resolver_profesional,
     validar_bloqueo,
@@ -13,7 +14,7 @@ from app.domain.bloqueos import (
 from app.domain.horarios import ProfesionalAjenoError
 from app.domain.recursos import RecursoInexistenteError, TipoRecurso
 from app.domain.time import to_utc
-from app.domain.turnos import Intervalo, ReferenciaInvalidaError
+from app.domain.turnos import Intervalo, ReferenciaInvalidaError, TurnoInvalidoError, TurnoPropuesto
 from app.domain.usuarios import Rol, UsuarioAutenticado
 from app.infrastructure.db.models import Bloqueo
 from app.infrastructure.db.repositorio_bloqueos import RepositorioBloqueos
@@ -87,3 +88,19 @@ class BorrarBloqueo:
         self._repositorio.bloquear_profesional(bloqueo.profesional_id)
         self._repositorio.eliminar(bloqueo)
         self._repositorio.commit()
+
+
+class ValidadorBloqueos:
+    """RN-AG-06 como `ValidadorTurno`: el turno no puede pisar un bloqueo de su profesional.
+
+    No expone el bloqueo (ni su id ni su motivo) en el error (D10). La consulta corre después de
+    que `cargar_referencias` tomó `FOR SHARE` sobre el profesional destino, que es lo que la
+    serializa con el alta de un bloqueo (D13).
+    """
+
+    def __init__(self, repositorio: RepositorioBloqueos) -> None:
+        self._repositorio = repositorio
+
+    def __call__(self, propuesto: TurnoPropuesto) -> None:
+        if self._repositorio.bloqueos_en(propuesto.profesional_id, propuesto.intervalo):
+            raise TurnoInvalidoError("turno_en_bloqueo", MENSAJE_TURNO_EN_BLOQUEO)
