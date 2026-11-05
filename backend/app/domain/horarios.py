@@ -29,10 +29,14 @@ class FranjaSuperpuestaError(Exception):
 
 
 class ProfesionalAjenoError(Exception):
-    """Un odontólogo pidió el horario de otro profesional (se traduce a 403)."""
+    """Un odontólogo operó sobre un recurso de otro profesional (se traduce a 403).
 
-    def __init__(self) -> None:
-        super().__init__("horario de otro profesional")
+    El mensaje por defecto es el del horario; cada recurso (p. ej. los bloqueos) pasa el suyo.
+    """
+
+    def __init__(self, mensaje: str = MENSAJE_PROFESIONAL_AJENO) -> None:
+        super().__init__(mensaje)
+        self.mensaje = mensaje
 
 
 @dataclass(frozen=True)
