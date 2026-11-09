@@ -25,7 +25,7 @@
 - [x] 3.2 **Consultar Context7 antes de escribir `vite.config.ts`** (`/vitejs/vite/v8.3.5`: configuración, `@vitejs/plugin-react` y cambios del bundler) y `/vitest-dev/vitest` (entorno jsdom y `setupFiles`); escribir `vite.config.ts` (D12: `port` 5173, `strictPort`, sección `test`), `index.html`, `tsconfig` en modo `strict` con `types` explícitos, y `src/test/setup.ts` con `@testing-library/jest-dom/vitest`; verificar con `npm run typecheck` y dejar registrado en el reporte qué se consultó
 - [ ] 3.3 RED→GREEN: primer test en `src/App.test.tsx`: `App` dentro de `MemoryRouter` renderiza sin errores en jsdom, afirmando un texto visible (se confirma el RED antes de crear `App.tsx`), y `main.tsx` monta `BrowserRouter`; verificar con `npm test` y `npm run build`, que genera `dist/`
 - [ ] 3.4 Configurar ESLint flat con `@eslint/js`, `typescript-eslint` y `react-hooks`, Prettier con `.prettierignore`, y los scripts de D16; verificar que `npm run lint` y `npm run format:check` pasan, y que un error de tipos, una variable sin usar, un archivo mal formateado y un test que falla, todos de prueba, hacen fallar `typecheck`, `lint`, `format:check` y `test` (requirement "Verificación antes de dar una tarea por terminada"), descartando esos archivos después
-- [ ] 3.5 Agregar `dist/` y `coverage/` a `.gitignore`; verificar con `git status` que `frontend/node_modules/` y `frontend/dist/` no aparecen
+- [x] 3.5 Agregar `dist/` y `coverage/` a `.gitignore`; verificar con `git status` que `frontend/node_modules/` y `frontend/dist/` no aparecen
 
 ## 4. Cliente HTTP (D15)
 
