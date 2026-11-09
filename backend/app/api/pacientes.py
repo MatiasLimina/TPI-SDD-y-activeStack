@@ -3,7 +3,7 @@
 from typing import Annotated, Any, ClassVar
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, Depends, Query, status
 from pydantic import (
     AfterValidator,
     BaseModel,
@@ -14,10 +14,12 @@ from pydantic import (
 )
 from sqlalchemy.orm import Session
 
-from app.api.auth import RecepcionistaAutenticada
+from app.api.auth import RecepcionistaAutenticada, UsuarioDeAmbosRoles
 from app.api.recursos import Cambios, Entrada
+from app.application.gestion_pacientes import ConsultarPaciente
 from app.application.gestion_recursos import CrearRecurso, EditarRecurso
 from app.domain.pacientes import email_valido
+from app.domain.usuarios import Rol
 from app.infrastructure.db.models import Paciente
 from app.infrastructure.db.repositorio_pacientes import RepositorioPacientes
 from app.infrastructure.db.session import get_session
@@ -93,12 +95,17 @@ class PacienteCambios(Cambios):
     activo: JsonValue = None
 
 
-class PacienteOut(BaseModel):
+class PacienteResumenOut(BaseModel):
+    """Lo único que lee el odontólogo de un paciente de sus turnos (DD-31 a)."""
+
     model_config = ConfigDict(from_attributes=True)
 
     id: UUID
     nombre: str
     apellido: str
+
+
+class PacienteOut(PacienteResumenOut):
     documento: str
     telefono: str
     email: str | None
@@ -137,3 +144,60 @@ def editar(
     caso: Annotated[EditarRecurso[Paciente], Depends(get_editar)],
 ) -> Paciente:
     return caso.ejecutar(paciente_id, datos.datos(), campos_estado=datos.campos_estado())
+
+
+def get_consultar(
+    session: Annotated[Session, Depends(get_session)], usuario: UsuarioDeAmbosRoles
+) -> ConsultarPaciente:
+    return ConsultarPaciente(RepositorioPacientes(session))
+
+
+def _busqueda_sin_nulo(q: str | None) -> str | None:
+    return None if q is None else _sin_caracter_nulo(q)
+
+
+Busqueda = Annotated[
+    str | None,
+    Query(
+        max_length=100,
+        description=(
+            "Texto a buscar en nombre, apellido o documento. Se separa por espacios y cada "
+            "término debe aparecer en alguno de los tres campos, sin distinguir mayúsculas ni "
+            "acentos. En blanco o ausente, lista sin filtrar."
+        ),
+    ),
+    AfterValidator(_busqueda_sin_nulo),
+]
+Limite = Annotated[
+    int, Query(ge=1, le=100, description="Máximo de pacientes a devolver (de 1 a 100).")
+]
+Desplazamiento = Annotated[
+    int, Query(ge=0, description="Cantidad de pacientes a saltear antes de devolver el resultado.")
+]
+
+
+@router.get("", response_model=list[PacienteOut])
+def listar(
+    usuario: RecepcionistaAutenticada,
+    caso: Annotated[ConsultarPaciente, Depends(get_consultar)],
+    q: Busqueda = None,
+    limite: Limite = 50,
+    desplazamiento: Desplazamiento = 0,
+) -> list[Paciente]:
+    return caso.listar(q, limite, desplazamiento)
+
+
+@router.get("/{paciente_id}", response_model=PacienteOut | PacienteResumenOut)
+def detalle(
+    usuario: UsuarioDeAmbosRoles,
+    paciente_id: UUID,
+    caso: Annotated[ConsultarPaciente, Depends(get_consultar)],
+) -> dict[str, Any]:
+    """Ficha completa para la recepcionista; `id`, `nombre` y `apellido` para el odontólogo.
+
+    Se arma el dict de cada rol y se valida contra la unión: un resumen no puede pasar por ficha
+    completa porque le faltan campos obligatorios.
+    """
+    paciente = caso.detalle(usuario, paciente_id)
+    salida = PacienteResumenOut if usuario.rol == Rol.ODONTOLOGO else PacienteOut
+    return salida.model_validate(paciente).model_dump(mode="json")

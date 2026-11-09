@@ -41,13 +41,13 @@
 
 ## 7. Listado, búsqueda y paginación
 
-- [ ] 7.1 RED→GREEN: `tests/integration/test_api_consulta_pacientes.py` — requisito "Listado de pacientes" para la recepcionista; verificar con ese archivo
-- [ ] 7.2 RED→GREEN: requisito "Búsqueda de pacientes", los 13 escenarios, incluidos comodines, `q` en blanco, 100 y 101 caracteres y `%00` con `422` (D5, D6); verificar con el mismo archivo
-- [ ] 7.3 RED→GREEN: requisito "Paginación del listado de pacientes": default, páginas, búsqueda paginada, máximo y fuera de rango (D8); verificar con el mismo archivo
+- [x] 7.1 RED→GREEN: `tests/integration/test_api_consulta_pacientes.py` — requisito "Listado de pacientes" para la recepcionista; verificar con ese archivo
+- [x] 7.2 RED→GREEN: requisito "Búsqueda de pacientes", los 13 escenarios, incluidos comodines, `q` en blanco, 100 y 101 caracteres y `%00` con `422` (D5, D6); verificar con el mismo archivo
+- [x] 7.3 RED→GREEN: requisito "Paginación del listado de pacientes": default, páginas, búsqueda paginada, máximo y fuera de rango (D8); verificar con el mismo archivo
 
 ## 8. Detalle y permisos
 
-- [ ] 8.1 RED→GREEN: requisito "Detalle de un paciente para la recepcionista": completo, desactivado, `404` y `422`; verificar con `test_api_consulta_pacientes.py`
+- [x] 8.1 RED→GREEN: requisito "Detalle de un paciente para la recepcionista": completo, desactivado, `404` y `422`; verificar con `test_api_consulta_pacientes.py`
 - [ ] 8.2 RED→GREEN: `tests/integration/test_api_rbac_pacientes.py` — requisito "Lectura mínima del odontólogo", afirmando el conjunto exacto de claves `id`, `nombre` y `apellido` en los tres escenarios (D1, D3); verificar con ese archivo
 - [ ] 8.3 RED→GREEN: requisito "Paciente ajeno para el odontólogo", con cuerpos idénticos para ajeno e inexistente, `422` y `401` (D4); verificar con el mismo archivo
 - [ ] 8.4 RED→GREEN: requisitos "Escritura de pacientes reservada a la recepcionista" y "Listado y búsqueda reservados a la recepcionista", con rol antes que la validación del contenido del body, los parámetros y la existencia (D2); verificar con el mismo archivo
