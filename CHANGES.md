@@ -331,7 +331,7 @@ C-01 a C-07 los hizo Matías (C-07 entró a `main` con el PR #3). Para avanzar l
   - `knowledge-base/09_decisiones_y_supuestos.md` §DD-13, §DD-19
 
 ### [C-13] `agenda-diaria-semanal`
-- **Estado**: `[ ]` pendiente
+- **Estado**: `[x]` completado
 - **Responsable**: Matías · revisa Nico
 - **Scope** (US-008, backend):
   - `GET /turnos?desde&hasta&profesional_id&sillon_id` (rango local -> UTC, respuesta `{turnos, bloqueos}` en hora local `-03:00`, DD-32) para vistas diaria/semanal multiprofesional y multisillón; incluye bloqueos en la respuesta de agenda
