@@ -2,6 +2,8 @@ from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+from pydantic import ValidationError
 
 from app.api.auditoria import router as auditoria_router
 from app.api.auth import registrar_manejadores_auth
@@ -21,20 +23,38 @@ from app.api.recursos import (
 )
 from app.api.turnos import registrar_manejadores
 from app.api.turnos import router as turnos_router
+from app.config import ConfiguracionCors
 from app.infrastructure.db.session import dispose_engine
 from app.infrastructure.log_acceso import instalar_filtro_log_acceso
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncIterator[None]:
+    # Un CORS_ORIGINS inválido (p. ej. "*") corta el arranque; create_app() no puede lanzarlo
+    # porque se ejecuta al importar y rompería la importación de la app.
+    ConfiguracionCors()
     # Acá y no al importar: uvicorn configura su logging antes de arrancar el lifespan
     instalar_filtro_log_acceso()
     yield
     dispose_engine()
 
 
+def _origenes_cors() -> list[str]:
+    try:
+        return ConfiguracionCors().origenes_permitidos
+    except ValidationError:
+        return []  # nunca llega un "*" al middleware; el lifespan rechaza el arranque
+
+
 def create_app() -> FastAPI:
     app = FastAPI(title="Turnos y Agenda", lifespan=lifespan)
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=_origenes_cors(),
+        allow_credentials=False,  # el token viaja en un encabezado, no en una cookie
+        allow_methods=["GET", "POST", "PATCH", "DELETE"],
+        allow_headers=["Authorization", "Content-Type"],
+    )
     app.include_router(health_router)
     app.include_router(auth_router)
     app.include_router(turnos_router)
