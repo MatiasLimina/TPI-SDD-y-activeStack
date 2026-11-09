@@ -16,6 +16,7 @@ See `_shared/skill-resolver.md` for the full resolution protocol.
 | Review/validate a change's spec scenarios against the KB, after propose/update and before apply | revisar-escenarios | .agents/skills/revisar-escenarios/SKILL.md |
 | Check Alembic migration numbering across remote branches, before opening/merging a PR with a migration | revisar-migraciones | .agents/skills/revisar-migraciones/SKILL.md |
 | Review a PR / branch diff against repo standards and the change's spec (main use: PR review before approving) | code-review | .agents/skills/code-review/SKILL.md |
+| Frontend tests (C-14..C-16): Vitest, mocks, fake timers, hooks, jsdom environment, coverage | vitest | .agents/skills/vitest/SKILL.md |
 
 All skills are installed **at project level** in `.agents/skills/` (versioned; third-party ones pinned in `skills-lock.json`; `npx skills add <repo> --skill <name>` without `-g`). Paths above are relative to the project root.
 
@@ -30,6 +31,8 @@ All skills are installed **at project level** in `.agents/skills/` (versioned; t
 4. Findings are a report: posting them as PR comments or requesting changes needs explicit user approval.
 
 Name clash: Claude Code also ships a built-in `/code-review` command (bug-hunting review of the current diff). When asking for this skill, name it explicitly ("la skill code-review del proyecto", via the Skill tool) to get the two-axis Standards/Spec review.
+
+`vitest` (antfu/skills, pinned in `skills-lock.json`, installed 2026-11-09) is the test-framework skill for the frontend (C-14 onward, strict TDD). It documents Vitest 5.1.0-beta.1 (a pre-release): check the installed version before relying on v5-only behavior. It does not cover React Testing Library or React Router (use Context7).
 
 `skill-creator` (anthropics/skills, pinned in `skills-lock.json`) is also installed in `.agents/skills/`; it is an authoring tool, not a coding skill, so it is excluded from the table.
 
@@ -109,6 +112,20 @@ Pre-digested rules per skill. Delegators copy matching blocks into sub-agent pro
 - Fowler smell baseline (Mysterious Name, Duplicated Code, Feature Envy, Data Clumps, Primitive Obsession, Repeated Switches, Shotgun Surgery, Divergent Change, Speculative Generality, Message Chains, Middle Man, Refused Bequest) is always a judgement call; a documented repo rule overrides it.
 - Spec source is the change's OpenSpec folder (active or `archive/<fecha>-<change>/`) plus its `CHANGES.md` block; no issue tracker. Spec axis reports missing/partial requirements, scope creep (hard rule: Apply implements only the approved spec) and wrong implementations, quoting the spec line.
 - Report only: never edit code or post to the PR without explicit user approval.
+
+### vitest
+- Documents Vitest v5 (5.1.0-beta.1); v5 needs Vite >= 6.4.0 and Node >= 22.12.0. Confirm the installed version first; stable v4 differs in the defaults below.
+- React tests: `test.environment: 'jsdom'` (`npm i -D jsdom`) in `vitest.config.ts`, or per file with `// @vitest-environment jsdom` on top. Needs `@vitejs/plugin-react` in the Vite plugins. React Testing Library is NOT covered here.
+- Imports are explicit (`import { test, expect, vi } from 'vitest'`) unless `globals: true`.
+- Mocks: `vi.fn()`, `vi.spyOn(obj, 'm')`, `vi.mock('./mod', factory)` is hoisted and MUST be top-level (nested calls throw in v5); use `vi.hoisted()` for variables used in factories; `vi.doMock` for dynamic, non-hoisted.
+- v5 `clearMocks` defaults to `true` (call history cleared before each test); `vi.restoreAllMocks()` only restores `vi.spyOn` spies.
+- Fake timers: `vi.useFakeTimers()`, `vi.advanceTimersByTime(ms)`, `vi.advanceTimersByTimeAsync(ms)` for async callbacks, `vi.setSystemTime(date)`; always `vi.useRealTimers()` in `afterEach`.
+- Globals/env: `vi.stubGlobal('fetch', vi.fn())` + `vi.unstubAllGlobals()`; `vi.stubEnv(...)` + `vi.unstubAllEnvs()`. Test values only, never real secrets.
+- Hooks: `beforeEach`/`afterEach` for per-test setup/cleanup; `setupFiles` for global setup (e.g. cleanup, matchers).
+- Always `await` async assertions (`resolves`, `rejects`): in v5 unawaited ones fail the test. `expect.poll` rejects on timeout in v5.
+- `test.sequential`/`describe.sequential` were removed in v5: use `{ concurrent: false }`. Default pool is `forks`; config is not looked up from parent dirs (pass `--config`).
+- Experimental/beta (avoid): `--since-last-run`, `experimental.*`, `vi.when`, `bench`.
+- Run once (CI/agents): `vitest run` (watch mode is the default in dev).
 
 ## Project Conventions
 
