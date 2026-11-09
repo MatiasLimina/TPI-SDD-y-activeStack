@@ -22,10 +22,13 @@ from app.api.recursos import (
 from app.api.turnos import registrar_manejadores
 from app.api.turnos import router as turnos_router
 from app.infrastructure.db.session import dispose_engine
+from app.infrastructure.log_acceso import instalar_filtro_log_acceso
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncIterator[None]:
+    # Acá y no al importar: uvicorn configura su logging antes de arrancar el lifespan
+    instalar_filtro_log_acceso()
     yield
     dispose_engine()
 
