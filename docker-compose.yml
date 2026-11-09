@@ -58,5 +58,16 @@ services:
         condition: service_started
     restart: unless-stopped
 
+  frontend:
+    build: ./frontend
+    environment:
+      # La usa el navegador, no el contenedor: debe ser alcanzable desde el host (no http://api:8000)
+      VITE_API_URL: ${VITE_API_URL:-http://localhost:8000}
+    ports:
+      - "5173:5173"
+    depends_on:
+      api:
+        condition: service_started
+
 volumes:
   pgdata:
