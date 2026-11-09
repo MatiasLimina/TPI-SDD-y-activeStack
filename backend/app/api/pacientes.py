@@ -18,7 +18,7 @@ from sqlalchemy.orm import Session
 from app.api.auth import RecepcionistaAutenticada, UsuarioDeAmbosRoles
 from app.api.recursos import Cambios, Entrada
 from app.application.gestion_pacientes import ConsultarPaciente
-from app.application.gestion_recursos import CrearRecurso, EditarRecurso
+from app.application.gestion_recursos import CrearRecurso, DesactivarRecurso, EditarRecurso
 from app.domain.pacientes import PacienteAjenoError, email_valido
 from app.domain.usuarios import Rol
 from app.infrastructure.db.models import Paciente
@@ -145,6 +145,21 @@ def editar(
     caso: Annotated[EditarRecurso[Paciente], Depends(get_editar)],
 ) -> Paciente:
     return caso.ejecutar(paciente_id, datos.datos(), campos_estado=datos.campos_estado())
+
+
+def get_desactivar(
+    session: Annotated[Session, Depends(get_session)], usuario: RecepcionistaAutenticada
+) -> DesactivarRecurso[Paciente]:
+    return DesactivarRecurso(RepositorioPacientes(session))
+
+
+@router.post("/{paciente_id}/desactivar", response_model=PacienteOut)
+def desactivar(
+    usuario: RecepcionistaAutenticada,
+    paciente_id: UUID,
+    caso: Annotated[DesactivarRecurso[Paciente], Depends(get_desactivar)],
+) -> Paciente:
+    return caso.ejecutar(paciente_id)
 
 
 def get_consultar(

@@ -281,10 +281,11 @@ def _escrituras(paciente_id: object) -> dict[str, tuple[str, str, dict[str, Any]
     return {
         "post": ("POST", "/pacientes", BODY_VALIDO),
         "patch": ("PATCH", f"/pacientes/{paciente_id}", {"telefono": "+54 11 5555-0199"}),
+        "desactivar": ("POST", f"/pacientes/{paciente_id}/desactivar", None),
     }
 
 
-@pytest.mark.parametrize("ruta", ["post", "patch"])
+@pytest.mark.parametrize("ruta", ["post", "patch", "desactivar"])
 def test_escritura_de_un_odontologo_responde_403_y_la_base_no_cambia(
     anonimo: TestClient,
     db_session: Session,
@@ -305,7 +306,7 @@ def test_escritura_de_un_odontologo_responde_403_y_la_base_no_cambia(
     assert _snapshot(db_session) == antes
 
 
-@pytest.mark.parametrize("ruta", ["post", "patch"])
+@pytest.mark.parametrize("ruta", ["post", "patch", "desactivar"])
 def test_escritura_sin_token_responde_401_y_la_base_no_cambia(
     anonimo: TestClient, db_session: Session, carla: Paciente, ruta: str
 ) -> None:
@@ -340,6 +341,17 @@ def test_odontologo_con_activo_en_el_body_recibe_403_y_no_campo_no_editable(
     assert respuesta.status_code == 403
 
 
+def test_odontologo_con_desactivar_un_paciente_inexistente_recibe_403_y_no_404(
+    anonimo: TestClient, odontologo: Usuario, emisor_test: EmisorTokens
+) -> None:
+    respuesta = anonimo.post(
+        f"/pacientes/{uuid4()}/desactivar", headers=_bearer(odontologo, emisor_test)
+    )
+
+    assert respuesta.status_code == 403
+    assert respuesta.json() == CUERPO_403
+
+
 def test_odontologo_con_patch_a_un_paciente_inexistente_recibe_403_y_no_404(
     anonimo: TestClient, odontologo: Usuario, emisor_test: EmisorTokens
 ) -> None:
@@ -352,7 +364,7 @@ def test_odontologo_con_patch_a_un_paciente_inexistente_recibe_403_y_no_404(
     assert respuesta.status_code == 403
 
 
-def test_la_recepcionista_si_puede_escribir_en_las_rutas_de_alta_y_edicion(
+def test_la_recepcionista_si_puede_escribir_en_las_tres_rutas(
     client: TestClient, carla: Paciente
 ) -> None:
     peticiones = _escrituras(carla.id)
@@ -362,7 +374,7 @@ def test_la_recepcionista_si_puede_escribir_en_las_rutas_de_alta_y_edicion(
         for ruta, (metodo, url, body) in peticiones.items()
     }
 
-    assert codigos == {"post": 201, "patch": 200}
+    assert codigos == {"post": 201, "patch": 200, "desactivar": 200}
 
 
 # --- Listado y búsqueda reservados a la recepcionista --------------------------------------

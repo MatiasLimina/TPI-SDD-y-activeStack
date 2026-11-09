@@ -50,13 +50,13 @@
 - [x] 8.1 RED→GREEN: requisito "Detalle de un paciente para la recepcionista": completo, desactivado, `404` y `422`; verificar con `test_api_consulta_pacientes.py`
 - [x] 8.2 RED→GREEN: `tests/integration/test_api_rbac_pacientes.py` — requisito "Lectura mínima del odontólogo", afirmando el conjunto exacto de claves `id`, `nombre` y `apellido` en los tres escenarios (D1, D3); verificar con ese archivo
 - [x] 8.3 RED→GREEN: requisito "Paciente ajeno para el odontólogo", con cuerpos idénticos para ajeno e inexistente, `422` y `401` (D4); verificar con el mismo archivo
-- [ ] 8.4 RED→GREEN: requisitos "Escritura de pacientes reservada a la recepcionista" y "Listado y búsqueda reservados a la recepcionista", con rol antes que la validación del contenido del body, los parámetros y la existencia (D2); verificar con el mismo archivo
+- [x] 8.4 RED→GREEN: requisitos "Escritura de pacientes reservada a la recepcionista" y "Listado y búsqueda reservados a la recepcionista", con rol antes que la validación del contenido del body, los parámetros y la existencia (D2); verificar con el mismo archivo
 
 ## 9. Desactivación
 
-- [ ] 9.1 RED→GREEN: `tests/integration/test_api_desactivacion_pacientes.py` — requisito "Desactivación lógica de un paciente"; verificar con ese archivo
-- [ ] 9.2 RED→GREEN: requisito "Un paciente desactivado no admite turnos nuevos": alta y reprogramación con `422 referencia_invalida`, con el reloj fijado (`get_reloj` reemplazado, como en `test_api_desactivacion_recursos.py`), sin tocar el código de turnos; verificar con el mismo archivo
-- [ ] 9.3 RED→GREEN: requisito "Un paciente desactivado conserva sus turnos y recordatorios": turno intacto sin filas de auditoría nuevas (D19) y cancelación, con el reloj fijado (`get_reloj` reemplazado, como en `test_api_desactivacion_recursos.py`), y recordatorio enviado por el worker real con el `RelojManual` y `ciclo_a` de `helpers_recordatorios` (D13); verificar con el mismo archivo
+- [x] 9.1 RED→GREEN: `tests/integration/test_api_desactivacion_pacientes.py` — requisito "Desactivación lógica de un paciente"; verificar con ese archivo
+- [x] 9.2 RED→GREEN: requisito "Un paciente desactivado no admite turnos nuevos": alta y reprogramación con `422 referencia_invalida`, con el reloj fijado (`get_reloj` reemplazado, como en `test_api_desactivacion_recursos.py`), sin tocar el código de turnos; verificar con el mismo archivo
+- [x] 9.3 RED→GREEN: requisito "Un paciente desactivado conserva sus turnos y recordatorios": turno intacto sin filas de auditoría nuevas (D19) y cancelación, con el reloj fijado (`get_reloj` reemplazado, como en `test_api_desactivacion_recursos.py`), y recordatorio enviado por el worker real con el `RelojManual` y `ciclo_a` de `helpers_recordatorios` (D13); verificar con el mismo archivo
 - [ ] 9.4 RED→GREEN: en `test_concurrencia_pacientes.py`, los tres escenarios de "Desactivación de paciente simultánea con un alta o una reprogramación de turno" (D12), con reloj fijo y deterministas por orden de llegada, como `test_concurrencia_desactivacion.py`; verificar corriendo el archivo varias veces
 
 ## 10. Protección de datos personales
