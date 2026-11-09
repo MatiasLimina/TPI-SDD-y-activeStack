@@ -70,7 +70,7 @@
 
 ## 10. Verificación final
 
-- [ ] 10.1 Correr en `frontend/` `npm run typecheck`, `npm run lint`, `npm run format:check`, `npm test` y `npm run build`, y en `backend/` `pytest` completo más `ruff check` y `ruff format --check`; todo en verde, sin cambios en `backend/alembic/versions/` (verificar con `git diff --stat main -- backend/alembic/versions/`) y sin `JWT_SECRET`, `DATABASE_URL` ni `REDIS_URL` en `frontend/src/` ni en `frontend/dist/` (verificar con `grep -r`)
+- [x] 10.1 Correr en `frontend/` `npm run typecheck`, `npm run lint`, `npm run format:check`, `npm test` y `npm run build`, y en `backend/` `pytest` completo más `ruff check` y `ruff format --check`; todo en verde, sin cambios en `backend/alembic/versions/` (verificar con `git diff --stat main -- backend/alembic/versions/`) y sin `JWT_SECRET`, `DATABASE_URL` ni `REDIS_URL` en `frontend/src/` ni en `frontend/dist/` (verificar con `grep -r`)
 - [ ] 10.2 Verificación manual del stack con `docker compose up --build`: el preflight con `curl -i -X OPTIONS http://localhost:8000/turnos -H "Origin: http://localhost:5173" -H "Access-Control-Request-Method: GET" -H "Access-Control-Request-Headers: authorization"` devuelve `200` con `Access-Control-Allow-Origin`; el login en el navegador con un usuario del seed llega a `/agenda` (las contraseñas ficticias están en `.env`, que el agente no lee: este paso lo hace el usuario)
 
 ## Workflow follow-up

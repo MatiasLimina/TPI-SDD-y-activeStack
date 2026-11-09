@@ -35,7 +35,7 @@ function esRol(valor: unknown): valor is Rol {
 }
 
 /**
- * Lee los claims SIN verificar la firma: el navegador no tiene `JWT_SECRET`, y los datos
+ * Lee los claims SIN verificar la firma: el navegador no tiene la clave de firma, y los datos
  * solo deciden qué se muestra (design D1). La forma se evalúa antes que el vencimiento.
  */
 export function interpretarToken(
