@@ -36,7 +36,7 @@
 
 ## 5. Datos de la sesión (D1)
 
-- [ ] 5.1 RED→GREEN: `src/features/sesion/claims.test.ts` — con el helper de tokens ficticios de `src/test/` y el reloj fijo (`vi.useFakeTimers`, `vi.setSystemTime("2026-11-09T12:00:00Z")`): claims de recepcionista (`profesional_id` nulo) y de odontólogo, con `exp` en segundos; distingue inválido (no es JWT, sin `exp` numérico, `rol` desconocido, aunque su `exp` haya pasado) de vencido (`exp` menor o igual al reloj, con el borde igual); base64url con `-` y `_` se decodifica; verificar con `npm test -- claims`
+- [x] 5.1 RED→GREEN: `src/features/sesion/claims.test.ts` — con el helper de tokens ficticios de `src/test/` y el reloj fijo (`vi.useFakeTimers`, `vi.setSystemTime("2026-11-09T12:00:00Z")`): claims de recepcionista (`profesional_id` nulo) y de odontólogo, con `exp` en segundos; distingue inválido (no es JWT, sin `exp` numérico, `rol` desconocido, aunque su `exp` haya pasado) de vencido (`exp` menor o igual al reloj, con el borde igual); base64url con `-` y `_` se decodifica; verificar con `npm test -- claims`
 
 ## 6. Login y sesión (D3, D4, D6, D8, D17)
 
