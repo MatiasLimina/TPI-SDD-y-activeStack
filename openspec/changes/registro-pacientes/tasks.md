@@ -36,8 +36,8 @@
 
 ## 6. Edición
 
-- [ ] 6.1 RED→GREEN: requisito "Edición parcial de un paciente": campo único, corrección del documento con turno intacto (con el reloj fijado (`get_reloj` reemplazado, como en `test_api_desactivacion_recursos.py`)), quitar email, nulos en obligatorios, texto en blanco, body vacío, campo desconocido, paciente desactivado y `404` (D11); verificar con `test_api_pacientes.py`
-- [ ] 6.2 RED→GREEN: requisito "Estado de actividad del paciente no editable" en `POST` y `PATCH`; verificar con el mismo archivo
+- [x] 6.1 RED→GREEN: requisito "Edición parcial de un paciente": campo único, corrección del documento con turno intacto (con el reloj fijado (`get_reloj` reemplazado, como en `test_api_desactivacion_recursos.py`)), quitar email, nulos en obligatorios, texto en blanco, body vacío, campo desconocido, paciente desactivado y `404` (D11); verificar con `test_api_pacientes.py`
+- [x] 6.2 RED→GREEN: requisito "Estado de actividad del paciente no editable" en `POST` y `PATCH`; verificar con el mismo archivo
 
 ## 7. Listado, búsqueda y paginación
 

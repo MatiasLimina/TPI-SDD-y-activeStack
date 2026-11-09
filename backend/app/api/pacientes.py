@@ -15,8 +15,8 @@ from pydantic import (
 from sqlalchemy.orm import Session
 
 from app.api.auth import RecepcionistaAutenticada
-from app.api.recursos import Entrada
-from app.application.gestion_recursos import CrearRecurso
+from app.api.recursos import Cambios, Entrada
+from app.application.gestion_recursos import CrearRecurso, EditarRecurso
 from app.domain.pacientes import email_valido
 from app.infrastructure.db.models import Paciente
 from app.infrastructure.db.repositorio_pacientes import RepositorioPacientes
@@ -79,6 +79,20 @@ class PacienteIn(Entrada):
     activo: JsonValue = None
 
 
+class PacienteCambios(Cambios):
+    """Body del PATCH: lo omitido se conserva; `null` solo vale para quitar el email."""
+
+    ESTADO: ClassVar[str] = "activo"
+    OBLIGATORIOS: ClassVar[tuple[str, ...]] = ("nombre", "apellido", "documento", "telefono")
+
+    nombre: Nombre | None = None
+    apellido: Apellido | None = None
+    documento: Documento | None = None
+    telefono: Telefono | None = None
+    email: Email = None
+    activo: JsonValue = None
+
+
 class PacienteOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
@@ -107,3 +121,19 @@ def crear(
     caso: Annotated[CrearRecurso[Paciente], Depends(get_crear)],
 ) -> Paciente:
     return caso.ejecutar(datos.datos(), campos_estado=datos.campos_estado())
+
+
+def get_editar(
+    session: Annotated[Session, Depends(get_session)], usuario: RecepcionistaAutenticada
+) -> EditarRecurso[Paciente]:
+    return EditarRecurso(RepositorioPacientes(session))
+
+
+@router.patch("/{paciente_id}", response_model=PacienteOut)
+def editar(
+    usuario: RecepcionistaAutenticada,
+    paciente_id: UUID,
+    datos: PacienteCambios,
+    caso: Annotated[EditarRecurso[Paciente], Depends(get_editar)],
+) -> Paciente:
+    return caso.ejecutar(paciente_id, datos.datos(), campos_estado=datos.campos_estado())
