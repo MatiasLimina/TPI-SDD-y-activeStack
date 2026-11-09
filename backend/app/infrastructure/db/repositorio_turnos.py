@@ -8,6 +8,7 @@ from sqlalchemy import func, or_, select
 from sqlalchemy.exc import IntegrityError, OperationalError
 from sqlalchemy.orm import Session
 
+from app.domain.agenda import TurnoDeAgenda
 from app.domain.time import to_utc
 from app.domain.turnos import (
     Intervalo,
@@ -141,6 +142,45 @@ class RepositorioTurnos:
 
         self._escribir_traduciendo_exclusion(agregar)
         return TurnoCreado.desde_propuesto(propuesto, id=turnos[-1].id, creado_por=creado_por)
+
+    def listar_en(
+        self,
+        intervalo: Intervalo,
+        profesional_id: UUID | None = None,
+        sillon_id: UUID | None = None,
+    ) -> list[TurnoDeAgenda]:
+        """Turnos (en cualquier estado) que pisan `intervalo` `[)`, con el nombre del paciente.
+
+        Se devuelven con su intervalo real, por `inicio` e `id`. Sin lock: es solo lectura (D15).
+        """
+        consulta = (
+            select(Turno, Paciente.nombre, Paciente.apellido)
+            .join(Paciente, Paciente.id == Turno.paciente_id)
+            .where(Turno.inicio < intervalo.fin, Turno.fin > intervalo.inicio)
+            .order_by(Turno.inicio, Turno.id)
+        )
+        if profesional_id is not None:
+            consulta = consulta.where(Turno.profesional_id == profesional_id)
+        if sillon_id is not None:
+            consulta = consulta.where(Turno.sillon_id == sillon_id)
+        return [
+            TurnoDeAgenda(
+                id=turno.id,
+                profesional_id=turno.profesional_id,
+                paciente_id=turno.paciente_id,
+                paciente_nombre=nombre,
+                paciente_apellido=apellido,
+                prestacion_id=turno.prestacion_id,
+                sillon_id=turno.sillon_id,
+                inicio=turno.inicio,
+                fin=turno.fin,
+                duracion_min=turno.duracion_min,
+                estado=turno.estado,
+                creado_por=turno.creado_por,
+                motivo_cancelacion=turno.motivo_cancelacion,
+            )
+            for turno, nombre, apellido in self._session.execute(consulta)
+        ]
 
     def existe(self, turno_id: UUID) -> bool:
         """Si hay un turno con ese id, en cualquier estado; no toma bloqueos."""

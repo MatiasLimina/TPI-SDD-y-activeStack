@@ -63,6 +63,17 @@ class RepositorioBloqueos:
             consulta = consulta.where(Bloqueo.profesional_id == profesional_id)
         return list(self._session.scalars(consulta))
 
+    def listar_en(self, intervalo: Intervalo, profesional_id: UUID | None = None) -> list[Bloqueo]:
+        """Bloqueos que pisan `intervalo` `[)`, con su intervalo real, por `inicio` e `id`."""
+        consulta = (
+            select(Bloqueo)
+            .where(Bloqueo.inicio < intervalo.fin, Bloqueo.fin > intervalo.inicio)
+            .order_by(Bloqueo.inicio, Bloqueo.id)
+        )
+        if profesional_id is not None:
+            consulta = consulta.where(Bloqueo.profesional_id == profesional_id)
+        return list(self._session.scalars(consulta))
+
     def obtener(self, bloqueo_id: UUID) -> Bloqueo | None:
         return self._session.get(Bloqueo, bloqueo_id)
 
