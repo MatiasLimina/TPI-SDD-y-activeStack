@@ -6,7 +6,7 @@ import App from "./App";
 describe("App", () => {
   it("se renderiza dentro de un router en jsdom y muestra el título de la aplicación", () => {
     render(
-      <MemoryRouter initialEntries={["/"]}>
+      <MemoryRouter initialEntries={["/login"]}>
         <App />
       </MemoryRouter>,
     );
