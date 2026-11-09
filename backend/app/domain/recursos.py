@@ -12,6 +12,7 @@ class TipoRecurso(StrEnum):
     PRESTACION = "prestacion"
     HORARIO = "horario"
     BLOQUEO = "bloqueo"
+    PACIENTE = "paciente"
 
 
 class RecursoError(Exception):

@@ -80,6 +80,7 @@ def test_los_valores_de_tipo_recurso_son_los_del_contrato_http() -> None:
         "prestacion",
         "horario",
         "bloqueo",
+        "paciente",
     ]
 
 

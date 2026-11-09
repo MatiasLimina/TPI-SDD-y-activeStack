@@ -8,14 +8,14 @@
 
 ## 1. Preparación
 
-- [ ] 1.1 Safety net: correr `pytest` completo contra la BD de test y registrar el baseline en verde; si algo falla, frenar y reportarlo como falla preexistente
+- [x] 1.1 Safety net: correr `pytest` completo contra la BD de test y registrar el baseline en verde; si algo falla, frenar y reportarlo como falla preexistente
 - [x] 1.2 Aprobación previa al Apply: el usuario aprobó las decisiones de `design.md` el 2026-11-09 (se registran como DD-31 en 11.1), y los hallazgos H1 a H11 de `revisar-escenarios registro-pacientes` se resolvieron con `/opsx:update` ese mismo día; no quedan BLOQUEANTE ni MAYOR abiertos
 
 ## 2. Dominio de pacientes (sin BD)
 
-- [ ] 2.1 RED→GREEN: `tests/unit/test_dominio_pacientes.py` — `terminos_busqueda` separa por espacios, pliega mayúsculas, acentos y `ñ` con la tabla única (D6), normaliza a NFC y devuelve lista vacía para `None`, `""` y solo espacios; verificar con `pytest tests/unit/test_dominio_pacientes.py`
-- [ ] 2.2 RED→GREEN: `email_valido` (D16) acepta `carla@example.com` y rechaza sin `@`, con dos `@`, con espacios internos, `@example.com` y `carla@`; verificar con el mismo archivo de tests
-- [ ] 2.3 RED→GREEN: `PacienteAjenoError` con su mensaje y `TipoRecurso.PACIENTE = "paciente"`; verificar con los tests de dominio y `pytest tests/unit` en verde
+- [x] 2.1 RED→GREEN: `tests/unit/test_dominio_pacientes.py` — `terminos_busqueda` separa por espacios, pliega mayúsculas, acentos y `ñ` con la tabla única (D6), normaliza a NFC y devuelve lista vacía para `None`, `""` y solo espacios; verificar con `pytest tests/unit/test_dominio_pacientes.py`
+- [x] 2.2 RED→GREEN: `email_valido` (D16) acepta `carla@example.com` y rechaza sin `@`, con dos `@`, con espacios internos, `@example.com` y `carla@`; verificar con el mismo archivo de tests
+- [x] 2.3 RED→GREEN: `PacienteAjenoError` con su mensaje y `TipoRecurso.PACIENTE = "paciente"`; verificar con los tests de dominio y `pytest tests/unit` en verde
 
 ## 3. Repositorio de pacientes
 
