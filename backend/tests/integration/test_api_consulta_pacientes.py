@@ -251,11 +251,30 @@ def test_get_pacientes_con_limite_100_devuelve_hasta_100(
     assert len(client.get("/pacientes?limite=100").json()) == 100
 
 
-@pytest.mark.parametrize("consulta", ["limite=0", "limite=101", "desplazamiento=-1", "limite=abc"])
+@pytest.mark.parametrize(
+    "consulta",
+    [
+        "limite=0",
+        "limite=101",
+        "desplazamiento=-1",
+        "desplazamiento=9223372036854775808",
+        "limite=abc",
+    ],
+)
 def test_get_pacientes_con_paginacion_fuera_de_rango_responde_422(
     client: TestClient, consulta: str
 ) -> None:
     assert client.get(f"/pacientes?{consulta}").status_code == 422
+
+
+def test_get_pacientes_con_el_mayor_desplazamiento_admitido_responde_lista_vacia(
+    client: TestClient, db_session: Session
+) -> None:
+    _paciente(db_session, "Carla", "Imaginaria")
+
+    respuesta = client.get("/pacientes?desplazamiento=9223372036854775807")
+
+    assert (respuesta.status_code, respuesta.json()) == (200, [])
 
 
 def test_get_pacientes_con_desplazamiento_mayor_al_total_responde_lista_vacia(

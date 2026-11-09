@@ -244,7 +244,7 @@ El sistema SHALL exponer `GET /pacientes`, que responde `200` con una lista de p
 - **THEN** entonces la respuesta es `422`, no `500`
 
 ### Requirement: Paginación del listado de pacientes
-`GET /pacientes` MUST devolver como máximo `limite` pacientes, tras saltear `desplazamiento`, aplicados después del filtro y del orden. `limite` MUST valer `50` por defecto y estar entre `1` y `100`; `desplazamiento` MUST valer `0` por defecto y no ser negativo; si no, `422` (DD-31 h).
+`GET /pacientes` MUST devolver como máximo `limite` pacientes, tras saltear `desplazamiento`, aplicados después del filtro y del orden. `limite` MUST valer `50` por defecto y estar entre `1` y `100`; `desplazamiento` MUST valer `0` por defecto, no ser negativo y caber en un entero de 64 bits; si no, `422` (DD-31 h).
 
 #### Scenario: Límite por defecto
 - **GIVEN** dados 51 pacientes
@@ -266,7 +266,7 @@ El sistema SHALL exponer `GET /pacientes`, que responde `200` con una lista de p
 - **THEN** entonces la respuesta es `200`
 
 #### Scenario: Valores de paginación fuera de rango
-- **WHEN** cuando una recepcionista autenticada envía `GET /pacientes` con `limite=0`, o `limite=101`, o `desplazamiento=-1`
+- **WHEN** cuando una recepcionista autenticada envía `GET /pacientes` con `limite=0`, o `limite=101`, o `desplazamiento=-1`, o `desplazamiento=9223372036854775808`
 - **THEN** entonces cada respuesta es `422`
 
 ### Requirement: Detalle de un paciente para la recepcionista

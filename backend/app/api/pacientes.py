@@ -187,11 +187,17 @@ Busqueda = Annotated[
     ),
     AfterValidator(_busqueda_sin_nulo),
 ]
+MAX_DESPLAZAMIENTO = 2**63 - 1  # el OFFSET de PostgreSQL es un bigint: más allá daría un 500
 Limite = Annotated[
     int, Query(ge=1, le=100, description="Máximo de pacientes a devolver (de 1 a 100).")
 ]
 Desplazamiento = Annotated[
-    int, Query(ge=0, description="Cantidad de pacientes a saltear antes de devolver el resultado.")
+    int,
+    Query(
+        ge=0,
+        le=MAX_DESPLAZAMIENTO,
+        description="Cantidad de pacientes a saltear antes de devolver el resultado.",
+    ),
 ]
 
 
