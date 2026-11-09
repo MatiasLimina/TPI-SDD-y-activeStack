@@ -263,3 +263,162 @@ describe("Error de negocio de la API", () => {
     expect(error.errores).toEqual([]);
   });
 });
+
+const MENSAJE_VALIDACION = "Revisá los datos ingresados.";
+
+describe("Error de validación de la API", () => {
+  it("un campo del body da su nombre y conserva el msg", async () => {
+    const error = await errorDe(
+      respuestaJson(422, {
+        detail: [
+          { type: "missing", loc: ["body", "password"], msg: "Field required" },
+        ],
+      }),
+    );
+
+    expect(error.status).toBe(422);
+    expect(error.codigo).toBe("validacion");
+    expect(error.mensaje).toBe(MENSAJE_VALIDACION);
+    expect(error.errores).toEqual([
+      { campo: "password", mensaje: "Field required" },
+    ]);
+  });
+
+  it("un parámetro de la consulta da su nombre", async () => {
+    const error = await errorDe(
+      respuestaJson(422, {
+        detail: [
+          {
+            type: "date_from_datetime_parsing",
+            loc: ["query", "desde"],
+            msg: "Input should be a valid date or datetime, input is too short",
+          },
+        ],
+      }),
+    );
+
+    expect(error.errores).toEqual([
+      {
+        campo: "desde",
+        mensaje: "Input should be a valid date or datetime, input is too short",
+      },
+    ]);
+  });
+
+  it("un campo anidado toma el último tramo de loc", async () => {
+    const error = await errorDe(
+      respuestaJson(422, {
+        detail: [
+          {
+            type: "missing",
+            loc: ["body", "paciente", "dni"],
+            msg: "Field required",
+          },
+        ],
+      }),
+    );
+
+    expect(error.errores).toEqual([
+      { campo: "dni", mensaje: "Field required" },
+    ]);
+  });
+
+  it("loc ['body'] da campo nulo: es un error general del formulario", async () => {
+    const error = await errorDe(
+      respuestaJson(422, {
+        detail: [
+          {
+            type: "value_error",
+            loc: ["body"],
+            msg: "Value error, inicio no admite null",
+          },
+        ],
+      }),
+    );
+
+    expect(error.codigo).toBe("validacion");
+    expect(error.errores).toEqual([
+      { campo: null, mensaje: "Value error, inicio no admite null" },
+    ]);
+  });
+
+  it("loc ['body', 5] (posición del JSON) da campo nulo", async () => {
+    const error = await errorDe(
+      respuestaJson(422, {
+        detail: [
+          { type: "json_invalid", loc: ["body", 5], msg: "JSON decode error" },
+        ],
+      }),
+    );
+
+    expect(error.codigo).toBe("validacion");
+    expect(error.errores).toEqual([
+      { campo: null, mensaje: "JSON decode error" },
+    ]);
+  });
+
+  it("mezcla un error general con uno de campo, una entrada por elemento", async () => {
+    const error = await errorDe(
+      respuestaJson(422, {
+        detail: [
+          { type: "value_error", loc: ["body"], msg: "Value error, rango" },
+          { type: "missing", loc: ["body", "fin"], msg: "Field required" },
+        ],
+      }),
+    );
+
+    expect(error.errores).toEqual([
+      { campo: null, mensaje: "Value error, rango" },
+      { campo: "fin", mensaje: "Field required" },
+    ]);
+  });
+});
+
+describe("Otras fallas", () => {
+  it("un detail de texto no se muestra: mensaje genérico, código nulo, status conservado", async () => {
+    const error = await errorDe(respuestaJson(404, { detail: "Not Found" }));
+
+    expect(error.status).toBe(404);
+    expect(error.codigo).toBeNull();
+    expect(error.mensaje).toBe(MENSAJE_GENERICO);
+    expect(error.mensaje).not.toContain("Not Found");
+  });
+
+  it("un cuerpo que no es JSON no se muestra", async () => {
+    const error = await errorDe(respuestaTexto(500, "Internal Server Error"));
+
+    expect(error.status).toBe(500);
+    expect(error.codigo).toBeNull();
+    expect(error.mensaje).toBe(MENSAJE_GENERICO);
+  });
+
+  it("un JSON sin detail da el mensaje genérico", async () => {
+    const error = await errorDe(
+      respuestaJson(503, { status: "degraded", database: "unavailable" }),
+    );
+
+    expect(error.status).toBe(503);
+    expect(error.codigo).toBeNull();
+    expect(error.mensaje).toBe(MENSAJE_GENERICO);
+  });
+
+  it("una falla de red da status 0 y el mensaje de conexión", async () => {
+    const falso = instalarFetchFalso();
+    falso.mockRejectedValue(new TypeError("Failed to fetch"));
+    const cliente = crearClienteApi({
+      obtenerToken: () => null,
+      alNoAutenticado: () => {},
+    });
+
+    const error = await cliente
+      .pedir("GET", "/turnos")
+      .catch((causa: unknown) => causa);
+
+    expect(error).toBeInstanceOf(ErrorApi);
+    expect(error).toMatchObject({
+      status: 0,
+      codigo: null,
+      mensaje: "No se pudo conectar con el servidor.",
+    });
+  });
+});

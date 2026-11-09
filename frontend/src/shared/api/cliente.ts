@@ -1,4 +1,10 @@
-import { ErrorApi, MENSAJE_GENERICO } from "./errorApi";
+import {
+  ErrorApi,
+  MENSAJE_GENERICO,
+  MENSAJE_SIN_CONEXION,
+  MENSAJE_VALIDACION,
+  type ErrorCampo,
+} from "./errorApi";
 
 const URL_BASE_POR_DEFECTO = "http://localhost:8000";
 
@@ -41,11 +47,20 @@ export function crearClienteApi(opciones: OpcionesCliente): ClienteApi {
       if (token !== null) encabezados.set("Authorization", `Bearer ${token}`);
       if (cuerpo !== undefined)
         encabezados.set("Content-Type", "application/json");
-      const respuesta = await fetch(`${urlBase}${ruta}`, {
-        method: metodo,
-        headers: encabezados,
-        body: cuerpo === undefined ? undefined : JSON.stringify(cuerpo),
-      });
+      let respuesta: Response;
+      try {
+        respuesta = await fetch(`${urlBase}${ruta}`, {
+          method: metodo,
+          headers: encabezados,
+          body: cuerpo === undefined ? undefined : JSON.stringify(cuerpo),
+        });
+      } catch {
+        throw new ErrorApi({
+          status: 0,
+          codigo: null,
+          mensaje: MENSAJE_SIN_CONEXION,
+        });
+      }
       if (!respuesta.ok) throw await interpretarError(respuesta);
       if (respuesta.status === 204) return undefined as T;
       return (await respuesta.json()) as T;
@@ -69,9 +84,29 @@ async function interpretarError(respuesta: Response): Promise<ErrorApi> {
       datos,
     });
   }
+  if (Array.isArray(detail)) {
+    return new ErrorApi({
+      status: respuesta.status,
+      codigo: "validacion",
+      mensaje: MENSAJE_VALIDACION,
+      errores: detail.map(errorDeCampo),
+    });
+  }
   return new ErrorApi({
     status: respuesta.status,
     codigo: null,
     mensaje: MENSAJE_GENERICO,
   });
+}
+
+/** `campo` es el último tramo de `loc` si es texto y no es el origen (`loc[0]`); si no, nulo. */
+function errorDeCampo(elemento: unknown): ErrorCampo {
+  const loc =
+    esObjeto(elemento) && Array.isArray(elemento.loc) ? elemento.loc : [];
+  const ultimo: unknown = loc.length > 1 ? loc[loc.length - 1] : undefined;
+  const msg = esObjeto(elemento) ? elemento.msg : undefined;
+  return {
+    campo: typeof ultimo === "string" ? ultimo : null,
+    mensaje: typeof msg === "string" ? msg : MENSAJE_GENERICO,
+  };
 }
