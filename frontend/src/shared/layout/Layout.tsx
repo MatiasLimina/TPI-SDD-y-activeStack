@@ -4,7 +4,7 @@ import { useSesion } from "../../features/sesion/ProveedorSesion";
 import { ETIQUETA_POR_ROL } from "../../features/sesion/rutas";
 
 export default function Layout() {
-  const { sesion } = useSesion();
+  const { sesion, cerrarSesion } = useSesion();
   if (sesion === null) return null;
   const { rol } = sesion.claims;
   return (
@@ -19,6 +19,9 @@ export default function Layout() {
             <Link to="/configuracion">Configuración</Link>
           )}
         </nav>
+        <button type="button" onClick={cerrarSesion}>
+          Cerrar sesión
+        </button>
       </header>
       <Outlet />
     </>

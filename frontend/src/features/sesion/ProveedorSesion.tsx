@@ -1,5 +1,6 @@
 import {
   createContext,
+  useCallback,
   useContext,
   useEffect,
   useMemo,
@@ -21,11 +22,16 @@ interface ValorSesion {
   /** `true` si la sesión anterior terminó por vencimiento (aviso en `/login`). */
   avisoVencida: boolean;
   cliente: ClienteApi;
+  /** Cierre manual: local, sin aviso (la API no revoca el token, D8). */
+  cerrarSesion: () => void;
   /** Crea la sesión con el token del login; `false` si el token no sirve. */
   iniciarSesion: (token: string) => boolean;
 }
 
 const ContextoSesion = createContext<ValorSesion | null>(null);
+
+/** Por encima de esto `setTimeout` se dispararía de inmediato: ahí alcanza el `401` (D4). */
+const DEMORA_MAXIMA_MS = 2 ** 31 - 1;
 
 /** Token de la sesión actual, legible de forma síncrona por el cliente HTTP (D4). */
 function crearTokenActual(inicial: string | null) {
@@ -70,11 +76,33 @@ export function ProveedorSesion({ children }: { children: ReactNode }) {
     [actual],
   );
 
+  const terminarSesion = useCallback(
+    (conAviso: boolean) => {
+      eliminarToken();
+      actual.establecer(null);
+      setAvisoVencida(conAviso);
+      setSesion(null);
+    },
+    [actual],
+  );
+
+  useEffect(() => {
+    if (sesion === null) return;
+    const demora = sesion.claims.exp * 1000 - Date.now();
+    if (demora > DEMORA_MAXIMA_MS) return;
+    const temporizador = setTimeout(
+      () => terminarSesion(true),
+      Math.max(demora, 0),
+    );
+    return () => clearTimeout(temporizador);
+  }, [sesion, terminarSesion]);
+
   const valor = useMemo<ValorSesion>(
     () => ({
       sesion,
       avisoVencida,
       cliente,
+      cerrarSesion: () => terminarSesion(false),
       iniciarSesion: (token) => {
         const resultado = interpretarToken(token);
         if (resultado.estado !== "vigente") return false;
@@ -85,7 +113,7 @@ export function ProveedorSesion({ children }: { children: ReactNode }) {
         return true;
       },
     }),
-    [sesion, avisoVencida, cliente, actual],
+    [sesion, avisoVencida, cliente, actual, terminarSesion],
   );
   return (
     <ContextoSesion.Provider value={valor}>{children}</ContextoSesion.Provider>
