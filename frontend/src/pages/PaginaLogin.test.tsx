@@ -1,12 +1,21 @@
 import { screen } from "@testing-library/react";
 
+import { CLAVE_TOKEN } from "../features/sesion/almacenamiento";
 import { renderizarApp } from "../test/renderizarApp";
+import { usarRelojFijo } from "../test/reloj";
+import {
+  AHORA_SEGUNDOS,
+  tokenDeOdontologo,
+  tokenDeRecepcionista,
+} from "../test/tokens";
 import {
   instalarFetchFalso,
   pedidoHecho,
   respuestaJson,
   type FetchFalso,
 } from "../test/fetchFalso";
+
+usarRelojFijo();
 
 const CREDENCIALES_INVALIDAS = {
   detail: {
@@ -91,4 +100,69 @@ describe("Formulario de inicio de sesión", () => {
     await screen.findByRole("alert");
     expect(screen.getByRole("button", { name: "Ingresar" })).toBeEnabled();
   });
+});
+
+function ubicacion(): string {
+  return screen.getByTestId("ubicacion").textContent ?? "";
+}
+
+describe("Redirección por rol tras el login", () => {
+  it("lleva a la recepcionista a /agenda, con su rol y el enlace a la configuración", async () => {
+    const token = tokenDeRecepcionista(AHORA_SEGUNDOS + 3600);
+    const falso = instalarFetchFalso();
+    falso.mockResolvedValue(
+      respuestaJson(200, { access_token: token, token_type: "bearer" }),
+    );
+    const { user } = renderizarApp("/login");
+
+    await completarYEnviar(user, "recepcion@example.com", "clave-ficticia");
+
+    expect(
+      await screen.findByRole("heading", { name: "Agenda" }),
+    ).toBeInTheDocument();
+    expect(ubicacion()).toBe("/agenda");
+    expect(screen.getByText("Recepcionista")).toBeInTheDocument();
+    expect(
+      screen.getByRole("link", { name: "Configuración" }),
+    ).toBeInTheDocument();
+    expect(screen.queryByLabelText("Email")).not.toBeInTheDocument();
+  });
+
+  it("lleva al odontólogo a /agenda, con su rol y sin enlace a la configuración", async () => {
+    const token = tokenDeOdontologo(AHORA_SEGUNDOS + 3600);
+    const falso = instalarFetchFalso();
+    falso.mockResolvedValue(
+      respuestaJson(200, { access_token: token, token_type: "bearer" }),
+    );
+    const { user } = renderizarApp("/login");
+
+    await completarYEnviar(user, "odontologa@example.com", "clave-ficticia");
+
+    expect(
+      await screen.findByRole("heading", { name: "Agenda" }),
+    ).toBeInTheDocument();
+    expect(ubicacion()).toBe("/agenda");
+    expect(screen.getByText("Odontólogo")).toBeInTheDocument();
+    expect(
+      screen.queryByRole("link", { name: "Configuración" }),
+    ).not.toBeInTheDocument();
+  });
+
+  it.each([tokenDeRecepcionista, tokenDeOdontologo])(
+    "guarda el token en sessionStorage y deja localStorage vacío",
+    async (crear) => {
+      const token = crear(AHORA_SEGUNDOS + 3600);
+      const falso = instalarFetchFalso();
+      falso.mockResolvedValue(
+        respuestaJson(200, { access_token: token, token_type: "bearer" }),
+      );
+      const { user } = renderizarApp("/login");
+
+      await completarYEnviar(user, "recepcion@example.com", "clave-ficticia");
+
+      await screen.findByRole("heading", { name: "Agenda" });
+      expect(sessionStorage.getItem(CLAVE_TOKEN)).toBe(token);
+      expect(localStorage.length).toBe(0);
+    },
+  );
 });

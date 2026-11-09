@@ -1,8 +1,13 @@
 import { render } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { MemoryRouter } from "react-router";
+import { MemoryRouter, useLocation } from "react-router";
 
 import App from "../App";
+
+/** Muestra la ruta actual, que `MemoryRouter` no expone en ninguna URL. */
+function Ubicacion() {
+  return <output data-testid="ubicacion">{useLocation().pathname}</output>;
+}
 
 /** La costura de los tests de pantallas: `App` entero en un `MemoryRouter` (D17). */
 export function renderizarApp(ruta: string = "/") {
@@ -12,6 +17,7 @@ export function renderizarApp(ruta: string = "/") {
   const vista = render(
     <MemoryRouter initialEntries={[ruta]}>
       <App />
+      <Ubicacion />
     </MemoryRouter>,
   );
   return { user, ...vista };

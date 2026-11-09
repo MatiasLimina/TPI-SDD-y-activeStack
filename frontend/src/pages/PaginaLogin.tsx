@@ -1,10 +1,11 @@
 import { useRef, useState, type FormEvent } from "react";
 
-import { useClienteApi } from "../features/sesion/ProveedorSesion";
+import { useClienteApi, useSesion } from "../features/sesion/ProveedorSesion";
 import { ErrorApi, MENSAJE_GENERICO } from "../shared/api/errorApi";
 
 export default function PaginaLogin() {
   const cliente = useClienteApi();
+  const { iniciarSesion } = useSesion();
   const [enviando, setEnviando] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const enCurso = useRef(false);
@@ -17,10 +18,15 @@ export default function PaginaLogin() {
     setEnviando(true);
     setError(null);
     try {
-      await cliente.pedir("POST", "/auth/login", {
-        email: String(datos.get("email")),
-        password: String(datos.get("password")),
-      });
+      const respuesta = await cliente.pedir<{ access_token: string }>(
+        "POST",
+        "/auth/login",
+        {
+          email: String(datos.get("email")),
+          password: String(datos.get("password")),
+        },
+      );
+      if (!iniciarSesion(respuesta.access_token)) setError(MENSAJE_GENERICO);
     } catch (causa) {
       setError(causa instanceof ErrorApi ? causa.mensaje : MENSAJE_GENERICO);
     } finally {
