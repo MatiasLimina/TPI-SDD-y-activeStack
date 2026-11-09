@@ -59,7 +59,7 @@ No hay integraciones externas obligatorias en el MVP.
 | Horarios de atención | `GET /profesionales/{id}/horarios` (recepcionista; el odontólogo, solo el propio); `POST /profesionales/{id}/horarios`, `PATCH` y `DELETE /profesionales/{id}/horarios/{horario_id}` (recepcionista; DD-27) |
 | Bloqueos | `GET /bloqueos?profesional_id=` (recepcionista todos o el filtrado; odontólogo, solo los de su profesional); `POST /bloqueos` (el odontólogo puede omitir `profesional_id`); `DELETE /bloqueos/{id}` (recepcionista cualquiera; odontólogo, los de su profesional); sin `PATCH` (DD-30) |
 | Pacientes | `GET /pacientes?q=&limite=&desplazamiento=` (listado y búsqueda, solo recepcionista); `GET /pacientes/{id}` (recepcionista: ficha completa; odontólogo: `id`, `nombre` y `apellido` de pacientes de sus turnos, `403 paciente_ajeno` en otro caso); `POST /pacientes`, `PATCH /pacientes/{id}`, `POST /pacientes/{id}/desactivar` (recepcionista; DD-31) |
-| Turnos | `GET /turnos?desde&hasta&profesional&sillon`, `POST /turnos`, `PATCH /turnos/{id}/reprogramar`, `POST /turnos/{id}/cancelar` |
+| Turnos | `GET /turnos?desde&hasta&profesional_id&sillon_id` (agenda por rango de hasta 7 días locales `YYYY-MM-DD`, ambas incluidas; recepcionista y odontólogo, este último solo la suya; responde `{turnos, bloqueos}` con hora local; DD-32), `POST /turnos`, `PATCH /turnos/{id}/reprogramar`, `POST /turnos/{id}/cancelar` |
 | Disponibilidad | `GET /disponibilidad?profesional&prestacion&fecha` |
 | Auditoría | `GET /turnos/{id}/auditoria` (solo lectura, recepcionista; DD-25) |
 

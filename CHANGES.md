@@ -334,7 +334,7 @@ C-01 a C-07 los hizo Matías (C-07 entró a `main` con el PR #3). Para avanzar l
 - **Estado**: `[ ]` pendiente
 - **Responsable**: Matías · revisa Nico
 - **Scope** (US-008, backend):
-  - `GET /turnos?desde&hasta&profesional&sillon` (rango local -> UTC, respuesta en UTC) para vistas diaria/semanal multiprofesional y multisillón; incluye bloqueos en la respuesta de agenda
+  - `GET /turnos?desde&hasta&profesional_id&sillon_id` (rango local -> UTC, respuesta `{turnos, bloqueos}` en hora local `-03:00`, DD-32) para vistas diaria/semanal multiprofesional y multisillón; incluye bloqueos en la respuesta de agenda
   - El odontólogo queda filtrado a su `profesional_id` (RN-AU-02)
   - Tests: filtros, rangos diario/semanal, aislamiento del odontólogo, conversión de zona horaria
 - **Dependencias**: `C-06, C-03, C-11`
