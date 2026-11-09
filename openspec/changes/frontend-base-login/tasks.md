@@ -51,7 +51,7 @@
 
 - [x] 7.1 RED→GREEN: `src/features/sesion/guardas.test.tsx` — sin sesión, `/agenda`, `/configuracion` y `/` llevan a `/login`; con sesión, `/login` y `/` llevan a `/agenda`; verificar con `npm test -- guardas`
 - [x] 7.2 RED→GREEN: mismo archivo — `/configuracion`: recepcionista ve el contenido; odontólogo ve la falta de permiso con la URL intacta y el token guardado, y su enlace lleva a `/agenda`; odontólogo ve `/agenda`; verificar con `npm test -- guardas`
-- [ ] 7.3 RED→GREEN: `src/shared/layout/Layout.test.tsx` — rol `Recepcionista` con enlace a configuración, rol `Odontólogo` sin él; `/login` sin navegación; `/agenda` y `/configuracion` no hacen pedidos a la API; cerrar sesión elimina el token, lleva a `/login` sin aviso, y volver a `/agenda` muestra `/login`; verificar con `npm test -- Layout`
+- [x] 7.3 RED→GREEN: `src/shared/layout/Layout.test.tsx` — rol `Recepcionista` con enlace a configuración, rol `Odontólogo` sin él; `/login` sin navegación; `/agenda` y `/configuracion` no hacen pedidos a la API; cerrar sesión elimina el token, lleva a `/login` sin aviso, y volver a `/agenda` muestra `/login`; verificar con `npm test -- Layout`
 - [ ] 7.4 RED→GREEN: `/no-existe` muestra la página no encontrada con y sin sesión, y su enlace a `/` lleva al inicio del rol; verificar con `npm test -- guardas`, y con `grep` que `dangerouslySetInnerHTML` no aparece en `frontend/src/`
 
 ## 8. Docker y puesta en marcha (D10)

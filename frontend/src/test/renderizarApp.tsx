@@ -1,6 +1,11 @@
-import { render } from "@testing-library/react";
+import { act, render } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { MemoryRouter, useLocation } from "react-router";
+import {
+  MemoryRouter,
+  useLocation,
+  useNavigate,
+  type NavigateFunction,
+} from "react-router";
 
 import { RutasApp } from "../App";
 import { ProveedorSesion } from "../features/sesion/ProveedorSesion";
@@ -10,6 +15,16 @@ import type { ClienteApi } from "../shared/api/cliente";
 /** Muestra la ruta actual, que `MemoryRouter` no expone en ninguna URL. */
 function Ubicacion() {
   return <output data-testid="ubicacion">{useLocation().pathname}</output>;
+}
+
+/** Entrega a los tests la navegación programática, como la barra de direcciones. */
+function SondaNavegacion({
+  alObtener,
+}: {
+  alObtener: (navegar: NavigateFunction) => void;
+}) {
+  alObtener(useNavigate());
+  return null;
 }
 
 /** Entrega a los tests el cliente HTTP de la sesión, el mismo que usarán las pantallas. */
@@ -31,15 +46,25 @@ export function renderizarApp(ruta: string = "/") {
     ? userEvent.setup({ advanceTimers: (ms) => vi.advanceTimersByTime(ms) })
     : userEvent.setup();
   let cliente: ClienteApi | null = null;
+  let navegar: NavigateFunction | null = null;
   const vista = render(
     <MemoryRouter initialEntries={[ruta]}>
       <ProveedorSesion>
         <RutasApp />
         <SondaCliente alObtener={(obtenido) => (cliente = obtenido)} />
       </ProveedorSesion>
+      <SondaNavegacion alObtener={(obtenida) => (navegar = obtenida)} />
       <Ubicacion />
     </MemoryRouter>,
   );
-  if (cliente === null) throw new Error("La sonda no obtuvo el cliente");
-  return { user, cliente: cliente as ClienteApi, ...vista };
+  if (cliente === null || navegar === null)
+    throw new Error("Las sondas no obtuvieron los datos");
+  const irA = navegar as NavigateFunction;
+  return {
+    user,
+    cliente: cliente as ClienteApi,
+    /** Navega como si se escribiera la ruta en la barra de direcciones. */
+    navegarA: (ruta: string) => act(() => void irA(ruta)),
+    ...vista,
+  };
 }
