@@ -1,8 +1,13 @@
 import { Route, Routes } from "react-router";
 
-import { ConSesion, SoloSinSesion } from "./features/sesion/guardas";
+import {
+  ConSesion,
+  RedireccionInicial,
+  SoloSinSesion,
+} from "./features/sesion/guardas";
 import { ProveedorSesion } from "./features/sesion/ProveedorSesion";
 import PaginaAgenda from "./pages/PaginaAgenda";
+import PaginaConfiguracion from "./pages/PaginaConfiguracion";
 import PaginaLogin from "./pages/PaginaLogin";
 import Layout from "./shared/layout/Layout";
 
@@ -10,12 +15,14 @@ import Layout from "./shared/layout/Layout";
 export function RutasApp() {
   return (
     <Routes>
+      <Route path="/" element={<RedireccionInicial />} />
       <Route element={<SoloSinSesion />}>
         <Route path="/login" element={<PaginaLogin />} />
       </Route>
       <Route element={<ConSesion />}>
         <Route element={<Layout />}>
           <Route path="/agenda" element={<PaginaAgenda />} />
+          <Route path="/configuracion" element={<PaginaConfiguracion />} />
         </Route>
       </Route>
     </Routes>

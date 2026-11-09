@@ -17,3 +17,11 @@ export function SoloSinSesion() {
     return <Navigate to={RUTA_INICIAL_POR_ROL[sesion.claims.rol]} replace />;
   return <Outlet />;
 }
+
+/** `/`: lleva a `/login` sin sesión y al inicio del rol con sesión. */
+export function RedireccionInicial() {
+  const { sesion } = useSesion();
+  const destino =
+    sesion === null ? "/login" : RUTA_INICIAL_POR_ROL[sesion.claims.rol];
+  return <Navigate to={destino} replace />;
+}
