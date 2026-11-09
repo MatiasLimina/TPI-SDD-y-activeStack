@@ -59,3 +59,53 @@ describe("Usuario con sesión en rutas de entrada", () => {
     },
   );
 });
+
+describe("Guarda por rol", () => {
+  it("la recepcionista ve el contenido de /configuracion", () => {
+    sessionStorage.setItem(CLAVE_TOKEN, tokenDeRecepcionista(VIGENTE));
+
+    renderizarApp("/configuracion");
+
+    expect(
+      screen.getByRole("heading", { name: "Configuración" }),
+    ).toBeInTheDocument();
+    expect(ubicacion()).toBe("/configuracion");
+  });
+
+  it("el odontólogo ve la falta de permiso, con la URL intacta y el token guardado", () => {
+    const token = tokenDeOdontologo(VIGENTE);
+    sessionStorage.setItem(CLAVE_TOKEN, token);
+
+    renderizarApp("/configuracion");
+
+    expect(
+      screen.getByRole("heading", { name: "Sin permiso" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("heading", { name: "Configuración" }),
+    ).not.toBeInTheDocument();
+    expect(ubicacion()).toBe("/configuracion");
+    expect(sessionStorage.getItem(CLAVE_TOKEN)).toBe(token);
+  });
+
+  it("desde la falta de permiso, el enlace lleva al inicio del odontólogo", async () => {
+    sessionStorage.setItem(CLAVE_TOKEN, tokenDeOdontologo(VIGENTE));
+    const { user } = renderizarApp("/configuracion");
+
+    await user.click(screen.getByRole("link", { name: "Volver al inicio" }));
+
+    expect(ubicacion()).toBe("/agenda");
+    expect(screen.getByRole("heading", { name: "Agenda" })).toBeInTheDocument();
+  });
+
+  it("el odontólogo ve el contenido de /agenda", () => {
+    sessionStorage.setItem(CLAVE_TOKEN, tokenDeOdontologo(VIGENTE));
+
+    renderizarApp("/agenda");
+
+    expect(screen.getByRole("heading", { name: "Agenda" })).toBeInTheDocument();
+    expect(
+      screen.queryByRole("heading", { name: "Sin permiso" }),
+    ).not.toBeInTheDocument();
+  });
+});

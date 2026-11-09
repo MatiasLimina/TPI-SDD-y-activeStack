@@ -1,6 +1,7 @@
 import { Route, Routes } from "react-router";
 
 import {
+  ConRol,
   ConSesion,
   RedireccionInicial,
   SoloSinSesion,
@@ -22,7 +23,9 @@ export function RutasApp() {
       <Route element={<ConSesion />}>
         <Route element={<Layout />}>
           <Route path="/agenda" element={<PaginaAgenda />} />
-          <Route path="/configuracion" element={<PaginaConfiguracion />} />
+          <Route element={<ConRol roles={["recepcionista"]} />}>
+            <Route path="/configuracion" element={<PaginaConfiguracion />} />
+          </Route>
         </Route>
       </Route>
     </Routes>
