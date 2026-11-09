@@ -14,9 +14,9 @@ La tabla `paciente` existe desde C-02 y los turnos ya la referencian, pero los p
 - **Permisos** (matriz de `03_actores_y_roles.md`): la recepcionista escribe y busca; el odontólogo solo lee `id`, `nombre` y `apellido` de los pacientes de sus turnos, por `GET /pacientes/{id}`. Sobre cualquier otro paciente, exista o no: `403 paciente_ajeno`.
 - **Datos personales fuera de errores y logs**: los `422` de estas rutas no reproducen lo enviado, y el log de acceso no registra el texto buscado.
 
-Las decisiones que la KB no fija quedan marcadas **[A confirmar]** en `design.md`, con su opción recomendada, y requieren aprobación antes del Apply. Los specs están escritos con las opciones recomendadas.
+Las decisiones que la KB no fija están en `design.md` y fueron aprobadas por el usuario el 2026-11-09; se registran como DD-31. Los specs están escritos con esas opciones.
 
-**Fuera de alcance**: ficha clínica y odontograma; auditoría de pacientes (RN-CU-01 audita solo turnos); reactivación de pacientes; consulta de agenda (C-13) y frontend (C-14 a C-16). Sin migración: la tabla y su `UNIQUE` ya existen.
+**Fuera de alcance**: ficha clínica y odontograma; auditoría de pacientes (RN-CU-01 audita solo turnos); reactivación de pacientes (va al backlog de `CHANGES.md`); consulta de agenda (C-13) y frontend (C-14 a C-16). Sin migración: la tabla y su `UNIQUE` ya existen.
 
 ## Capabilities
 

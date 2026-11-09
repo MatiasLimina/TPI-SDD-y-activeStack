@@ -1,5 +1,7 @@
 # Revisión de escenarios — registro-pacientes (C-09)
 
+> **Actualización**: los hallazgos H1 a H11 se resolvieron con `/opsx:update` el 2026-11-09. P1 quedó resuelta como fuera de alcance. H12 no se aplicó. El resto del informe es la revisión original.
+
 - Fecha: 2026-11-09
 - Specs revisados: `openspec/changes/registro-pacientes/specs/registro-pacientes/spec.md` (20 requirements, 86 escenarios)
 - Reglas aplicables: US-009, `04` §Paciente, matriz de `03` (fila Pacientes), RN-CU-01, RN-CU-02, RN-AU-01, RN-AU-02, RN-NO-01, RN-NO-02, RN-NO-05, DD-21 (c), DD-24 (b), DD-26 (a, c, d, e, f, g, i, j), DD-27 (i), DD-28 (f), DD-29 (a), DD-30 (l), requirement "Documento único" de `catalogo-consultorio`

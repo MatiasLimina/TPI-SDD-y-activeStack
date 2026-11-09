@@ -24,7 +24,7 @@ El sistema SHALL exponer `POST /pacientes`, que recibe `nombre`, `apellido`, `do
 - **THEN** entonces las claves de la respuesta son exactamente `id`, `nombre`, `apellido`, `documento`, `telefono`, `email` y `activo`
 
 ### Requirement: Campos mínimos y textos normalizados
-Los textos del body MUST guardarse sin espacios al principio ni al final. `nombre`, `apellido`, `documento` y `telefono` MUST ser obligatorios y no vacíos tras quitar esos espacios, y ningún texto MUST superar el largo de su columna (100, 100, 20, 30 y 254); si no, `422` sin persistir. Un `email` vacío o solo con espacios MUST quedar nulo. `documento` y `telefono` MUST NOT exigir un formato propio.
+Los textos del body de alta y de edición MUST guardarse sin espacios al principio ni al final. `nombre`, `apellido`, `documento` y `telefono` MUST ser obligatorios y no vacíos tras quitar esos espacios, y ningún texto MUST superar el largo de su columna (100, 100, 20, 30 y 254) ni contener `U+0000`; si no, `422` sin persistir. Un `email` vacío o solo con espacios MUST quedar nulo. `documento` y `telefono` MUST NOT exigir un formato propio (US-009, DD-26 f, DD-31 l).
 
 #### Scenario: Campo obligatorio faltante
 - **WHEN** cuando una recepcionista autenticada envía `POST /pacientes` omitiendo, de a uno, `nombre`, `apellido`, `documento` o `telefono`
@@ -35,11 +35,11 @@ Los textos del body MUST guardarse sin espacios al principio ni al final. `nombr
 - **THEN** entonces la respuesta es `422` y no se persiste ningún paciente
 
 #### Scenario: Texto más largo que su columna
-- **WHEN** cuando una recepcionista autenticada envía `POST /pacientes` con un `documento` de 21 caracteres, o un `telefono` de 31, o un `nombre` de 101
+- **WHEN** cuando una recepcionista autenticada envía `POST /pacientes` con, de a uno, un `nombre` de 101 caracteres, un `apellido` de 101, un `documento` de 21, un `telefono` de 31 o un `email` bien formado de 255
 - **THEN** entonces cada respuesta es `422`, no `500`, y no se persiste ningún paciente
 
 #### Scenario: Texto con el largo máximo aceptado
-- **WHEN** cuando una recepcionista autenticada envía `POST /pacientes` con un `documento` de 20 caracteres y un `telefono` de 30
+- **WHEN** cuando una recepcionista autenticada envía `POST /pacientes` con un `nombre` de 100 caracteres, un `apellido` de 100, un `documento` de 20, un `telefono` de 30 y un `email` bien formado de 254
 - **THEN** entonces la respuesta es `201` con esos valores
 
 #### Scenario: Espacios recortados
@@ -51,15 +51,20 @@ Los textos del body MUST guardarse sin espacios al principio ni al final. `nombr
 - **THEN** entonces la respuesta es `201` con `email = null`
 
 #### Scenario: Documento y teléfono sin formato propio
-- **WHEN** cuando una recepcionista autenticada envía `POST /pacientes` con `"documento": "30111222"` y `"telefono": "11 5555-0104"`, y otro alta con `"documento": "FIC-0104"` y `"telefono": "+54 (11) 5555 0105"`
+- **WHEN** cuando una recepcionista autenticada envía `POST /pacientes` con `"documento": "00000104"` y `"telefono": "11 5555-0104"`, y otro alta con `"documento": "FIC-0104"` y `"telefono": "+54 (11) 5555 0105"`
 - **THEN** entonces ambas respuestas son `201` y los valores quedan tal como se enviaron
 
 #### Scenario: Carácter nulo rechazado
-- **WHEN** cuando una recepcionista autenticada envía `POST /pacientes` con un `nombre` que contiene el carácter `U+0000`
-- **THEN** entonces la respuesta es `422`, no `500`, y no se persiste ningún paciente
+- **WHEN** cuando una recepcionista autenticada envía `POST /pacientes` con el resto válido y, de a uno, `nombre`, `apellido`, `documento`, `telefono` o `email` con el carácter `U+0000`
+- **THEN** entonces cada respuesta es `422`, no `500`, y no se persiste ningún paciente
+
+#### Scenario: Carácter nulo rechazado al editar
+- **GIVEN** dado el paciente "Carla Imaginaria"
+- **WHEN** cuando una recepcionista autenticada envía `PATCH /pacientes/{id}` con, de a uno, `nombre`, `apellido`, `documento`, `telefono` o `email` con el carácter `U+0000`
+- **THEN** entonces cada respuesta es `422`, no `500`, y el paciente no cambia
 
 ### Requirement: Formato mínimo del email
-Un `email` informado MUST tener exactamente una `@`, con texto antes y después, y no contener espacios; si no, el alta o la edición MUST responder `422` sin persistir ni modificar nada. El email MUST guardarse como se envió, salvo los espacios extremos, y MUST NOT tener que ser único.
+Un `email` informado MUST tener exactamente una `@`, con texto antes y después, y no contener espacios; si no, el alta o la edición MUST responder `422` sin persistir ni modificar nada. El email MUST guardarse como se envió, salvo los espacios extremos, y MUST NOT tener que ser único (DD-31 m).
 
 #### Scenario: Email sin arroba
 - **WHEN** cuando una recepcionista autenticada envía `POST /pacientes` con `"email": "carla.example.com"` y el resto válido
@@ -80,7 +85,7 @@ Un `email` informado MUST tener exactamente una `@`, con texto antes y después,
 - **THEN** entonces la respuesta es `422` y en la base el paciente conserva `carla@example.com`
 
 ### Requirement: Documento único
-El `documento` MUST ser único entre todos los pacientes, activos o no, comparado tras quitar los espacios extremos. Un alta o una edición que lo repita MUST responder `409` con `{"detail": {"codigo": "recurso_duplicado", "campo": "documento"}}` sin persistir ni modificar nada. Ante operaciones simultáneas, la restricción de la base MUST decidir y el perdedor MUST recibir ese mismo `409`.
+El `documento` MUST ser único entre todos los pacientes, activos o no, comparado tras quitar los espacios extremos. Un alta o una edición que lo repita MUST responder `409` con `{"detail": {"codigo": "recurso_duplicado", "campo": "documento"}}` sin persistir ni modificar nada. Ante operaciones simultáneas, la restricción de la base MUST decidir y el perdedor MUST recibir ese mismo `409` (DD-26 e).
 
 #### Scenario: Alta con documento repetido
 - **GIVEN** dado el paciente "Carla Imaginaria" con documento "FIC-0101"
@@ -103,7 +108,7 @@ El `documento` MUST ser único entre todos los pacientes, activos o no, comparad
 - **THEN** entonces el alta espera a la primera y responde `409` con código `recurso_duplicado` y `campo = "documento"`, no `500`, y existe un solo paciente con ese documento
 
 ### Requirement: Edición parcial de un paciente
-El sistema SHALL exponer `PATCH /pacientes/{id}`, que responde `200` con el paciente. `nombre`, `apellido`, `documento`, `telefono` y `email` MUST poder editarse, también en un paciente desactivado. Un campo omitido MUST conservar su valor; un campo obligatorio con `null` MUST responder `422` sin modificar nada; `email` con `null` MUST quitarlo. Los campos desconocidos MUST ignorarse.
+El sistema SHALL exponer `PATCH /pacientes/{id}`, que responde `200` con el paciente. `nombre`, `apellido`, `documento`, `telefono` y `email` MUST poder editarse, también en un paciente desactivado. Un campo omitido MUST conservar su valor; un campo obligatorio con `null` MUST responder `422` sin modificar nada; `email` con `null` MUST quitarlo. Los campos desconocidos MUST ignorarse (DD-26 j, DD-31 i).
 
 #### Scenario: Solo un campo modificado
 - **GIVEN** dado el paciente "Carla Imaginaria" con teléfono "+54 11 5555-0101"
@@ -111,7 +116,7 @@ El sistema SHALL exponer `PATCH /pacientes/{id}`, que responde `200` con el paci
 - **THEN** entonces la respuesta es `200` con el teléfono nuevo y el mismo `nombre`, `apellido`, `documento` y `email`
 
 #### Scenario: Corrección del documento
-- **GIVEN** dado un paciente con documento "FIC-0101" y un turno `programado` futuro
+- **GIVEN** dado un paciente con documento "FIC-0101" y un turno `programado` para `2026-10-08T10:00:00-03:00`, con el reloj en `2026-10-07T09:00:00-03:00`
 - **WHEN** cuando una recepcionista autenticada envía `PATCH /pacientes/{id}` con `{"documento": "FIC-0110"}`
 - **THEN** entonces la respuesta es `200` con `documento = "FIC-0110"` y el turno sigue referenciando al mismo paciente, sin cambios
 
@@ -162,7 +167,7 @@ El sistema SHALL exponer `PATCH /pacientes/{id}`, que responde `200` con el paci
 - **THEN** entonces la respuesta es `422` con código `campo_no_editable` y `campos = ["activo"]`, y no se persiste ningún paciente
 
 ### Requirement: Listado de pacientes
-El sistema SHALL exponer `GET /pacientes`, que responde `200` con una lista de pacientes activos e inactivos, cada uno con `id`, `nombre`, `apellido`, `documento`, `telefono`, `email` y `activo`, ordenados por apellido, luego por nombre y luego por `id`.
+El sistema SHALL exponer `GET /pacientes`, que responde `200` con una lista de pacientes activos e inactivos, cada uno con `id`, `nombre`, `apellido`, `documento`, `telefono`, `email` y `activo`, ordenados por apellido, luego por nombre y luego por `id` (DD-26 a, DD-31 g, h).
 
 #### Scenario: Listado con inactivos y en orden
 - **GIVEN** dados los pacientes "Zoe Alfa" activo, "Ana Beta" desactivado y "Bruno Beta" activo
@@ -175,7 +180,7 @@ El sistema SHALL exponer `GET /pacientes`, que responde `200` con una lista de p
 - **THEN** entonces la respuesta es `200` con una lista vacía
 
 ### Requirement: Búsqueda de pacientes
-`GET /pacientes` MUST aceptar el parámetro opcional `q`, separado en términos por los espacios. Un paciente MUST aparecer si cada término es parte de su `nombre`, `apellido` o `documento`, sin distinguir mayúsculas ni acentos. `q` ausente o en blanco MUST listar sin filtrar; más de 100 caracteres o un carácter nulo MUST responder `422`. `%`, `_` y `\` MUST tomarse como texto literal.
+`GET /pacientes` MUST aceptar el parámetro opcional `q`, separado en términos por los espacios. Un paciente MUST aparecer si cada término es parte de su `nombre`, `apellido` o `documento`, sin distinguir mayúsculas ni acentos. `q` ausente o en blanco MUST listar sin filtrar; más de 100 caracteres o un carácter nulo MUST responder `422`. `%`, `_` y `\` MUST tomarse como texto literal (US-009, DD-31 e, f).
 
 #### Scenario: Coincidencia parcial por apellido
 - **GIVEN** dados los pacientes "Carla Imaginaria" y "Diego Supuesto"
@@ -239,7 +244,7 @@ El sistema SHALL exponer `GET /pacientes`, que responde `200` con una lista de p
 - **THEN** entonces la respuesta es `422`, no `500`
 
 ### Requirement: Paginación del listado de pacientes
-`GET /pacientes` MUST devolver como máximo `limite` pacientes, tras saltear `desplazamiento`, aplicados después del filtro y del orden. `limite` MUST valer `50` por defecto y estar entre `1` y `100`; `desplazamiento` MUST valer `0` por defecto y no ser negativo; si no, `422`.
+`GET /pacientes` MUST devolver como máximo `limite` pacientes, tras saltear `desplazamiento`, aplicados después del filtro y del orden. `limite` MUST valer `50` por defecto y estar entre `1` y `100`; `desplazamiento` MUST valer `0` por defecto y no ser negativo; si no, `422` (DD-31 h).
 
 #### Scenario: Límite por defecto
 - **GIVEN** dados 51 pacientes
@@ -265,7 +270,7 @@ El sistema SHALL exponer `GET /pacientes`, que responde `200` con una lista de p
 - **THEN** entonces cada respuesta es `422`
 
 ### Requirement: Detalle de un paciente para la recepcionista
-`GET /pacientes/{id}` MUST devolver a la recepcionista el paciente completo, activo o no, con `id`, `nombre`, `apellido`, `documento`, `telefono`, `email` y `activo`. Un paciente inexistente MUST responder `404` con `recurso_inexistente`; un identificador mal formado, `422`.
+`GET /pacientes/{id}` MUST devolver a la recepcionista el paciente completo, activo o no, con `id`, `nombre`, `apellido`, `documento`, `telefono`, `email` y `activo`. Un paciente inexistente MUST responder `404` con `recurso_inexistente`; un identificador mal formado, `422` (matriz de `03`, DD-21 c).
 
 #### Scenario: Detalle completo
 - **GIVEN** dado el paciente "Carla Imaginaria" con documento "FIC-0101"
@@ -306,35 +311,35 @@ El sistema SHALL exponer `POST /pacientes/{id}/desactivar`, que marca al pacient
 Después de desactivar a un paciente, un alta de turno que lo referencie MUST responder `422` indicando la referencia inactiva, y reprogramar uno de sus turnos también MUST responder `422`, sin persistir ni modificar el turno (DD-21, DD-26).
 
 #### Scenario: Alta con un paciente desactivado
-- **GIVEN** dado un paciente desactivado con `POST /pacientes/{id}/desactivar`, y un profesional, un sillón y la prestación "Limpieza" activos en un horario futuro libre
-- **WHEN** cuando una recepcionista autenticada envía `POST /turnos` con ese paciente
+- **GIVEN** dado un paciente desactivado con `POST /pacientes/{id}/desactivar`, y un profesional, un sillón y la prestación "Limpieza" activos, con el reloj en `2026-10-07T09:00:00-03:00`
+- **WHEN** cuando una recepcionista autenticada envía `POST /turnos` con ese paciente en el horario libre `2026-10-08T10:00:00-03:00`
 - **THEN** entonces la respuesta es `422` con `{"detail": {"codigo": "referencia_invalida", "referencia": "paciente", "motivo": "inactiva"}}` y no se persiste ningún turno
 
 #### Scenario: Reprogramación del turno de un paciente desactivado
-- **GIVEN** dado un turno `programado` futuro de un paciente que después fue desactivado
-- **WHEN** cuando una recepcionista autenticada lo reprograma a otro horario libre
+- **GIVEN** dado un turno `programado` para `2026-10-08T10:00:00-03:00` de un paciente que después fue desactivado, con el reloj en `2026-10-07T09:00:00-03:00`
+- **WHEN** cuando una recepcionista autenticada lo reprograma a `2026-10-08T11:00:00-03:00`, un horario libre
 - **THEN** entonces la respuesta es `422` con código `referencia_invalida` y `referencia = "paciente"`, y el turno conserva su horario original
 
 ### Requirement: Un paciente desactivado conserva sus turnos y recordatorios
-Desactivar a un paciente MUST NOT modificar, cancelar ni borrar sus turnos, pasados o futuros, ni sus recordatorios, y MUST NOT registrar auditoría de turnos. Un turno `programado` futuro MUST poder cancelarse igual, y su recordatorio pendiente MUST enviarse mientras el turno siga `programado` (DD-26).
+Desactivar a un paciente MUST NOT modificar, cancelar ni borrar sus turnos, pasados o futuros, ni sus recordatorios, y MUST NOT registrar auditoría de turnos. Un turno `programado` futuro MUST poder cancelarse igual. La desactivación MUST NOT cambiar el procesamiento de sus recordatorios, que sigue sujeto a RN-NO-01, RN-NO-05 y DD-29 (a) (DD-26 g, DD-31 j).
 
 #### Scenario: Turno futuro intacto
-- **GIVEN** dado un turno `programado` futuro del paciente P con el profesional A de 10:00 a 10:45
+- **GIVEN** dado un turno `programado` del paciente P con el profesional A de `2026-10-08T10:00:00-03:00` a `2026-10-08T10:45:00-03:00`, con el reloj en `2026-10-07T09:00:00-03:00`
 - **WHEN** cuando una recepcionista autenticada desactiva al paciente P
 - **THEN** entonces la respuesta es `200`, en la base el turno sigue `programado`, con el mismo paciente, profesional y horario, y no se agrega ninguna fila de auditoría de turnos
 
 #### Scenario: Turno futuro cancelable
-- **GIVEN** dado un turno `programado` futuro de un paciente desactivado
+- **GIVEN** dado un turno `programado` para `2026-10-08T10:00:00-03:00` de un paciente desactivado, con el reloj en `2026-10-07T09:00:00-03:00`
 - **WHEN** cuando una recepcionista autenticada envía `POST /turnos/{id}/cancelar`
 - **THEN** entonces la respuesta es `200` con `estado = cancelado`
 
 #### Scenario: Recordatorio pendiente enviado igual
-- **GIVEN** dado un turno `programado` futuro con su recordatorio `pendiente` y su paciente desactivado después de crearlo
-- **WHEN** cuando llega el momento programado y el worker procesa el recordatorio
+- **GIVEN** dado un turno `programado` para `2026-10-08T10:00:00-03:00` con su recordatorio `pendiente` y su paciente desactivado después de crearlo, con el reloj en `2026-10-07T09:00:00-03:00`
+- **WHEN** cuando el reloj llega al momento programado y el worker procesa el recordatorio
 - **THEN** entonces el recordatorio sigue `pendiente` hasta ese momento y después queda `enviado`
 
-### Requirement: Desactivación de paciente simultánea con un alta de turno
-Una desactivación de paciente y un alta de turno simultáneas sobre el mismo paciente MUST quedar serializadas: la que toma al paciente primero hace esperar a la otra. Si confirma antes la desactivación, el alta MUST responder `422`; si confirma antes el alta, el turno se conserva. Nunca MUST confirmarse un turno con un paciente ya inactivo.
+### Requirement: Desactivación de paciente simultánea con un alta o una reprogramación de turno
+Una desactivación de paciente y un alta o reprogramación de turno simultáneas sobre el mismo paciente MUST quedar serializadas: la que toma al paciente primero hace esperar a la otra. Si confirma antes la desactivación, el alta o la reprogramación MUST responder `422`; si confirma antes el turno, se conserva. Nunca MUST confirmarse un turno con un paciente ya inactivo (DD-26 i).
 
 #### Scenario: Alta que espera a una desactivación en curso
 - **GIVEN** dada una transacción que desactivó al paciente P y todavía no confirmó
@@ -346,8 +351,13 @@ Una desactivación de paciente y un alta de turno simultáneas sobre el mismo pa
 - **WHEN** cuando en paralelo se desactiva al paciente P y después se confirma el alta
 - **THEN** entonces la desactivación no termina mientras el alta no confirma; al confirmarse el alta, la desactivación responde `200`, el turno queda persistido con el paciente P y el paciente P queda inactivo
 
+#### Scenario: Reprogramación que espera a una desactivación en curso
+- **GIVEN** dado un turno `programado` para `2026-10-08T10:00:00-03:00` del paciente P, con el reloj en `2026-10-07T09:00:00-03:00`, y una transacción que desactivó a P y todavía no confirmó
+- **WHEN** cuando en paralelo se reprograma ese turno a `2026-10-08T11:00:00-03:00`, otro horario libre, y después se confirma la desactivación
+- **THEN** entonces la reprogramación espera a la desactivación y responde `422` con `referencia = "paciente"`, y el turno conserva su horario original
+
 ### Requirement: Escritura de pacientes reservada a la recepcionista
-Alta, edición y desactivación de pacientes MUST exigir un usuario autenticado con rol `recepcionista`. Un `odontologo` MUST recibir `403` con `{"detail": {"codigo": "rol_insuficiente", "mensaje": "Rol insuficiente"}}`. Autenticación y rol MUST evaluarse antes que el body y que la existencia del paciente; ante `401` o `403` nada cambia (DD-24).
+Alta, edición y desactivación de pacientes MUST exigir un usuario autenticado con rol `recepcionista`. Un `odontologo` MUST recibir `403` con `{"detail": {"codigo": "rol_insuficiente", "mensaje": "Rol insuficiente"}}`. Autenticación y rol MUST evaluarse antes que la validación del contenido del body y que la existencia del paciente; ante `401` o `403` nada cambia (DD-24).
 
 #### Scenario: Odontólogo no puede escribir
 - **GIVEN** dado un odontólogo autenticado y un paciente de uno de sus turnos
@@ -358,7 +368,7 @@ Alta, edición y desactivación de pacientes MUST exigir un usuario autenticado 
 - **WHEN** cuando se envía `POST /pacientes` con un body válido sin encabezado `Authorization`
 - **THEN** entonces la respuesta es `401` con `WWW-Authenticate: Bearer` y `{"detail": {"codigo": "no_autenticado", "mensaje": "No autenticado"}}`, y no se persiste ningún paciente
 
-#### Scenario: Rol evaluado antes que el body
+#### Scenario: Rol evaluado antes que la validación del body
 - **GIVEN** dado un odontólogo autenticado
 - **WHEN** cuando envía `POST /pacientes` con `{}`
 - **THEN** entonces la respuesta es `403` con código `rol_insuficiente`, no `422`
@@ -369,7 +379,7 @@ Alta, edición y desactivación de pacientes MUST exigir un usuario autenticado 
 - **THEN** entonces la respuesta es `403`, no `404`
 
 ### Requirement: Listado y búsqueda reservados a la recepcionista
-`GET /pacientes` MUST exigir un usuario autenticado con rol `recepcionista`. Un `odontologo` MUST recibir `403 rol_insuficiente`, con o sin `q`, y la autenticación y el rol MUST evaluarse antes que los parámetros.
+`GET /pacientes` MUST exigir un usuario autenticado con rol `recepcionista`. Un `odontologo` MUST recibir `403 rol_insuficiente`, con o sin `q`, y la autenticación y el rol MUST evaluarse antes que los parámetros (US-009, DD-24 b, DD-31 b).
 
 #### Scenario: Odontólogo no puede listar ni buscar
 - **GIVEN** dado un odontólogo autenticado con pacientes en sus turnos
@@ -386,7 +396,7 @@ Alta, edición y desactivación de pacientes MUST exigir un usuario autenticado 
 - **THEN** entonces la respuesta es `403`, no `422`
 
 ### Requirement: Lectura mínima del odontólogo
-`GET /pacientes/{id}` MUST permitir a un `odontologo` leer a un paciente que tenga al menos un turno de su profesional, en cualquier estado y aunque el paciente esté desactivado. La respuesta MUST incluir exactamente `id`, `nombre` y `apellido`, y MUST NOT incluir `documento`, `telefono`, `email` ni `activo`.
+`GET /pacientes/{id}` MUST permitir a un `odontologo` leer a un paciente que tenga al menos un turno de su profesional, en cualquier estado y aunque el paciente esté desactivado. La respuesta MUST incluir exactamente `id`, `nombre` y `apellido`, y MUST NOT incluir `documento`, `telefono`, `email` ni `activo` (matriz de `03`, RN-AU-02, DD-31 a, c).
 
 #### Scenario: Paciente de un turno propio
 - **GIVEN** dado un odontólogo autenticado y un turno `programado` de su profesional con el paciente "Carla Imaginaria"
@@ -404,7 +414,7 @@ Alta, edición y desactivación de pacientes MUST exigir un usuario autenticado 
 - **THEN** entonces la respuesta es `200` con solo `id`, `nombre` y `apellido`
 
 ### Requirement: Paciente ajeno para el odontólogo
-Un `odontologo` que pida `GET /pacientes/{id}` de un paciente sin turnos de su profesional, exista o no, MUST recibir `403` con `{"detail": {"codigo": "paciente_ajeno", "mensaje": ...}}`, con el mismo cuerpo en ambos casos. Un identificador mal formado MUST responder `422`, y la falta de token, `401` antes que el path (DD-27).
+Un `odontologo` que pida `GET /pacientes/{id}` de un paciente sin turnos de su profesional, exista o no, MUST recibir `403` con `{"detail": {"codigo": "paciente_ajeno", "mensaje": ...}}`, con el mismo cuerpo en ambos casos. Un identificador mal formado MUST responder `422`, y la falta de token, `401` antes que el path (DD-27 i, DD-31 d).
 
 #### Scenario: Paciente de otro profesional
 - **GIVEN** dado un odontólogo autenticado y un paciente con turnos solo de otro profesional
@@ -431,7 +441,7 @@ Un `odontologo` que pida `GET /pacientes/{id}` de un paciente sin turnos de su p
 - **THEN** entonces la respuesta es `401`, no `422`
 
 ### Requirement: Errores sin datos personales
-Las respuestas de error de las rutas de `/pacientes` MUST NOT reproducir los valores enviados: un `422` de validación MUST indicar solo el campo y el motivo, y un `409` solo el campo en conflicto. Las rutas fuera de `/pacientes` MUST conservar su formato de `422`.
+Las respuestas de error de las rutas de `/pacientes` MUST NOT reproducir los valores enviados: un `422` de validación MUST indicar solo el campo y el motivo, y un `409` solo el campo en conflicto. Las rutas fuera de `/pacientes` MUST conservar su formato de `422` (DD-31 n).
 
 #### Scenario: Validación sin los datos enviados
 - **WHEN** cuando una recepcionista autenticada envía `POST /pacientes` con `{"nombre": "Carla", "apellido": "Imaginaria", "documento": "FIC-0101"}`, sin `telefono`
@@ -440,6 +450,15 @@ Las respuestas de error de las rutas de `/pacientes` MUST NOT reproducir los val
 #### Scenario: Valor inválido no reproducido
 - **WHEN** cuando una recepcionista autenticada envía `POST /pacientes` con `"email": "no-es-un-email"` y el resto válido
 - **THEN** entonces la respuesta es `422`, indica el campo `email` y su cuerpo no contiene "no-es-un-email"
+
+#### Scenario: Edición rechazada sin el valor enviado
+- **GIVEN** dado un paciente existente
+- **WHEN** cuando una recepcionista autenticada envía `PATCH /pacientes/{id}` con `{"email": "no-es-un-email"}`
+- **THEN** entonces la respuesta es `422`, indica el campo `email` y su cuerpo no contiene "no-es-un-email"
+
+#### Scenario: Identificador mal formado sin el valor enviado
+- **WHEN** cuando una recepcionista autenticada envía `GET /pacientes/no-es-un-id`
+- **THEN** entonces la respuesta es `422` y su cuerpo no contiene "no-es-un-id"
 
 #### Scenario: Búsqueda rechazada sin el texto enviado
 - **WHEN** cuando una recepcionista autenticada envía `GET /pacientes` con un `q` de 101 caracteres
@@ -455,12 +474,14 @@ Las respuestas de error de las rutas de `/pacientes` MUST NOT reproducir los val
 - **THEN** entonces la respuesta es `422` y conserva el formato por defecto de la API, incluido el dato `input`
 
 ### Requirement: Log de acceso sin el texto buscado
-El log de acceso del servidor MUST registrar las rutas de `/pacientes` sin su query string, para que nombres y documentos buscados no queden en los logs. Las demás rutas MUST registrarse sin cambios.
+El log de acceso del servidor MUST registrar las rutas de `/pacientes` sin su query string, para que nombres y documentos buscados no queden en los logs. Las demás rutas MUST registrarse sin cambios (DD-31 o).
 
 #### Scenario: Búsqueda sin datos en el log
-- **WHEN** cuando el servidor registra el acceso a `GET /pacientes?q=FIC-0101&limite=10`
-- **THEN** entonces la línea del log contiene `/pacientes` y no contiene "FIC-0101"
+- **GIVEN** dado un servidor `uvicorn` real en un subproceso, lanzado como en el `CMD` del `Dockerfile`
+- **WHEN** cuando atiende `GET /pacientes?q=FIC-0101&limite=10`, sin token
+- **THEN** entonces su salida incluye la línea de acceso de esa petición, con `/pacientes`, y no contiene "FIC-0101"
 
 #### Scenario: Otra ruta registrada completa
-- **WHEN** cuando el servidor registra el acceso a `GET /bloqueos?profesional_id=00000000-0000-4000-8000-000000000101`
-- **THEN** entonces la línea del log conserva la query string
+- **GIVEN** dado un servidor `uvicorn` real en un subproceso, lanzado como en el `CMD` del `Dockerfile`
+- **WHEN** cuando atiende `GET /bloqueos?profesional_id=00000000-0000-4000-8000-000000000101`, sin token
+- **THEN** entonces la línea de acceso de esa petición en su salida conserva la query string
