@@ -11,6 +11,7 @@ from app.api.bloqueos import router as bloqueos_router
 from app.api.health import router as health_router
 from app.api.horarios import registrar_manejadores_horarios
 from app.api.horarios import router as horarios_router
+from app.api.pacientes import registrar_manejadores_pacientes
 from app.api.pacientes import router as pacientes_router
 from app.api.recursos import (
     prestaciones_router,
@@ -46,6 +47,7 @@ def create_app() -> FastAPI:
     registrar_manejadores_recursos(app)
     registrar_manejadores_horarios(app)
     registrar_manejadores_bloqueos(app)
+    registrar_manejadores_pacientes(app)
     return app
 
 

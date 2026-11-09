@@ -3,7 +3,8 @@
 from typing import Annotated, Any, ClassVar
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, Query, status
+from fastapi import APIRouter, Depends, FastAPI, Query, Request, status
+from fastapi.responses import JSONResponse
 from pydantic import (
     AfterValidator,
     BaseModel,
@@ -18,7 +19,7 @@ from app.api.auth import RecepcionistaAutenticada, UsuarioDeAmbosRoles
 from app.api.recursos import Cambios, Entrada
 from app.application.gestion_pacientes import ConsultarPaciente
 from app.application.gestion_recursos import CrearRecurso, EditarRecurso
-from app.domain.pacientes import email_valido
+from app.domain.pacientes import PacienteAjenoError, email_valido
 from app.domain.usuarios import Rol
 from app.infrastructure.db.models import Paciente
 from app.infrastructure.db.repositorio_pacientes import RepositorioPacientes
@@ -201,3 +202,12 @@ def detalle(
     paciente = caso.detalle(usuario, paciente_id)
     salida = PacienteResumenOut if usuario.rol == Rol.ODONTOLOGO else PacienteOut
     return salida.model_validate(paciente).model_dump(mode="json")
+
+
+def registrar_manejadores_pacientes(app: FastAPI) -> None:
+    @app.exception_handler(PacienteAjenoError)
+    def _paciente_ajeno(_: Request, error: PacienteAjenoError) -> JSONResponse:
+        return JSONResponse(
+            status_code=status.HTTP_403_FORBIDDEN,
+            content={"detail": {"codigo": "paciente_ajeno", "mensaje": error.mensaje}},
+        )

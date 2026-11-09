@@ -48,8 +48,8 @@
 ## 8. Detalle y permisos
 
 - [x] 8.1 RED→GREEN: requisito "Detalle de un paciente para la recepcionista": completo, desactivado, `404` y `422`; verificar con `test_api_consulta_pacientes.py`
-- [ ] 8.2 RED→GREEN: `tests/integration/test_api_rbac_pacientes.py` — requisito "Lectura mínima del odontólogo", afirmando el conjunto exacto de claves `id`, `nombre` y `apellido` en los tres escenarios (D1, D3); verificar con ese archivo
-- [ ] 8.3 RED→GREEN: requisito "Paciente ajeno para el odontólogo", con cuerpos idénticos para ajeno e inexistente, `422` y `401` (D4); verificar con el mismo archivo
+- [x] 8.2 RED→GREEN: `tests/integration/test_api_rbac_pacientes.py` — requisito "Lectura mínima del odontólogo", afirmando el conjunto exacto de claves `id`, `nombre` y `apellido` en los tres escenarios (D1, D3); verificar con ese archivo
+- [x] 8.3 RED→GREEN: requisito "Paciente ajeno para el odontólogo", con cuerpos idénticos para ajeno e inexistente, `422` y `401` (D4); verificar con el mismo archivo
 - [ ] 8.4 RED→GREEN: requisitos "Escritura de pacientes reservada a la recepcionista" y "Listado y búsqueda reservados a la recepcionista", con rol antes que la validación del contenido del body, los parámetros y la existencia (D2); verificar con el mismo archivo
 
 ## 9. Desactivación
