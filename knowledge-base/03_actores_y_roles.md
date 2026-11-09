@@ -22,7 +22,7 @@ C = crear, R = leer, U = actualizar, D = eliminar/cancelar.
 | Prestaciones | CRUD | R |
 | Horarios de atención | CRUD (todos los profesionales) | R (propios) |
 | Bloqueos de agenda | CRD (todos; sin edición, DD-30) | CRD solo propios (los de su profesional) |
-| Pacientes | CRU (baja lógica, **Suposición**) | R (pacientes de sus turnos, **Suposición**) |
+| Pacientes | CRU (baja lógica; listado y búsqueda solo ella, DD-31) | R mínima: `id`, `nombre` y `apellido` de los pacientes de sus turnos, por `GET /pacientes/{id}` (DD-31) |
 | Turnos | C, R (todos), U (reprogramar), D (cancelar) | R solo propios |
 | Recordatorios (estado) | R | R propios |
 | Auditoría de turnos | R | — |

@@ -61,7 +61,7 @@ Matricula = Annotated[
 ]
 
 
-class _Entrada(BaseModel):
+class Entrada(BaseModel):
     """Base de los bodies de alta y edición."""
 
     # Nombre del campo de actividad; solo se detecta su presencia (no se puede editar)
@@ -75,7 +75,7 @@ class _Entrada(BaseModel):
         return (self.ESTADO,) if self.ESTADO in self.model_fields_set else ()
 
 
-class ProfesionalIn(_Entrada):
+class ProfesionalIn(Entrada):
     ESTADO: ClassVar[str] = "activo"
 
     nombre: Nombre100
@@ -84,14 +84,14 @@ class ProfesionalIn(_Entrada):
     activo: JsonValue = None
 
 
-class SillonIn(_Entrada):
+class SillonIn(Entrada):
     ESTADO: ClassVar[str] = "activo"
 
     nombre: Nombre50
     activo: JsonValue = None
 
 
-class PrestacionIn(_Entrada):
+class PrestacionIn(Entrada):
     ESTADO: ClassVar[str] = "activa"
 
     nombre: Nombre100
@@ -101,7 +101,7 @@ class PrestacionIn(_Entrada):
     activa: JsonValue = None
 
 
-class _Cambios(_Entrada):
+class Cambios(Entrada):
     """Body de un PATCH: lo omitido se conserva; `null` solo vale donde el campo es opcional."""
 
     OBLIGATORIOS: ClassVar[tuple[str, ...]]
@@ -114,7 +114,7 @@ class _Cambios(_Entrada):
         return self
 
 
-class ProfesionalCambios(_Cambios):
+class ProfesionalCambios(Cambios):
     ESTADO: ClassVar[str] = "activo"
     OBLIGATORIOS: ClassVar[tuple[str, ...]] = ("nombre", "apellido")
 
@@ -124,7 +124,7 @@ class ProfesionalCambios(_Cambios):
     activo: JsonValue = None
 
 
-class SillonCambios(_Cambios):
+class SillonCambios(Cambios):
     ESTADO: ClassVar[str] = "activo"
     OBLIGATORIOS: ClassVar[tuple[str, ...]] = ("nombre",)
 
@@ -132,7 +132,7 @@ class SillonCambios(_Cambios):
     activo: JsonValue = None
 
 
-class PrestacionCambios(_Cambios):
+class PrestacionCambios(Cambios):
     ESTADO: ClassVar[str] = "activa"
     OBLIGATORIOS: ClassVar[tuple[str, ...]] = ("nombre", "duracion_min", "requiere_sillon")
 
@@ -172,8 +172,8 @@ def _router[M: CatalogoMixin](
     *,
     prefijo: str,
     definicion: DefinicionRecurso[M],
-    entrada: type[_Entrada],
-    cambios: type[_Cambios],
+    entrada: type[Entrada],
+    cambios: type[Cambios],
     salida: type[_Salida],
     validar: Validador | None = None,
 ) -> APIRouter:

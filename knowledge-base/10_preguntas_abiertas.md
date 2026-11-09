@@ -107,3 +107,14 @@ Al 2026-11-04 queda una pregunta abierta, surgida al proponer C-12 (`recordatori
 |---|---|
 | **Recordatorio procesado después del inicio del turno**: ¿debería descartarse si el turno ya empezó, y con qué estado? | Resuelta: el worker no lo envía si `inicio <= ahora` (criterio de RN-AG-13); queda `cancelado` conservando sus intentos, sin estado nuevo (DD-29, RN-NO-01) |
 | **Backoff perdido al reiniciar el worker**: ¿se persiste el próximo vencimiento en la base o se acepta el adelanto? | Resuelta: se persiste en `programado_para`, que pasa a ser el próximo intento programado, calculado con el reloj del momento de la falla; el reinicio conserva la espera (DD-29, RN-NO-05) |
+
+## Preguntas resueltas (2026-11-09)
+
+| Pregunta | Resolución |
+|---|---|
+| **Pacientes** — ¿qué lee el odontólogo de "pacientes de sus turnos" (la matriz de `03` era una **Suposición**)? | Resuelta: `id`, `nombre` y `apellido` por `GET /pacientes/{id}`, de un paciente con al menos un turno de su profesional en cualquier estado; en otro caso o si no existe, `403 paciente_ajeno` (DD-31 a-d) |
+| ¿Cómo se busca un paciente? | Resuelta: `q` único sobre nombre, apellido y documento, parcial, con AND entre términos, sin distinguir mayúsculas ni acentos, ordenado y paginado; los desactivados aparecen con `activo` (DD-31 e-h) |
+| ¿Se puede corregir el documento y qué formato tiene? | Resuelta: es editable, único entre activos e inactivos y sin formato propio; `409 recurso_duplicado` si se repite (DD-31 i, l) |
+| ¿Qué pasa con los recordatorios de un paciente desactivado? | Resuelta: nada; su procesamiento no cambia (DD-31 j, DD-29 a) |
+| ¿Se puede reactivar un paciente? | Resuelta: no en el MVP; limitación registrada en el backlog (DD-31 k) |
+| ¿Cómo se evita que la búsqueda deje datos personales en errores y logs? | Resuelta: los `422` de `/pacientes` sin `input` y el log de acceso sin la query string (DD-31 n, o) |

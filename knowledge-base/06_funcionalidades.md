@@ -99,6 +99,8 @@ Solo el alcance D.4. Lo diferido está en `01_vision_y_objetivos.md` (Fuera de a
 
 **Criterios de aceptación**:
 - [ ] Datos mínimos: nombre, apellido, documento, teléfono (todos ficticios en repo/seed/tests).
+- [ ] Búsqueda por nombre, apellido o documento, parcial y sin distinguir mayúsculas ni acentos, paginada (DD-31).
+- [ ] El documento es único entre todos los pacientes, activos o no (DD-26 e, DD-31).
 - [ ] Sin ficha clínica ni odontograma (fuera de alcance).
 
 **Reglas relacionadas**: RN-CU-02
