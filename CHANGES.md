@@ -261,7 +261,7 @@ C-01 a C-07 los hizo Matías (C-07 entró a `main` con el PR #3). Para avanzar l
   - `knowledge-base/05_reglas_de_negocio.md` §RN-AU-03
 
 ### [C-09] `registro-pacientes`
-- **Estado**: `[ ]` pendiente
+- **Estado**: `[x]` completado
 - **Responsable**: Nico · revisa Matías
 - **Scope** (US-009):
   - `POST/GET/PATCH /pacientes` y búsqueda por nombre/apellido/documento (datos ficticios, sin ficha clínica ni odontograma)
