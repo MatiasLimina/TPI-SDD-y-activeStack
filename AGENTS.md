@@ -18,9 +18,9 @@ Sistema de agenda para consultorios odontológicos chicos de Argentina (1 a 5 pr
 | Autenticación | JWT | 2 roles: recepcionista, odontólogo |
 | Frontend | React + TypeScript + Vite | Agenda diaria/semanal (changes C-14..C-16, al final) |
 | Infra | Docker / Docker Compose | api, db, redis, worker, frontend |
-| Tests | pytest | TDD estricto (ver `~/.claude/CLAUDE.md`) |
+| Tests | pytest (backend); Vitest + React Testing Library (frontend) | TDD estricto (ver `~/.claude/CLAUDE.md`) |
 
-Versiones mínimas (DD-17): Python ≥ 3.13, PostgreSQL 16, Node 22 LTS (a confirmar en C-14). Detalle completo: [knowledge-base/02_descripcion_general.md](knowledge-base/02_descripcion_general.md)
+Versiones mínimas (DD-17): Python ≥ 3.13, PostgreSQL 16, Node 24 LTS (DD-33 i). Detalle completo: [knowledge-base/02_descripcion_general.md](knowledge-base/02_descripcion_general.md)
 
 ---
 
