@@ -54,7 +54,7 @@ export function ProveedorSesion({ children }: { children: ReactNode }) {
       cliente,
       iniciarSesion: (token) => {
         const resultado = interpretarToken(token);
-        if (resultado.estado === "invalido") return false;
+        if (resultado.estado !== "vigente") return false;
         guardarToken(token);
         actual.establecer(token);
         setSesion({ token, claims: resultado.claims });

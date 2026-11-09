@@ -5,6 +5,7 @@ import { renderizarApp } from "../test/renderizarApp";
 import { usarRelojFijo } from "../test/reloj";
 import {
   AHORA_SEGUNDOS,
+  crearToken,
   tokenDeOdontologo,
   tokenDeRecepcionista,
 } from "../test/tokens";
@@ -163,6 +164,91 @@ describe("Redirección por rol tras el login", () => {
       await screen.findByRole("heading", { name: "Agenda" });
       expect(sessionStorage.getItem(CLAVE_TOKEN)).toBe(token);
       expect(localStorage.length).toBe(0);
+    },
+  );
+});
+
+const AVISO_VENCIDA = "Tu sesión venció. Iniciá sesión de nuevo.";
+const ERROR_GENERICO = "Ocurrió un error. Intentá de nuevo.";
+
+describe("Login rechazado", () => {
+  it("muestra el mensaje de la API ante credenciales inválidas, sin sesión ni aviso", async () => {
+    const falso = instalarFetchFalso();
+    falso.mockResolvedValue(respuestaJson(401, CREDENCIALES_INVALIDAS));
+    const { user } = renderizarApp("/login");
+
+    await completarYEnviar(user, "recepcion@example.com", "clave-equivocada");
+
+    expect(
+      await screen.findByText("Credenciales inválidas"),
+    ).toBeInTheDocument();
+    expect(ubicacion()).toBe("/login");
+    expect(sessionStorage.getItem(CLAVE_TOKEN)).toBeNull();
+    expect(screen.queryByText(AVISO_VENCIDA)).not.toBeInTheDocument();
+  });
+
+  it("sin conexión muestra el mensaje y deja reintentar", async () => {
+    const falso = instalarFetchFalso();
+    falso.mockRejectedValue(new TypeError("Failed to fetch"));
+    const { user } = renderizarApp("/login");
+
+    await completarYEnviar(user, "recepcion@example.com", "clave-ficticia");
+
+    expect(
+      await screen.findByText("No se pudo conectar con el servidor."),
+    ).toBeInTheDocument();
+    expect(ubicacion()).toBe("/login");
+    expect(screen.getByRole("button", { name: "Ingresar" })).toBeEnabled();
+  });
+
+  it("un reintento exitoso limpia el error y muestra el inicio del rol", async () => {
+    const token = tokenDeRecepcionista(AHORA_SEGUNDOS + 3600);
+    const falso = instalarFetchFalso();
+    falso.mockResolvedValueOnce(respuestaJson(401, CREDENCIALES_INVALIDAS));
+    falso.mockResolvedValueOnce(
+      respuestaJson(200, { access_token: token, token_type: "bearer" }),
+    );
+    const { user } = renderizarApp("/login");
+
+    await completarYEnviar(user, "recepcion@example.com", "clave-equivocada");
+    await screen.findByText("Credenciales inválidas");
+    await user.click(screen.getByRole("button", { name: "Ingresar" }));
+
+    expect(
+      await screen.findByRole("heading", { name: "Agenda" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByText("Credenciales inválidas"),
+    ).not.toBeInTheDocument();
+  });
+
+  it.each([
+    ["no es un JWT", "no-es-un-jwt"],
+    [
+      "tiene un rol desconocido",
+      crearToken({ rol: "administrador", exp: AHORA_SEGUNDOS + 3600 }),
+    ],
+    [
+      "no tiene exp",
+      crearToken({ rol: "recepcionista", profesional_id: null }),
+    ],
+    ["ya está vencido", tokenDeRecepcionista(AHORA_SEGUNDOS - 60)],
+    ["vence justo ahora", tokenDeRecepcionista(AHORA_SEGUNDOS)],
+  ])(
+    "un 200 con un token que %s muestra el error genérico, sin sesión ni aviso",
+    async (_caso, token) => {
+      const falso = instalarFetchFalso();
+      falso.mockResolvedValue(
+        respuestaJson(200, { access_token: token, token_type: "bearer" }),
+      );
+      const { user } = renderizarApp("/login");
+
+      await completarYEnviar(user, "recepcion@example.com", "clave-ficticia");
+
+      expect(await screen.findByText(ERROR_GENERICO)).toBeInTheDocument();
+      expect(ubicacion()).toBe("/login");
+      expect(sessionStorage.getItem(CLAVE_TOKEN)).toBeNull();
+      expect(screen.queryByText(AVISO_VENCIDA)).not.toBeInTheDocument();
     },
   );
 });
