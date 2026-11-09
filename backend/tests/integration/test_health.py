@@ -58,6 +58,6 @@ def test_health_database_down_does_not_leak_connection_details(
     assert leaked not in response.text
 
 
-@pytest.mark.parametrize("path", ["/agenda", "/pacientes", "/"])
+@pytest.mark.parametrize("path", ["/agenda", "/consultorios", "/"])
 def test_unknown_route_returns_404(client: TestClient, path: str) -> None:
     assert client.get(path).status_code == 404

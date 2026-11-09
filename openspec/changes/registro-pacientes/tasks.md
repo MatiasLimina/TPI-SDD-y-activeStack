@@ -73,7 +73,7 @@
 - [x] 11.3 RED→GREEN: test sobre `/openapi.json` que afirma el conjunto exacto de rutas de `/pacientes` con sus métodos, sin `PUT` ni `DELETE`, y las descripciones de `q`, `limite` y `desplazamiento`; verificar con ese test
 - [x] 11.4 Verificar que no se tocó el aviso de `CLAUDE.md` y `AGENTS.md` y que siguen idénticos con `cmp CLAUDE.md AGENTS.md`; si se editó uno, editar el otro
 - [x] 11.5 Verificar que no hay migración nueva: `git diff --stat main... -- backend/alembic/versions` vacío y `alembic heads` en `010`
-- [ ] 11.6 Verificación integral: `ruff format --check` y `ruff check` sin errores, `pytest` completo en verde (baseline de 1.1 más los nuevos) y `openspec validate registro-pacientes --strict` sin errores
+- [x] 11.6 Verificación integral: `ruff format --check` y `ruff check` sin errores, `pytest` completo en verde (baseline de 1.1 más los nuevos) y `openspec validate registro-pacientes --strict` sin errores
 - [ ] 11.7 Checkpoint FINAL_DIFF: consultar al agente `advisor` sobre `git diff main...` antes de declarar el Apply terminado; un veredicto BLOCK frena hasta la confirmación del usuario
 
 ## Workflow follow-up
