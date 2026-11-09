@@ -70,12 +70,6 @@ export function ProveedorSesion({ children }: { children: ReactNode }) {
     if (inicial.sesion === null) eliminarToken();
   }, [inicial]);
 
-  const cliente = useMemo(
-    () =>
-      crearClienteApi({ obtenerToken: actual.leer, alNoAutenticado: () => {} }),
-    [actual],
-  );
-
   const terminarSesion = useCallback(
     (conAviso: boolean) => {
       eliminarToken();
@@ -84,6 +78,17 @@ export function ProveedorSesion({ children }: { children: ReactNode }) {
       setSesion(null);
     },
     [actual],
+  );
+
+  const cliente = useMemo(
+    () =>
+      crearClienteApi({
+        obtenerToken: actual.leer,
+        alNoAutenticado: (tokenDelPedido) => {
+          if (actual.leer() === tokenDelPedido) terminarSesion(true);
+        },
+      }),
+    [actual, terminarSesion],
   );
 
   useEffect(() => {

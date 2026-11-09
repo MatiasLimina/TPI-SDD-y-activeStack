@@ -61,7 +61,18 @@ export function crearClienteApi(opciones: OpcionesCliente): ClienteApi {
           mensaje: MENSAJE_SIN_CONEXION,
         });
       }
-      if (!respuesta.ok) throw await interpretarError(respuesta);
+      if (!respuesta.ok) {
+        const error = await interpretarError(respuesta);
+        // El token se entrega tal como se envió: la sesión decide si sigue siendo el actual (D4)
+        if (
+          error.status === 401 &&
+          error.codigo === "no_autenticado" &&
+          token !== null
+        ) {
+          opciones.alNoAutenticado(token);
+        }
+        throw error;
+      }
       if (respuesta.status === 204) return undefined as T;
       return (await respuesta.json()) as T;
     },
