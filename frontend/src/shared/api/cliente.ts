@@ -1,3 +1,5 @@
+import { ErrorApi, MENSAJE_GENERICO } from "./errorApi";
+
 const URL_BASE_POR_DEFECTO = "http://localhost:8000";
 
 export type MetodoHttp = "GET" | "POST" | "PATCH" | "DELETE";
@@ -44,8 +46,32 @@ export function crearClienteApi(opciones: OpcionesCliente): ClienteApi {
         headers: encabezados,
         body: cuerpo === undefined ? undefined : JSON.stringify(cuerpo),
       });
+      if (!respuesta.ok) throw await interpretarError(respuesta);
       if (respuesta.status === 204) return undefined as T;
       return (await respuesta.json()) as T;
     },
   };
+}
+
+function esObjeto(valor: unknown): valor is Record<string, unknown> {
+  return typeof valor === "object" && valor !== null && !Array.isArray(valor);
+}
+
+async function interpretarError(respuesta: Response): Promise<ErrorApi> {
+  const cuerpo: unknown = await respuesta.json().catch(() => null);
+  const detail = esObjeto(cuerpo) ? cuerpo.detail : undefined;
+  if (esObjeto(detail) && typeof detail.codigo === "string") {
+    const { codigo, mensaje, ...datos } = detail;
+    return new ErrorApi({
+      status: respuesta.status,
+      codigo,
+      mensaje: typeof mensaje === "string" ? mensaje : MENSAJE_GENERICO,
+      datos,
+    });
+  }
+  return new ErrorApi({
+    status: respuesta.status,
+    codigo: null,
+    mensaje: MENSAJE_GENERICO,
+  });
 }

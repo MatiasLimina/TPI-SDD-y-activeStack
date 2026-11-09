@@ -1,4 +1,5 @@
 import { crearClienteApi } from "./cliente";
+import { ErrorApi } from "./errorApi";
 import {
   instalarFetchFalso,
   pedidoHecho,
@@ -166,4 +167,99 @@ describe("El token no se registra", () => {
       expect(registrado.some((linea) => linea.includes(TOKEN_A))).toBe(false);
     },
   );
+});
+
+const MENSAJE_GENERICO = "Ocurrió un error. Intentá de nuevo.";
+
+/** Hace un GET que debe fallar con la respuesta dada y devuelve el error lanzado. */
+async function errorDe(respuesta: Response): Promise<ErrorApi> {
+  const falso = instalarFetchFalso();
+  falso.mockResolvedValue(respuesta);
+  const cliente = crearClienteApi({
+    obtenerToken: () => null,
+    alNoAutenticado: () => {},
+  });
+  const error = await cliente.pedir("GET", "/turnos").then(
+    () => null,
+    (causa: unknown) => causa,
+  );
+  expect(error).toBeInstanceOf(ErrorApi);
+  return error as ErrorApi;
+}
+
+describe("Error de negocio de la API", () => {
+  it.each([
+    [403, "rol_insuficiente", "Rol insuficiente"],
+    [404, "turno_inexistente", "El turno no existe"],
+  ])(
+    "un %i con código y mensaje conserva ambos",
+    async (status, codigo, mensaje) => {
+      const error = await errorDe(
+        respuestaJson(status, { detail: { codigo, mensaje } }),
+      );
+
+      expect(error.status).toBe(status);
+      expect(error.codigo).toBe(codigo);
+      expect(error.mensaje).toBe(mensaje);
+      expect(error.errores).toEqual([]);
+    },
+  );
+
+  it("sin mensaje usa el genérico y conserva los campos adicionales", async () => {
+    const error = await errorDe(
+      respuestaJson(409, {
+        detail: { codigo: "solapamiento", recursos: ["profesional", "sillon"] },
+      }),
+    );
+
+    expect(error.status).toBe(409);
+    expect(error.codigo).toBe("solapamiento");
+    expect(error.mensaje).toBe(MENSAJE_GENERICO);
+    expect(error.datos).toEqual({ recursos: ["profesional", "sillon"] });
+  });
+
+  it("con mensaje y campos adicionales conserva todo menos codigo y mensaje en datos", async () => {
+    const error = await errorDe(
+      respuestaJson(409, {
+        detail: {
+          codigo: "bloqueo_con_turnos",
+          mensaje: "Hay turnos",
+          turnos: ["t-1"],
+        },
+      }),
+    );
+
+    expect(error.mensaje).toBe("Hay turnos");
+    expect(error.datos).toEqual({ turnos: ["t-1"] });
+  });
+
+  it("un 422 con objeto y mensaje es un error de negocio, sin errores por campo", async () => {
+    const error = await errorDe(
+      respuestaJson(422, {
+        detail: { codigo: "rango_invalido", mensaje: "Rango inválido" },
+      }),
+    );
+
+    expect(error.status).toBe(422);
+    expect(error.codigo).toBe("rango_invalido");
+    expect(error.mensaje).toBe("Rango inválido");
+    expect(error.errores).toEqual([]);
+  });
+
+  it("un 422 con objeto y sin mensaje usa el genérico y conserva los extras", async () => {
+    const error = await errorDe(
+      respuestaJson(422, {
+        detail: {
+          codigo: "referencia_invalida",
+          referencia: "sillon",
+          motivo: "inactiva",
+        },
+      }),
+    );
+
+    expect(error.codigo).toBe("referencia_invalida");
+    expect(error.mensaje).toBe(MENSAJE_GENERICO);
+    expect(error.datos).toEqual({ referencia: "sillon", motivo: "inactiva" });
+    expect(error.errores).toEqual([]);
+  });
 });
