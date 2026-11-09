@@ -16,6 +16,10 @@ function ubicacion(): string {
   return screen.getByTestId("ubicacion").textContent ?? "";
 }
 
+function tipoDeNavegacion(): string {
+  return screen.getByTestId("tipo-navegacion").textContent ?? "";
+}
+
 const VIGENTE = AHORA_SEGUNDOS + 3600;
 
 describe("Guarda de autenticación", () => {
@@ -146,6 +150,40 @@ describe("Ruta inexistente", () => {
       expect(
         screen.getByRole("heading", { name: "Agenda" }),
       ).toBeInTheDocument();
+    },
+  );
+});
+
+describe("Las redirecciones reemplazan la entrada del historial", () => {
+  it.each(["/agenda", "/configuracion"])(
+    "sin sesión, %s redirige a /login sin dejar la ruta protegida en el historial",
+    (ruta) => {
+      renderizarApp(ruta);
+
+      expect(ubicacion()).toBe("/login");
+      expect(tipoDeNavegacion()).toBe("REPLACE");
+    },
+  );
+
+  it("sin sesión, / redirige a /login sin dejar / en el historial", () => {
+    renderizarApp("/");
+
+    expect(ubicacion()).toBe("/login");
+    expect(tipoDeNavegacion()).toBe("REPLACE");
+  });
+
+  it.each([
+    ["/login", tokenDeRecepcionista(VIGENTE)],
+    ["/", tokenDeOdontologo(VIGENTE)],
+  ])(
+    "con sesión, %s redirige al inicio del rol sin dejar la entrada en el historial",
+    (ruta, token) => {
+      sessionStorage.setItem(CLAVE_TOKEN, token);
+
+      renderizarApp(ruta);
+
+      expect(ubicacion()).toBe("/agenda");
+      expect(tipoDeNavegacion()).toBe("REPLACE");
     },
   );
 });

@@ -4,6 +4,7 @@ import {
   MemoryRouter,
   useLocation,
   useNavigate,
+  useNavigationType,
   type NavigateFunction,
 } from "react-router";
 
@@ -15,6 +16,11 @@ import type { ClienteApi } from "../shared/api/cliente";
 /** Muestra la ruta actual, que `MemoryRouter` no expone en ninguna URL. */
 function Ubicacion() {
   return <output data-testid="ubicacion">{useLocation().pathname}</output>;
+}
+
+/** Muestra cómo se llegó a la ruta actual (`POP`, `PUSH` o `REPLACE`): así se prueba que una redirección reemplaza la entrada del historial. */
+function TipoNavegacion() {
+  return <output data-testid="tipo-navegacion">{useNavigationType()}</output>;
 }
 
 /** Entrega a los tests la navegación programática, como la barra de direcciones. */
@@ -55,6 +61,7 @@ export function renderizarApp(ruta: string = "/") {
       </ProveedorSesion>
       <SondaNavegacion alObtener={(obtenida) => (navegar = obtenida)} />
       <Ubicacion />
+      <TipoNavegacion />
     </MemoryRouter>,
   );
   if (cliente === null || navegar === null)
