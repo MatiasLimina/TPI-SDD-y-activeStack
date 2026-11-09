@@ -6,6 +6,7 @@
 1. Frontend `POST /auth/login`.
 2. API valida hash de contraseña y emite JWT con `sub`, `rol` y `profesional_id` (si aplica) y expiración corta.
 3. Frontend adjunta el token en cada request; la API valida firma, expiración y rol por endpoint, con el usuario releído de la base.
+4. La SPA lee `rol`, `profesional_id` y `exp` de los claims del token (sin verificar la firma, solo para decidir qué mostrar; DD-33 a), lo guarda en `sessionStorage` y cierra la sesión, con aviso, al llegar el `exp` o ante un `401 no_autenticado` a un pedido hecho con el token vigente (DD-33 c, d). No hay renovación del token.
 
 **Errores** (DD-24): credenciales inválidas (email desconocido, contraseña incorrecta o usuario inactivo) -> 401 `credenciales_invalidas`, idéntico en los tres casos; token ausente, mal formado, inválido o vencido, o usuario desactivado después de emitido -> 401 `no_autenticado` con `WWW-Authenticate: Bearer`; rol insuficiente -> 403 `rol_insuficiente`.
 

@@ -42,9 +42,10 @@ proyecto/
 │   └── tests/
 ├── frontend/
 │   └── src/
-│       ├── features/          # agenda, turnos, pacientes, configuración
-│       ├── shared/
-│       └── pages/
+│       ├── features/          # sesion (claims, guardas, ProveedorSesion; DD-33), agenda, turnos, pacientes, configuración
+│       ├── shared/            # api (cliente HTTP y ErrorApi), layout
+│       ├── pages/
+│       └── test/              # setup y fábricas de fixtures ficticios
 ├── knowledge-base/
 └── openspec/
 ```
@@ -71,5 +72,6 @@ proyecto/
 | `APP_TIMEZONE` | Zona de presentación | `America/Argentina/Buenos_Aires` | No |
 | `NOTIFICATION_ADAPTER` | Adaptador activo; el único valor válido hoy es `mock` (un adaptador real exige ampliar el valor y la migración del canal) | `mock` | No |
 | `CONSULTORIO_NOMBRE` | Nombre del consultorio que se informa en el recordatorio (RN-NO-04); no puede estar vacío | `Consultorio Odontológico Ejemplo` | No |
-| `CORS_ORIGINS` | Orígenes permitidos | `http://localhost:5173` | No |
+| `CORS_ORIGINS` | Orígenes permitidos: lista separada por comas, con espacios opcionales; vacía no permite ningún origen y `*` es inválido (la API no arranca; DD-33 b) | `http://localhost:5173` | No |
+| `VITE_API_URL` | URL de la API que usa el navegador (variable pública del frontend; nunca un secreto, y dentro de Compose es `http://localhost:8000`, no `http://api:8000`; DD-33 b) | `http://localhost:8000` | No |
 | `TEST_REDIS_URL` | Redis de los tests (solo contrato de la cola); usa una base distinta de `REDIS_URL` para no vaciar la cola de desarrollo | `redis://localhost:6379/15` | No |

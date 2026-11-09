@@ -12,7 +12,7 @@
 | Frontend | React + TypeScript + Vite | Agenda diaria/semanal |
 | Infra | Docker / Docker Compose | api, db, redis, worker, frontend |
 
-Versiones mínimas (DD-17): Python ≥ 3.13, PostgreSQL 16, Node 22 LTS (a confirmar en C-14). Migraciones Alembic lineales, numeradas `NNN_nombre.py`, con `downgrade`.
+Versiones mínimas (DD-17): Python ≥ 3.13, PostgreSQL 16, Node 24 LTS (DD-17, confirmado en C-14 por DD-33 i). Migraciones Alembic lineales, numeradas `NNN_nombre.py`, con `downgrade`.
 
 ## Tipo de sistema
 Aplicación web (SPA + API REST), monotenant (un consultorio por despliegue), escala de equipo: 1-5 profesionales, 1-4 sillones, pocos usuarios internos. Sin acceso público de pacientes en el MVP.
@@ -52,7 +52,7 @@ No hay integraciones externas obligatorias en el MVP.
 
 | Recurso | Endpoints principales |
 |---------|-----------------------|
-| Auth | `POST /auth/login`, `POST /auth/refresh` (**Suposición**) |
+| Auth | `POST /auth/login`; `POST /auth/refresh` (**Suposición**) **no está implementado**: sin renovación, al vencer el token el frontend pide iniciar sesión de nuevo (DD-33 d) |
 | Profesionales | `GET /profesionales[/{id}]` (ambos roles); `POST /profesionales`, `PATCH /profesionales/{id}`, `POST /profesionales/{id}/desactivar` (recepcionista; DD-26) |
 | Sillones | `GET /sillones[/{id}]` (ambos roles); `POST /sillones`, `PATCH /sillones/{id}`, `POST /sillones/{id}/desactivar` (recepcionista; DD-26) |
 | Prestaciones | `GET /prestaciones[/{id}]` (ambos roles); `POST /prestaciones` con duración por defecto, `PATCH /prestaciones/{id}`, `POST /prestaciones/{id}/desactivar` (recepcionista; DD-26) |
