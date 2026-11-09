@@ -184,7 +184,23 @@ npm run build          # compilación de producción en dist/
   navegador bloquea las respuestas por CORS. `CORS_ORIGINS` es una lista separada por comas; vacía no
   permite ningún origen y `*` es inválido (la API no arranca).
 - **Todo el stack**: `docker compose up --build` levanta `db`, `redis`, `api`, `worker` y `frontend`
-  (puerto 5173). Para iniciar sesión hace falta un usuario del seed (`python -m app.infrastructure.db.seed`).
+  (puerto 5173), pero la imagen de la API no corre las migraciones ni el seed: sin tablas ni usuarios no
+  se puede iniciar sesión. Hacelo en este orden (el entorno virtual y `pip install -e ".[dev]"` de la
+  sección anterior ya tienen que estar hechos):
+
+  ```bash
+  docker compose up -d db redis          # 1. solo la base y Redis
+  cd backend && alembic upgrade head     # 2. migraciones, desde el host
+  python -m app.infrastructure.db.seed   # 3. usuarios y catálogo ficticios (desde backend/)
+  cd .. && docker compose up --build     # 4. todo el stack
+  ```
+
+  El seed lee `SEED_RECEPCIONISTA_PASSWORD`, `SEED_ODONTOLOGO_1_PASSWORD` y `SEED_ODONTOLOGO_2_PASSWORD`
+  del `.env` de la raíz (las trae el `.env` copiado de `.env.example`). Si una está sin definir o vacía,
+  el seed omite a ese usuario **sin avisar**.
+  **Síntoma de saltear la migración**: `POST /auth/login` responde `500`, y como esa respuesta no lleva
+  encabezados CORS, el navegador muestra "No se pudo conectar con el servidor.", que parece un problema
+  de CORS pero no lo es.
 - El servicio `frontend` de Compose corre el servidor de desarrollo de Vite sin montar el código: los
   cambios se ven con `--build`, y el trabajo diario va con `npm run dev` en el host. **No es apto para
   producción.**
