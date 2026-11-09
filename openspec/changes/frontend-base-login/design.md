@@ -273,6 +273,9 @@ La KB no lo menciona. El comodín de rutas muestra `PaginaNoEncontrada` con un e
 - [`typescript` queda una versión mayor por detrás] → Lo impone `typescript-eslint`; se actualiza cuando lo soporte.
 - [`CORS_ORIGINS` con `*` abriría la API a cualquier origen] → Es configuración inválida: la API no arranca (P2, D2). `.env.example` y el README muestran un origen concreto.
 - [El servicio `frontend` no es apto para producción] → El MVP no define despliegue; se documenta en el README.
+- [Con el almacenamiento del sitio bloqueado, `sessionStorage` lanza una excepción en el inicializador de `useState` de `ProveedorSesion` y la página queda en blanco, porque no hay un error boundary] → Aceptado en C-14, sin cambio de código; se revisa en C-15, cuando haya pantallas con datos.
+- [Tras un vencimiento, un login fallido muestra el error junto al aviso anterior de sesión vencida] → Aceptado: es solo cosmético y el aviso desaparece con un login correcto.
+- [Si la sesión vence estando en `/no-existe` (fuera de las guardas), se borra el token pero no hay redirección] → Aceptado: esa ruta no muestra datos y su enlace a `/` lleva a `/login`.
 
 ## Migration Plan
 
