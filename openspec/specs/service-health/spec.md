@@ -27,5 +27,5 @@ El sistema MUST informar el fallo de conectividad con la base de datos en `GET /
 El sistema SHALL NOT exponer endpoints de negocio como parte de esta base; cualquier ruta no definida MUST responder `404 Not Found`.
 
 #### Scenario: Ruta inexistente
-- **WHEN** un cliente envía `GET /turnos`
+- **WHEN** un cliente envía `GET /consultorios`
 - **THEN** el sistema responde `404 Not Found`

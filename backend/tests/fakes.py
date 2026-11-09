@@ -7,7 +7,10 @@ from uuid import UUID
 
 import redis
 
+from app.domain.agenda import TurnoDeAgenda
 from app.domain.notificaciones import MensajeRecordatorio
+from app.domain.turnos import Intervalo
+from app.infrastructure.db.models import Bloqueo
 
 
 class ColaEnMemoria:
@@ -133,3 +136,32 @@ class EmisorQueFalla(EmisorQueRegistra):
             self.invocaciones += 1
             raise RuntimeError("fallo de envío (doble de test)")
         super().enviar(mensaje)
+
+
+class RepositorioTurnosDeAgendaFalso:
+    """Lectura de turnos de agenda en memoria: registra los argumentos de cada consulta."""
+
+    def __init__(self, turnos: list[TurnoDeAgenda] | None = None) -> None:
+        self._turnos = turnos or []
+        self.consultas: list[tuple[Intervalo, UUID | None, UUID | None]] = []
+
+    def listar_en(
+        self,
+        intervalo: Intervalo,
+        profesional_id: UUID | None = None,
+        sillon_id: UUID | None = None,
+    ) -> list[TurnoDeAgenda]:
+        self.consultas.append((intervalo, profesional_id, sillon_id))
+        return self._turnos
+
+
+class RepositorioBloqueosDeAgendaFalso:
+    """Lectura de bloqueos de agenda en memoria: registra los argumentos de cada consulta."""
+
+    def __init__(self, bloqueos: list[Bloqueo] | None = None) -> None:
+        self._bloqueos = bloqueos or []
+        self.consultas: list[tuple[Intervalo, UUID | None]] = []
+
+    def listar_en(self, intervalo: Intervalo, profesional_id: UUID | None = None) -> list[Bloqueo]:
+        self.consultas.append((intervalo, profesional_id))
+        return self._bloqueos

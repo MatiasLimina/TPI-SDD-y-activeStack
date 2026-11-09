@@ -1,19 +1,25 @@
-"""POST /turnos, cancelar, PATCH reprogramar y traducción de errores de dominio a HTTP."""
+"""POST /turnos, GET /turnos (agenda por rango), cancelar, PATCH reprogramar.
 
-from datetime import UTC, datetime, timedelta
+También traduce los errores de dominio a HTTP.
+"""
+
+from datetime import UTC, date, datetime, timedelta
 from functools import lru_cache
 from typing import Annotated, Any
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, FastAPI, Request, status
+from fastapi import APIRouter, Depends, FastAPI, Query, Request, status
 from fastapi.responses import JSONResponse
 from pydantic import AwareDatetime, BaseModel, Field, JsonValue, model_validator
 from sqlalchemy.orm import Session
 
-from app.api.auth import RecepcionistaAutenticada
+from app.api.auth import RecepcionistaAutenticada, UsuarioDeAmbosRoles
+from app.api.bloqueos import BloqueoOut
+from app.api.pacientes import PacienteResumenOut
 from app.application.auditoria_turnos import AuditorTurnos
 from app.application.bloqueos_agenda import ValidadorBloqueos
 from app.application.cancelar_turno import CancelarTurno
+from app.application.consulta_agenda import ConsultarAgenda
 from app.application.crear_turno import CrearTurno, Reloj, SolicitudTurno, ValidadorTurno
 from app.application.horarios_atencion import ValidadorHorario
 from app.application.recordatorios import ProgramadorRecordatorios
@@ -23,6 +29,7 @@ from app.application.reprogramar_turno import (
     SolicitudReprogramacion,
 )
 from app.config import get_settings
+from app.domain.agenda import RangoInvalidoError, TurnoDeAgenda
 from app.domain.recordatorios import ColaRecordatorios
 from app.domain.time import to_local
 from app.domain.turnos import (
@@ -100,6 +107,47 @@ class TurnoOut(BaseModel):
             creado_por=turno.creado_por,
             motivo_cancelacion=turno.motivo_cancelacion,
         )
+
+
+class TurnoAgendaOut(BaseModel):
+    """Turno de la agenda: como `TurnoOut`, con el paciente embebido (D11)."""
+
+    id: UUID
+    profesional_id: UUID
+    paciente: PacienteResumenOut
+    prestacion_id: UUID
+    sillon_id: UUID | None
+    inicio: datetime
+    fin: datetime
+    duracion_min: int
+    estado: str
+    creado_por: UUID | None
+    motivo_cancelacion: str | None
+
+    @classmethod
+    def desde_dominio(cls, turno: TurnoDeAgenda) -> "TurnoAgendaOut":
+        return cls(
+            id=turno.id,
+            profesional_id=turno.profesional_id,
+            paciente=PacienteResumenOut(
+                id=turno.paciente_id,
+                nombre=turno.paciente_nombre,
+                apellido=turno.paciente_apellido,
+            ),
+            prestacion_id=turno.prestacion_id,
+            sillon_id=turno.sillon_id,
+            inicio=to_local(turno.inicio),
+            fin=to_local(turno.fin),
+            duracion_min=turno.duracion_min,
+            estado=turno.estado,
+            creado_por=turno.creado_por,
+            motivo_cancelacion=turno.motivo_cancelacion,
+        )
+
+
+class AgendaOut(BaseModel):
+    turnos: list[TurnoAgendaOut]
+    bloqueos: list[BloqueoOut]
 
 
 class CancelacionIn(BaseModel):
@@ -234,6 +282,50 @@ def get_reprogramar_turno(
     )
 
 
+def get_consultar_agenda(session: Annotated[Session, Depends(get_session)]) -> ConsultarAgenda:
+    return ConsultarAgenda(RepositorioTurnos(session), RepositorioBloqueos(session))
+
+
+@router.get("", response_model=AgendaOut)
+def consultar_agenda(
+    usuario: UsuarioDeAmbosRoles,
+    caso: Annotated[ConsultarAgenda, Depends(get_consultar_agenda)],
+    desde: Annotated[
+        date,
+        Query(
+            description="Primer día de la agenda, fecha local YYYY-MM-DD (America/Argentina/"
+            "Buenos_Aires), incluido."
+        ),
+    ],
+    hasta: Annotated[
+        date,
+        Query(
+            description="Último día de la agenda, fecha local YYYY-MM-DD, incluido. "
+            "El rango abarca como máximo 7 días y `hasta` no puede ser anterior a `desde`."
+        ),
+    ],
+    profesional_id: Annotated[
+        UUID | None,
+        Query(
+            description="Filtra por profesional. El odontólogo solo puede indicar el suyo "
+            "(otro da 403) y, si lo omite, ve su agenda."
+        ),
+    ] = None,
+    sillon_id: Annotated[
+        UUID | None,
+        Query(
+            description="Filtra los turnos por sillón; los bloqueos, que son por profesional, "
+            "no se filtran por sillón."
+        ),
+    ] = None,
+) -> AgendaOut:
+    agenda = caso.ejecutar(usuario, desde, hasta, profesional_id, sillon_id)
+    return AgendaOut(
+        turnos=[TurnoAgendaOut.desde_dominio(t) for t in agenda.turnos],
+        bloqueos=[BloqueoOut.desde_modelo(b) for b in agenda.bloqueos],
+    )
+
+
 @router.post("", status_code=status.HTTP_201_CREATED, response_model=TurnoOut)
 def crear_turno(
     # FastAPI resuelve las dependencias (401/403) antes de validar path y body (422), sin importar
@@ -306,6 +398,13 @@ def registrar_manejadores(app: FastAPI) -> None:
                     "mensaje": error.mensaje,
                 }
             },
+        )
+
+    @app.exception_handler(RangoInvalidoError)
+    def _rango_invalido(_: Request, error: RangoInvalidoError) -> JSONResponse:
+        return JSONResponse(
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+            content={"detail": {"codigo": error.codigo, "mensaje": error.mensaje}},
         )
 
     @app.exception_handler(SolapamientoError)

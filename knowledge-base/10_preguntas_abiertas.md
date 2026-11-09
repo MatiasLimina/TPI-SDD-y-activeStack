@@ -118,3 +118,7 @@ Al 2026-11-04 queda una pregunta abierta, surgida al proponer C-12 (`recordatori
 | ¿Qué pasa con los recordatorios de un paciente desactivado? | Resuelta: nada; su procesamiento no cambia (DD-31 j, DD-29 a) |
 | ¿Se puede reactivar un paciente? | Resuelta: no en el MVP; limitación registrada en el backlog (DD-31 k) |
 | ¿Cómo se evita que la búsqueda deje datos personales en errores y logs? | Resuelta: los `422` de `/pacientes` sin `input` y el log de acceso sin la query string (DD-31 n, o) |
+| **Agenda** — ¿cómo llega la agenda al frontend y con qué rango? | Resuelta: un solo `GET /turnos` con `desde` y `hasta` (fechas locales, ambas incluidas, hasta 7 días; `422 rango_invalido` si no) que devuelve `{turnos, bloqueos}`, con filtros `profesional_id` y `sillon_id` (DD-32 a-d, h) |
+| ¿En qué zona se devuelven los instantes de la agenda: UTC (Flujo 7 y `CHANGES.md`) u hora local (RN-CU-04)? | Resuelta: hora local con desfasaje (`-03:00`), como el resto de la API; se corrigieron el Flujo 7 y `CHANGES.md` (DD-32 g) |
+| ¿Qué datos del paciente lleva cada turno de la agenda y se incluyen los cancelados? | Resuelta: `paciente: {id, nombre, apellido}` y los cancelados con su `estado` (DD-32 f, j; cierra la nota pendiente de DD-31) |
+| ¿Qué ve un odontólogo que pide la agenda de otro profesional? | Resuelta: `403 profesional_ajeno`, exista o no, antes que la validez del rango (DD-32 i) |

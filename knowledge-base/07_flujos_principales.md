@@ -63,5 +63,5 @@ Recepcionista -> Frontend -> API -> PostgreSQL (INSERT + EXCLUDE)
 **Errores**: Redis caído -> los recordatorios pendientes persisten en BD y se re-encolan al reiniciar el worker (DD-28).
 
 ## Flujo 7: Consulta de agenda
-1. `GET /turnos?desde&hasta&profesional&sillon` (el odontólogo queda filtrado a su profesional).
-2. API convierte el rango local a UTC, consulta y devuelve UTC; el frontend presenta en `America/Argentina/Buenos_Aires`.
+1. `GET /turnos?desde&hasta&profesional_id&sillon_id` (fechas locales `YYYY-MM-DD`, ambas incluidas, hasta 7 días; el odontólogo queda filtrado a su profesional).
+2. API convierte el rango local a UTC, consulta turnos y bloqueos y devuelve `{turnos, bloqueos}` con los instantes ya presentados en `America/Argentina/Buenos_Aires` (`-03:00`); el frontend agrupa por día (DD-32).
