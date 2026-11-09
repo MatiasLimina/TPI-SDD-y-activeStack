@@ -12,11 +12,11 @@ El backend del MVP está completo para las pantallas que vienen (C-06 autenticac
 - **Vencimiento de la sesión y `401`**: al llegar `exp`, o ante un `401 no_autenticado` (DD-24), se cierra la sesión y se vuelve al login con un aviso. No hay `POST /auth/refresh` en el backend.
 - **Guardas de ruta y layout**: rutas protegidas por sesión y por rol, pantalla de "sin permiso", redirección por rol tras el login y layout con navegación y cierre de sesión. `/agenda` y `/configuracion` son **placeholders**: las pantallas reales son de C-15 y C-16.
 - **Servicio `frontend` en Docker Compose**, en el puerto `5173`, que coincide con el valor por defecto de `CORS_ORIGINS`.
-- **Cambio de backend (único, a confirmar)**: `CORS_ORIGINS` existe en `config.py` y en `docker-compose.yml`, pero **`main.py` no instala ningún middleware de CORS**, así que hoy la variable no tiene efecto y un navegador en `:5173` no puede leer las respuestas de `:8000`. La recomendación es instalar el middleware: ya está en el alcance de C-14 en `CHANGES.md` y lo pide `08` ("CORS restringido"). La alternativa sin tocar el backend es un proxy de Vite (design D2). **Sin migración**: la cabeza de Alembic sigue en `010`.
-- **Node**: se resuelve el "a confirmar en C-14" de DD-17 (design D9).
+- **Cambio de backend (único, aprobado en D2)**: `CORS_ORIGINS` existe en `config.py` y en `docker-compose.yml`, pero **`main.py` no instala ningún middleware de CORS**, así que hoy la variable no tiene efecto y un navegador en `:5173` no puede leer las respuestas de `:8000`. Se instala el middleware: ya está en el alcance de C-14 en `CHANGES.md` y lo pide `08` ("CORS restringido"). Un `CORS_ORIGINS` con `*` es configuración inválida e impide arrancar la API; vacío significa que no se permite ningún origen (design D2). **Sin migración**: la cabeza de Alembic sigue en `010`.
+- **Node**: se resuelve el "a confirmar en C-14" de DD-17, que pasa de Node 22 a Node 24 (design D9).
 - **Limpieza pendiente**: la cabecera de DD-32 pasa de "pendiente de revisión de Nico" a "aprobada por Nico" (PR #14 aprobado el 2026-11-09).
 
-Las decisiones que no fija la KB están marcadas **[A confirmar]** en `design.md`, con una opción recomendada. Las tres que más condicionan el resto son cómo conoce el rol la SPA (D1), el CORS (D2) y dónde se guarda el token (D3). El usuario las aprueba antes de `/opsx:apply`.
+Las decisiones que no fija la KB (D1 a D11 de `design.md`) fueron aprobadas por el usuario el 2026-11-09 y se registran como DD-33. Las tres que más condicionan el resto son cómo conoce el rol la SPA (D1), el CORS (D2) y dónde se guarda el token (D3).
 
 ## Non-goals
 
@@ -35,14 +35,14 @@ Las decisiones que no fija la KB están marcadas **[A confirmar]** en `design.md
 - `frontend-sesion`: login, datos y conservación de la sesión, vencimiento, guardas por sesión y por rol, redirección por rol y layout.
 
 ### Modified Capabilities
-- `app-configuration`: `CORS_ORIGINS` pasa a tener efecto real: la API acepta pedidos de navegador solo desde esos orígenes (design D2, [A confirmar]).
+- `app-configuration`: `CORS_ORIGINS` pasa a tener efecto real: la API acepta pedidos de navegador solo desde esos orígenes y no arranca si la variable contiene `*` (design D2).
 
 ## Impact
 
 - **Código nuevo**: `frontend/` completo, con su `Dockerfile` y `package-lock.json`.
-- **Backend (a confirmar, D2)**: `backend/app/main.py` y `backend/app/config.py`, con tests. Sin endpoints nuevos ni migración.
+- **Backend (D2)**: `backend/app/main.py` y `backend/app/config.py`, con tests. Sin endpoints nuevos ni migración.
 - **Infraestructura**: servicio `frontend` en `docker-compose.yml`; `backend/tests/unit/test_docker_compose.py` suma sus verificaciones.
-- **Variables de entorno**: `VITE_API_URL` (opcional, no sensible). `.env.example` no se puede leer desde el agente: la tarea indica qué línea agregar.
+- **Variables de entorno**: `VITE_API_URL` (opcional, no sensible). `.env.example` no se puede leer ni editar desde el agente: la tarea 8.3 indica qué línea agrega el usuario.
 - **Repo y documentación**: `.gitignore` (`dist/`, `coverage/`), `README.md`, `CLAUDE.md` y `AGENTS.md` (byte-idénticos), `knowledge-base/02`, `07`, `08`, `09` (DD-33 y DD-32) y `10`.
 - **Dependencias**: las de `frontend/package.json`, con versiones fijadas en `design.md`.
 - **Requisito local**: Node (versión de D9) para correr el frontend fuera de Docker.

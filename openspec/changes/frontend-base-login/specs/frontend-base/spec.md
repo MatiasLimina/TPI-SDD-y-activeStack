@@ -23,6 +23,15 @@ El repositorio SHALL incluir en `frontend/` una aplicación web en TypeScript co
 - **WHEN** cuando se ejecuta `git status`
 - **THEN** entonces `frontend/node_modules/` y `frontend/dist/` no aparecen como archivos por agregar
 
+#### Scenario: Versión de Node declarada
+- **WHEN** cuando se lee `frontend/package.json`
+- **THEN** entonces `engines.node` es `^24.15.0`
+
+#### Scenario: Instalación reproducible
+- **GIVEN** dado el repositorio con `frontend/package-lock.json` versionado
+- **WHEN** cuando se ejecuta `npm ci` en `frontend/`
+- **THEN** entonces el comando termina con código `0`
+
 ### Requirement: Verificación antes de dar una tarea por terminada
 El proyecto SHALL ofrecer los scripts `typecheck`, `lint`, `format:check` y `test`, equivalentes a `ruff` y `pytest` en el backend. Cada uno MUST terminar con código distinto de `0` si encuentra un problema, y todos MUST estar en verde antes de dar una tarea por terminada.
 
@@ -34,6 +43,16 @@ El proyecto SHALL ofrecer los scripts `typecheck`, `lint`, `format:check` y `tes
 #### Scenario: Error de tipos
 - **GIVEN** dado un archivo de `src/` que asigna un texto a una variable declarada `number`
 - **WHEN** cuando se ejecuta `npm run typecheck`
+- **THEN** entonces el comando termina con código distinto de `0`
+
+#### Scenario: Error de lint
+- **GIVEN** dado un archivo de `src/` que declara una variable y no la usa
+- **WHEN** cuando se ejecuta `npm run lint`
+- **THEN** entonces el comando termina con código distinto de `0`
+
+#### Scenario: Test que falla
+- **GIVEN** dado un test que afirma un valor distinto del obtenido
+- **WHEN** cuando se ejecuta `npm test`
 - **THEN** entonces el comando termina con código distinto de `0`
 
 #### Scenario: Archivo mal formateado
@@ -62,3 +81,12 @@ El servicio `frontend` y el código del navegador MUST NOT recibir `JWT_SECRET` 
 #### Scenario: Entorno del servicio
 - **WHEN** cuando se lee el entorno del servicio `frontend` en `docker-compose.yml`
 - **THEN** entonces no contiene `JWT_SECRET`, `DATABASE_URL` ni `REDIS_URL`
+
+#### Scenario: Servicio sin archivo de entorno
+- **WHEN** cuando se lee el servicio `frontend` en `docker-compose.yml`
+- **THEN** entonces no declara `env_file`
+
+#### Scenario: Código del navegador
+- **GIVEN** dado el proyecto compilado con `npm run build`
+- **WHEN** cuando se buscan `JWT_SECRET`, `DATABASE_URL` y `REDIS_URL` en `frontend/src/` y en `frontend/dist/`
+- **THEN** entonces ninguno aparece

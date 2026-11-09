@@ -1,5 +1,7 @@
 # Revisión de escenarios — frontend-base-login (C-14)
 
+> **Actualización**: los hallazgos H1 a H17 se resolvieron con `/opsx:update` el 2026-11-09. Respuestas aprobadas: **P1**, un `422` no atado a un campo (`loc` `["body"]` o `["body", 5]`) se muestra como error general del formulario, sin asociarlo a ningún campo; **P2**, `CORS_ORIGINS` con `*` es configuración inválida e impide arrancar la aplicación, y vacío significa que no se permite ningún origen; **P3**, C-14 no cambia: `/configuracion` sigue siendo solo de la recepcionista, y si C-16 necesita vistas de lectura para el odontólogo, van en otra ruta. H18 queda cubierto por P3. El resto del informe es la revisión original.
+
 - Fecha: 2026-11-09
 - Specs revisados: `openspec/changes/frontend-base-login/specs/{frontend-base,frontend-cliente-http,frontend-sesion,app-configuration}/spec.md` (24 requirements, 71 escenarios), con `proposal.md`, `design.md` y `tasks.md`
 - Reglas aplicables: RN-AU-01, RN-AU-03, RN-CU-02, RN-CU-03, DD-05, DD-16, DD-17, DD-21 (forma del `409`), DD-24, DD-31 n, DD-32 d, Flujo 1, US-010, `03_actores_y_roles.md` (RBAC, "nunca solo en la UI"), `08_arquitectura_propuesta.md` §Estructura y §Seguridad, spec `autenticacion`, spec `app-configuration`, scope de C-14 en `CHANGES.md`

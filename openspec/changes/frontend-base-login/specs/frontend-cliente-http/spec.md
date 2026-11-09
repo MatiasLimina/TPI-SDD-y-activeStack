@@ -56,7 +56,7 @@ Ante una respuesta `2xx`, el cliente SHALL entregar el cuerpo JSON interpretado.
 - **THEN** entonces el cliente resuelve sin valor y sin lanzar un error
 
 ### Requirement: Error de negocio de la API
-Ante un error con cuerpo `{"detail": {"codigo": ...}}`, el cliente SHALL lanzar un error con `status`, `codigo` y `mensaje`, y MUST conservar los demás campos de `detail`. Si `detail` no trae `mensaje`, MUST usar un mensaje genérico en español, porque varios errores reales de la API solo traen `codigo`.
+Ante un error cuyo `detail` es un objeto con `codigo`, el cliente SHALL lanzar un error con `status`, `codigo` y `mensaje`, y MUST conservar los demás campos de `detail`. Si `detail` no trae `mensaje`, MUST usar `Ocurrió un error. Intentá de nuevo.`, porque varios errores reales de la API solo traen `codigo`. La forma de `detail`, no el `status`, MUST decidir el tratamiento: un `422` con objeto es un error de negocio, sin errores por campo.
 
 #### Scenario: Con código y mensaje
 - **GIVEN** dada una respuesta `403` con `{"detail": {"codigo": "rol_insuficiente", "mensaje": "Rol insuficiente"}}`
@@ -66,35 +66,60 @@ Ante un error con cuerpo `{"detail": {"codigo": ...}}`, el cliente SHALL lanzar 
 #### Scenario: Con campos adicionales y sin mensaje
 - **GIVEN** dada una respuesta `409` con `{"detail": {"codigo": "solapamiento", "recursos": ["profesional", "sillon"]}}`
 - **WHEN** cuando se completa el pedido
-- **THEN** entonces el error tiene `codigo` `solapamiento`, un `mensaje` genérico no vacío y conserva `recursos` con esos dos valores
+- **THEN** entonces el error tiene `codigo` `solapamiento`, `mensaje` `Ocurrió un error. Intentá de nuevo.` y conserva `recursos` con esos dos valores
+
+#### Scenario: 422 con objeto y mensaje
+- **GIVEN** dada una respuesta `422` con `{"detail": {"codigo": "rango_invalido", "mensaje": "Rango inválido"}}`
+- **WHEN** cuando se completa el pedido
+- **THEN** entonces el error tiene `status` `422`, `codigo` `rango_invalido`, `mensaje` `Rango inválido` y ningún error por campo
+
+#### Scenario: 422 con objeto y sin mensaje
+- **GIVEN** dada una respuesta `422` con `{"detail": {"codigo": "referencia_invalida", "referencia": "sillon", "motivo": "inactiva"}}`
+- **WHEN** cuando se completa el pedido
+- **THEN** entonces el error tiene `codigo` `referencia_invalida`, `mensaje` `Ocurrió un error. Intentá de nuevo.`, conserva `referencia` y `motivo` y no tiene ningún error por campo
 
 ### Requirement: Error de validación de la API
-Ante un `422` cuyo `detail` es una lista, el cliente SHALL lanzar un error con `codigo` `validacion`, un `mensaje` genérico y una lista de errores por campo. El campo MUST ser el último tramo de `loc`, sin el origen `body` o `query`, y MUST conservar el texto de `msg`.
+Ante un `422` cuyo `detail` es una lista, el cliente SHALL lanzar un error con `codigo` `validacion`, `mensaje` `Revisá los datos ingresados.` y una entrada de error por elemento, que MUST conservar el `msg` sin garantía de que sea apto para mostrar. El `campo` de la entrada MUST ser el último tramo de `loc` si es texto y no es el origen (`loc[0]`); si no, MUST ser nulo: es un error general del formulario, no asociado a ningún campo.
 
 #### Scenario: Campo del body
 - **GIVEN** dada una respuesta `422` con `{"detail": [{"type": "missing", "loc": ["body", "password"], "msg": "Field required"}]}`
 - **WHEN** cuando se completa el pedido
-- **THEN** entonces el error tiene `status` `422`, `codigo` `validacion` y un error del campo `password` con el mensaje `Field required`
+- **THEN** entonces el error tiene `status` `422`, `codigo` `validacion`, `mensaje` `Revisá los datos ingresados.` y un error del campo `password` con el mensaje `Field required`
 
 #### Scenario: Parámetro de la consulta
-- **GIVEN** dada una respuesta `422` con `{"detail": [{"type": "date_from_datetime_parsing", "loc": ["query", "desde"], "msg": "Input should be a valid date"}]}`
+- **GIVEN** dada una respuesta `422` con `{"detail": [{"type": "date_from_datetime_parsing", "loc": ["query", "desde"], "msg": "Input should be a valid date or datetime, input is too short"}]}`
 - **WHEN** cuando se completa el pedido
 - **THEN** entonces el error incluye un error del campo `desde`
 
+#### Scenario: Error del cuerpo completo
+- **GIVEN** dada una respuesta `422` con `{"detail": [{"type": "value_error", "loc": ["body"], "msg": "Value error, inicio no admite null"}]}`
+- **WHEN** cuando se completa el pedido
+- **THEN** entonces el error tiene `codigo` `validacion` y una única entrada con `campo` nulo y el mensaje `Value error, inicio no admite null`
+
+#### Scenario: Posición del JSON
+- **GIVEN** dada una respuesta `422` con `{"detail": [{"type": "json_invalid", "loc": ["body", 5], "msg": "JSON decode error"}]}`
+- **WHEN** cuando se completa el pedido
+- **THEN** entonces el error tiene `codigo` `validacion` y una única entrada con `campo` nulo y el mensaje `JSON decode error`
+
 ### Requirement: Otras fallas
-El cliente SHALL lanzar el mismo tipo de error, con `codigo` nulo y un `mensaje` genérico en español, ante un `detail` de texto o un cuerpo no JSON, conservando el `status`. Ante una falla de red MUST lanzarlo con `status` `0` y un `mensaje` que indique que no se pudo conectar. Nunca MUST mostrar al usuario el texto crudo del servidor.
+El cliente SHALL lanzar el mismo tipo de error, con `codigo` nulo y `mensaje` `Ocurrió un error. Intentá de nuevo.`, ante un `detail` de texto, un JSON sin `detail` o un cuerpo no JSON, conservando el `status`. Ante una falla de red MUST lanzarlo con `status` `0` y `mensaje` `No se pudo conectar con el servidor.`. El `mensaje` MUST NOT ser el `detail` de texto ni el cuerpo de la respuesta.
 
 #### Scenario: Detail de texto
 - **GIVEN** dada una respuesta `404` con `{"detail": "Not Found"}`
 - **WHEN** cuando se completa el pedido
-- **THEN** entonces el error tiene `status` `404`, `codigo` nulo y un `mensaje` genérico que no es `Not Found`
+- **THEN** entonces el error tiene `status` `404`, `codigo` nulo y `mensaje` `Ocurrió un error. Intentá de nuevo.`
 
 #### Scenario: Cuerpo que no es JSON
 - **GIVEN** dada una respuesta `500` con el cuerpo de texto `Internal Server Error`
 - **WHEN** cuando se completa el pedido
-- **THEN** entonces el error tiene `status` `500`, `codigo` nulo y un `mensaje` genérico
+- **THEN** entonces el error tiene `status` `500`, `codigo` nulo y `mensaje` `Ocurrió un error. Intentá de nuevo.`
+
+#### Scenario: JSON sin detail
+- **GIVEN** dada una respuesta `503` con `{"status": "degraded", "database": "unavailable"}`
+- **WHEN** cuando se completa el pedido
+- **THEN** entonces el error tiene `status` `503`, `codigo` nulo y `mensaje` `Ocurrió un error. Intentá de nuevo.`
 
 #### Scenario: Falla de red
 - **GIVEN** dado que la API no es alcanzable y el pedido se rechaza antes de obtener respuesta
 - **WHEN** cuando se completa el pedido
-- **THEN** entonces el error tiene `status` `0` y un `mensaje` que indica que no se pudo conectar con el servidor
+- **THEN** entonces el error tiene `status` `0` y `mensaje` `No se pudo conectar con el servidor.`
