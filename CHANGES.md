@@ -436,6 +436,7 @@ Diferido por el Discovery (ver `docs/discovery/informe-discovery.md` §D.3 y §D
 - Multisede / multi-sucursal
 - Política de cancelación tardía (decidido DD-14: sin política en el MVP)
 - Reactivación de profesionales, sillones y prestaciones: hoy la desactivación es definitiva por API (DD-26)
+- Reactivación de pacientes: hoy la desactivación es definitiva por API; un alta con el documento de un paciente desactivado da `409` hasta que se corrija el documento de la fila vieja con `PATCH` (DD-31 k)
 - Reactivación de usuarios: el email de un usuario desactivado queda tomado y no se puede volver a dar de alta (limitación aceptada en DD-24)
 - Rate limiting del login y registro de eventos de seguridad (intentos fallidos) (DD-24)
 - Validación del largo mínimo de `JWT_SECRET` al arrancar (DD-24; hoy PyJWT solo advierte)
