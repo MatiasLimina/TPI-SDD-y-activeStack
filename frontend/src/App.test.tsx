@@ -11,6 +11,8 @@ describe("App", () => {
       </MemoryRouter>,
     );
 
-    expect(screen.getByRole("heading", { name: "Turnos y Agenda" })).toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", { name: "Turnos y Agenda" }),
+    ).toBeInTheDocument();
   });
 });
