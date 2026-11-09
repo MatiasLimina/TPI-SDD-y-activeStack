@@ -129,3 +129,12 @@ def test_frontend_dockerignore_excludes_host_artifacts(carpeta: str) -> None:
     lineas = (REPO_ROOT / "frontend" / ".dockerignore").read_text(encoding="utf-8").splitlines()
 
     assert carpeta in {linea.strip().rstrip("/") for linea in lineas}
+
+
+def test_api_service_cors_origins_default_only_applies_when_unset(
+    servicios: dict[str, Any],
+) -> None:
+    # Sin los dos puntos, un valor definido pero vacío (lista vacía de orígenes) se respeta.
+    assert (
+        servicios["api"]["environment"]["CORS_ORIGINS"] == "${CORS_ORIGINS-http://localhost:5173}"
+    )
