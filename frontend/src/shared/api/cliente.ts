@@ -44,6 +44,7 @@ export function crearClienteApi(opciones: OpcionesCliente): ClienteApi {
         headers: encabezados,
         body: cuerpo === undefined ? undefined : JSON.stringify(cuerpo),
       });
+      if (respuesta.status === 204) return undefined as T;
       return (await respuesta.json()) as T;
     },
   };

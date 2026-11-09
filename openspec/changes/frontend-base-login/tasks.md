@@ -30,7 +30,7 @@
 ## 4. Cliente HTTP (D15)
 
 - [x] 4.1 RED→GREEN: `src/shared/api/cliente.test.ts` — URL con `VITE_API_URL`, sin configurar y con barra final; `Authorization: Bearer` con sesión y sin encabezado sin sesión; el token nunca en la URL (requirements "URL base de la API" y "Token en cada request"); verificar con `npm test -- cliente`
-- [ ] 4.2 RED→GREEN: mismo archivo — `200` entrega el JSON y `204` resuelve sin valor; ante un `500` la consola no recibe el token; verificar con `npm test -- cliente`
+- [x] 4.2 RED→GREEN: mismo archivo — `200` entrega el JSON y `204` resuelve sin valor; ante un `500` la consola no recibe el token; verificar con `npm test -- cliente`
 - [ ] 4.3 RED→GREEN: mismo archivo — `ErrorApi` para `{"detail": {"codigo", "mensaje"}}` (`rol_insuficiente`) y sin `mensaje` conservando extras (`solapamiento` con `recursos`); `422` con `detail` objeto, con mensaje (`rango_invalido`) y sin él (`referencia_invalida`, con `referencia` y `motivo`), sin errores por campo: se decide por la forma de `detail`, no por el `status`; los tests afirman los textos literales del spec; verificar con `npm test -- cliente`
 - [ ] 4.4 RED→GREEN: mismo archivo — lista de `422`: campo del body y parámetro de consulta, conservando `msg`; `loc` `["body"]` y `["body", 5]` dan `campo` nulo, también mezclados con un error de campo (P1); `detail` de texto, JSON sin `detail` (`503`), cuerpo no JSON y falla de red con `status` `0`; el `mensaje` nunca es el `detail` de texto ni el cuerpo; verificar con `npm test -- cliente`, `npm run lint` y `npm run typecheck`
 
