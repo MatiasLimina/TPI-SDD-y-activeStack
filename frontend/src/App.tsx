@@ -10,6 +10,7 @@ import { ProveedorSesion } from "./features/sesion/ProveedorSesion";
 import PaginaAgenda from "./pages/PaginaAgenda";
 import PaginaConfiguracion from "./pages/PaginaConfiguracion";
 import PaginaLogin from "./pages/PaginaLogin";
+import PaginaNoEncontrada from "./pages/PaginaNoEncontrada";
 import Layout from "./shared/layout/Layout";
 
 /** Árbol de rutas: el único lugar donde se agregan pantallas (D14). */
@@ -28,6 +29,7 @@ export function RutasApp() {
           </Route>
         </Route>
       </Route>
+      <Route path="*" element={<PaginaNoEncontrada />} />
     </Routes>
   );
 }

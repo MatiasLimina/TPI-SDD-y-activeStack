@@ -109,3 +109,43 @@ describe("Guarda por rol", () => {
     ).not.toBeInTheDocument();
   });
 });
+
+describe("Ruta inexistente", () => {
+  it("sin sesión muestra la página no encontrada, sin redirigir", () => {
+    renderizarApp("/no-existe");
+
+    expect(
+      screen.getByRole("heading", { name: "Página no encontrada" }),
+    ).toBeInTheDocument();
+    expect(ubicacion()).toBe("/no-existe");
+  });
+
+  it("sin sesión, el enlace a / lleva al login", async () => {
+    const { user } = renderizarApp("/no-existe");
+
+    await user.click(screen.getByRole("link", { name: "Ir al inicio" }));
+
+    expect(ubicacion()).toBe("/login");
+  });
+
+  it.each([
+    ["recepcionista", tokenDeRecepcionista(VIGENTE)],
+    ["odontologo", tokenDeOdontologo(VIGENTE)],
+  ])(
+    "con sesión de %s, el enlace a / lleva a su inicio",
+    async (_rol, token) => {
+      sessionStorage.setItem(CLAVE_TOKEN, token);
+      const { user } = renderizarApp("/no-existe");
+      expect(
+        screen.getByRole("heading", { name: "Página no encontrada" }),
+      ).toBeInTheDocument();
+
+      await user.click(screen.getByRole("link", { name: "Ir al inicio" }));
+
+      expect(ubicacion()).toBe("/agenda");
+      expect(
+        screen.getByRole("heading", { name: "Agenda" }),
+      ).toBeInTheDocument();
+    },
+  );
+});
