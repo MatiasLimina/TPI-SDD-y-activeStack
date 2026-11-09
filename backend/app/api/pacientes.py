@@ -1,9 +1,12 @@
 """Rutas de pacientes: /pacientes (alta, búsqueda, detalle, edición y desactivación)."""
 
+from collections.abc import Mapping
 from typing import Annotated, Any, ClassVar
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, FastAPI, Query, Request, status
+from fastapi.exception_handlers import request_validation_exception_handler
+from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from pydantic import (
     AfterValidator,
@@ -219,7 +222,35 @@ def detalle(
     return salida.model_validate(paciente).model_dump(mode="json")
 
 
+def _es_ruta_de_pacientes(ruta: str) -> bool:
+    return ruta == "/pacientes" or ruta.startswith("/pacientes/")
+
+
+def _mensaje_sin_datos(error: Mapping[str, Any]) -> str:
+    """El mensaje de pydantic, salvo los del UUID, que citan el primer carácter inválido."""
+    if str(error["type"]).startswith("uuid"):
+        return "Input should be a valid UUID"
+    return str(error["msg"])
+
+
 def registrar_manejadores_pacientes(app: FastAPI) -> None:
+    @app.exception_handler(RequestValidationError)
+    async def _validacion(request: Request, error: RequestValidationError) -> JSONResponse:
+        """422 de `/pacientes` solo con `type`, `loc` y `msg`: sin `input` ni `ctx` (DD-31 n).
+
+        El `input` de un campo faltante es el body entero. Las demás rutas conservan el manejador
+        por defecto de FastAPI, para no cambiar contratos ya entregados.
+        """
+        if not _es_ruta_de_pacientes(request.url.path):
+            return await request_validation_exception_handler(request, error)
+        errores = [
+            {"type": e["type"], "loc": list(e["loc"]), "msg": _mensaje_sin_datos(e)}
+            for e in error.errors()
+        ]
+        return JSONResponse(
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, content={"detail": errores}
+        )
+
     @app.exception_handler(PacienteAjenoError)
     def _paciente_ajeno(_: Request, error: PacienteAjenoError) -> JSONResponse:
         return JSONResponse(
