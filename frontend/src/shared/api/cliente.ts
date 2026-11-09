@@ -74,9 +74,32 @@ export function crearClienteApi(opciones: OpcionesCliente): ClienteApi {
         throw error;
       }
       if (respuesta.status === 204) return undefined as T;
-      return (await respuesta.json()) as T;
+      return await leerCuerpoJson<T>(respuesta);
     },
   };
+}
+
+/** Un corte al leer el cuerpo es una falla de red; un cuerpo que no es JSON, una falla genérica. */
+async function leerCuerpoJson<T>(respuesta: Response): Promise<T> {
+  let texto: string;
+  try {
+    texto = await respuesta.text();
+  } catch {
+    throw new ErrorApi({
+      status: 0,
+      codigo: null,
+      mensaje: MENSAJE_SIN_CONEXION,
+    });
+  }
+  try {
+    return JSON.parse(texto) as T;
+  } catch {
+    throw new ErrorApi({
+      status: respuesta.status,
+      codigo: null,
+      mensaje: MENSAJE_GENERICO,
+    });
+  }
 }
 
 function esObjeto(valor: unknown): valor is Record<string, unknown> {

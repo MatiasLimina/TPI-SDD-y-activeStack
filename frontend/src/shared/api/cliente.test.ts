@@ -402,6 +402,37 @@ describe("Otras fallas", () => {
     expect(error.mensaje).toBe(MENSAJE_GENERICO);
   });
 
+  it.each([
+    [200, "<html>Bienvenido</html>"],
+    [201, "no es json"],
+    [200, ""],
+  ])(
+    "un %s con cuerpo que no es JSON lanza el error uniforme, sin SyntaxError",
+    async (status, texto) => {
+      const error = await errorDe(respuestaTexto(status, texto));
+
+      expect(error.status).toBe(status);
+      expect(error.codigo).toBeNull();
+      expect(error.mensaje).toBe(MENSAJE_GENERICO);
+    },
+  );
+
+  it("una conexión cortada al leer el cuerpo da status 0 y el mensaje de conexión", async () => {
+    const cuerpoCortado = new ReadableStream<Uint8Array>({
+      start(controlador) {
+        controlador.error(new TypeError("terminated"));
+      },
+    });
+
+    const error = await errorDe(new Response(cuerpoCortado, { status: 200 }));
+
+    expect(error).toMatchObject({
+      status: 0,
+      codigo: null,
+      mensaje: "No se pudo conectar con el servidor.",
+    });
+  });
+
   it("una falla de red da status 0 y el mensaje de conexión", async () => {
     const falso = instalarFetchFalso();
     falso.mockRejectedValue(new TypeError("Failed to fetch"));

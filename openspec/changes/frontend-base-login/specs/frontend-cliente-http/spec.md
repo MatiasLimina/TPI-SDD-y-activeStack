@@ -102,7 +102,7 @@ Ante un `422` cuyo `detail` es una lista, el cliente SHALL lanzar un error con `
 - **THEN** entonces el error tiene `codigo` `validacion` y una única entrada con `campo` nulo y el mensaje `JSON decode error`
 
 ### Requirement: Otras fallas
-El cliente SHALL lanzar el mismo tipo de error, con `codigo` nulo y `mensaje` `Ocurrió un error. Intentá de nuevo.`, ante un `detail` de texto, un JSON sin `detail` o un cuerpo no JSON, conservando el `status`. Ante una falla de red MUST lanzarlo con `status` `0` y `mensaje` `No se pudo conectar con el servidor.`. El `mensaje` MUST NOT ser el `detail` de texto ni el cuerpo de la respuesta.
+El cliente SHALL lanzar el mismo tipo de error, con `codigo` nulo y `mensaje` `Ocurrió un error. Intentá de nuevo.`, ante un `detail` de texto, un JSON sin `detail` o un cuerpo no JSON (también en un `2xx`), conservando el `status`. Ante una falla de red, incluso si la conexión se corta al leer el cuerpo, MUST lanzarlo con `status` `0` y `mensaje` `No se pudo conectar con el servidor.`. El `mensaje` MUST NOT ser el `detail` de texto ni el cuerpo de la respuesta.
 
 #### Scenario: Detail de texto
 - **GIVEN** dada una respuesta `404` con `{"detail": "Not Found"}`
@@ -114,6 +114,11 @@ El cliente SHALL lanzar el mismo tipo de error, con `codigo` nulo y `mensaje` `O
 - **WHEN** cuando se completa el pedido
 - **THEN** entonces el error tiene `status` `500`, `codigo` nulo y `mensaje` `Ocurrió un error. Intentá de nuevo.`
 
+#### Scenario: Éxito con cuerpo que no es JSON
+- **GIVEN** dada una respuesta `200` con el cuerpo de texto `<html>Bienvenido</html>`
+- **WHEN** cuando se completa el pedido
+- **THEN** entonces el error tiene `status` `200`, `codigo` nulo y `mensaje` `Ocurrió un error. Intentá de nuevo.`, y no se lanza ningún otro tipo de error
+
 #### Scenario: JSON sin detail
 - **GIVEN** dada una respuesta `503` con `{"status": "degraded", "database": "unavailable"}`
 - **WHEN** cuando se completa el pedido
@@ -121,5 +126,10 @@ El cliente SHALL lanzar el mismo tipo de error, con `codigo` nulo y `mensaje` `O
 
 #### Scenario: Falla de red
 - **GIVEN** dado que la API no es alcanzable y el pedido se rechaza antes de obtener respuesta
+- **WHEN** cuando se completa el pedido
+- **THEN** entonces el error tiene `status` `0` y `mensaje` `No se pudo conectar con el servidor.`
+
+#### Scenario: Conexión cortada al leer el cuerpo
+- **GIVEN** dada una respuesta `200` cuya conexión se corta antes de terminar de leer el cuerpo
 - **WHEN** cuando se completa el pedido
 - **THEN** entonces el error tiene `status` `0` y `mensaje` `No se pudo conectar con el servidor.`
