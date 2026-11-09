@@ -9,6 +9,8 @@ Producto: sistema de gestión de turnos y agenda de pacientes para consultorios 
 - `desarrollo-active-stack.pdf` — consigna del trabajo.
 - `openspec/` — especificaciones y changes (OpenSpec).
 - `knowledge-base/` — base de conocimiento del dominio (fuente de verdad).
+- `backend/` — API FastAPI, migraciones y tests (pytest).
+- `frontend/` — SPA React + TypeScript + Vite, con sus tests (Vitest).
 - `CHANGES.md` — roadmap de changes.
 - `.agents/skills/` — skills del proyecto, instaladas a nivel proyecto (no globales).
 - `skills-lock.json` — origen y hash de cada skill instalada.
@@ -160,3 +162,29 @@ suite de contrato de la cola la usa y borra solo sus claves de prueba.
 
 Si el puerto 5432 ya está ocupado (por ejemplo por un PostgreSQL local en Windows), cambiá
 `POSTGRES_PORT` en `.env` (p. ej. `5433`) y ajustá el puerto en `DATABASE_URL` y `TEST_DATABASE_URL`.
+
+## Cómo correr el frontend
+
+Requisitos: Node 24 (`^24.15.0`, declarado en `frontend/package.json`) y la API corriendo (ver arriba).
+Ejecutá los comandos desde `frontend/`.
+
+```bash
+npm ci                 # instala exactamente lo que fija package-lock.json
+npm run dev            # servidor de desarrollo en http://localhost:5173
+
+npm test               # tests (Vitest + React Testing Library, sin tocar la red real)
+npm run typecheck && npm run lint && npm run format:check && npm test   # verificación completa
+npm run build          # compilación de producción en dist/
+```
+
+- **URL de la API**: la SPA llama a `VITE_API_URL` (por defecto `http://localhost:8000`). Es una variable
+  pública: la lee el navegador, por eso no puede ser `http://api:8000` ni contener ningún secreto.
+- **Abrí `http://localhost:5173`, no `http://127.0.0.1:5173`**: la API solo acepta pedidos de los orígenes
+  de `CORS_ORIGINS` (por defecto `http://localhost:5173`, coincidencia exacta). Con `127.0.0.1` el
+  navegador bloquea las respuestas por CORS. `CORS_ORIGINS` es una lista separada por comas; vacía no
+  permite ningún origen y `*` es inválido (la API no arranca).
+- **Todo el stack**: `docker compose up --build` levanta `db`, `redis`, `api`, `worker` y `frontend`
+  (puerto 5173). Para iniciar sesión hace falta un usuario del seed (`python -m app.infrastructure.db.seed`).
+- El servicio `frontend` de Compose corre el servidor de desarrollo de Vite sin montar el código: los
+  cambios se ven con `--build`, y el trabajo diario va con `npm run dev` en el host. **No es apto para
+  producción.**
