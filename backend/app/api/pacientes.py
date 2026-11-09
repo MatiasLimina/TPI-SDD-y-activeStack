@@ -1,10 +1,17 @@
 """Rutas de pacientes: /pacientes (alta, búsqueda, detalle, edición y desactivación)."""
 
-from typing import Annotated, ClassVar
+from typing import Annotated, Any, ClassVar
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, status
-from pydantic import BaseModel, ConfigDict, JsonValue
+from pydantic import (
+    AfterValidator,
+    BaseModel,
+    BeforeValidator,
+    ConfigDict,
+    JsonValue,
+    StringConstraints,
+)
 from sqlalchemy.orm import Session
 
 from app.api.auth import RecepcionistaAutenticada
@@ -15,14 +22,46 @@ from app.infrastructure.db.repositorio_pacientes import RepositorioPacientes
 from app.infrastructure.db.session import get_session
 
 
+def _sin_caracter_nulo(valor: str) -> str:
+    """`U+0000` hace fallar al driver con un 500: se rechaza antes (el mensaje no cita el valor)."""
+    if "\x00" in valor:
+        raise ValueError("no admite el carácter nulo")
+    return valor
+
+
+def _texto(largo: int) -> Any:
+    """Texto obligatorio: sin espacios extremos, no vacío, con el largo de su columna y sin NUL."""
+    return Annotated[
+        str,
+        StringConstraints(strip_whitespace=True, min_length=1, max_length=largo),
+        AfterValidator(_sin_caracter_nulo),
+    ]
+
+
+def _email_en_blanco_a_nulo(valor: Any) -> Any:
+    if isinstance(valor, str):
+        return valor.strip() or None
+    return valor
+
+
+Nombre = _texto(100)
+Apellido = _texto(100)
+Documento = _texto(20)
+Telefono = _texto(30)
+Email = Annotated[
+    Annotated[str, StringConstraints(max_length=254), AfterValidator(_sin_caracter_nulo)] | None,
+    BeforeValidator(_email_en_blanco_a_nulo),
+]
+
+
 class PacienteIn(Entrada):
     ESTADO: ClassVar[str] = "activo"
 
-    nombre: str
-    apellido: str
-    documento: str
-    telefono: str
-    email: str | None = None
+    nombre: Nombre
+    apellido: Apellido
+    documento: Documento
+    telefono: Telefono
+    email: Email = None
     activo: JsonValue = None
 
 

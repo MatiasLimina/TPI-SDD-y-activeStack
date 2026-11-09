@@ -26,7 +26,7 @@
 ## 4. Alta y validaciones
 
 - [x] 4.1 RED→GREEN: `tests/integration/test_api_pacientes.py` — `POST /pacientes` y registro del router en `create_app` (requisito "Alta de paciente"), con el conjunto exacto de claves; hacer públicas las bases `Entrada` y `Cambios` de `recursos.py`; verificar con ese archivo y los tests de recursos en verde
-- [ ] 4.2 RED→GREEN: requisito "Campos mínimos y textos normalizados": obligatorios, solo espacios, largo excedido y máximo aceptado en los cinco textos, recorte, email en blanco a nulo, documento y teléfono sin formato, y `U+0000` con `422` en cada texto, en alta y en edición (D15); verificar con el mismo archivo
+- [x] 4.2 RED→GREEN: requisito "Campos mínimos y textos normalizados": obligatorios, solo espacios, largo excedido y máximo aceptado en los cinco textos, recorte, email en blanco a nulo, documento y teléfono sin formato, y `U+0000` con `422` en cada texto, en alta y en edición (D15); verificar con el mismo archivo
 - [ ] 4.3 RED→GREEN: requisito "Formato mínimo del email" en alta y edición, incluido el email repetido entre pacientes (D16); verificar con el mismo archivo
 
 ## 5. Documento único
