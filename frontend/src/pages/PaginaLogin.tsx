@@ -5,7 +5,7 @@ import { ErrorApi, MENSAJE_GENERICO } from "../shared/api/errorApi";
 
 export default function PaginaLogin() {
   const cliente = useClienteApi();
-  const { iniciarSesion } = useSesion();
+  const { iniciarSesion, avisoVencida } = useSesion();
   const [enviando, setEnviando] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const enCurso = useRef(false);
@@ -38,6 +38,9 @@ export default function PaginaLogin() {
   return (
     <main>
       <h1>Turnos y Agenda</h1>
+      {avisoVencida && (
+        <p role="status">Tu sesión venció. Iniciá sesión de nuevo.</p>
+      )}
       <form onSubmit={(evento) => void enviar(evento)}>
         <label>
           Email
