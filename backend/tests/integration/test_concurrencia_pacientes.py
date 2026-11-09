@@ -8,7 +8,9 @@ entonces se deja confirmar a la primera.
 import threading
 import time
 from collections.abc import Callable, Iterator
+from datetime import UTC, datetime, timedelta
 from typing import Any
+from uuid import UUID
 
 import pytest
 from fastapi.testclient import TestClient
@@ -16,13 +18,23 @@ from sqlalchemy import Engine, delete, func, select, text
 from sqlalchemy.orm import Session, sessionmaker
 
 from app.api.auth import get_emisor_tokens, get_hasher
-from app.infrastructure.db.models import Paciente, Usuario
+from app.application.crear_turno import CrearTurno, SolicitudTurno
+from app.application.gestion_recursos import DesactivarRecurso
+from app.application.reprogramar_turno import ReprogramarTurno, SolicitudReprogramacion
+from app.domain.turnos import ReferenciaInvalidaError, TurnoPropuesto
+from app.infrastructure.db.models import Paciente, Turno, Usuario
+from app.infrastructure.db.repositorio_pacientes import RepositorioPacientes
+from app.infrastructure.db.repositorio_turnos import RepositorioTurnos
 from app.infrastructure.db.session import get_session
 from app.infrastructure.security.contrasenas import Hasher
 from app.infrastructure.security.tokens import EmisorTokens
 from app.main import create_app
+from tests.integration.factories import Catalogo
 
 ESPERA_S = 15
+AHORA = datetime(2026, 10, 7, 12, 0, tzinfo=UTC)  # 2026-10-07 09:00 hora local
+INICIO = datetime(2026, 10, 8, 13, 0, tzinfo=UTC)  # 10:00 hora local
+OTRO_INICIO = INICIO + timedelta(hours=5)
 DOCUMENTO = "FIC-CONC-0101"
 
 
@@ -158,3 +170,145 @@ def test_altas_simultaneas_con_el_mismo_documento_el_segundo_responde_409_no_500
     assert respuesta.status_code == 409, respuesta.text
     assert respuesta.json() == {"detail": {"codigo": "recurso_duplicado", "campo": "documento"}}
     assert _cantidad_con_documento(motor_concurrente, DOCUMENTO) == 1
+
+
+# --- Desactivación de paciente simultánea con un alta o una reprogramación de turno ---------
+
+
+def _solicitud(catalogo: Catalogo) -> SolicitudTurno:
+    return SolicitudTurno(
+        profesional_id=catalogo.profesionales[0].id,
+        paciente_id=catalogo.pacientes[0].id,
+        prestacion_id=catalogo.limpieza.id,
+        sillon_id=catalogo.sillones[0].id,
+        inicio=INICIO,
+    )
+
+
+def _desactivar_sin_confirmar(sesion: Session, paciente_id: UUID) -> None:
+    """Desactiva al paciente en una transacción que queda abierta, con la fila bloqueada."""
+    repo = RepositorioPacientes(sesion)
+    paciente = repo.obtener_para_actualizar(paciente_id)
+    assert paciente is not None
+    repo.modificar(paciente, {"activo": False})
+    repo.guardar()
+
+
+def _turnos_del_profesional(motor: Engine, catalogo: Catalogo) -> list[Turno]:
+    with Session(motor) as sesion:
+        return list(
+            sesion.scalars(
+                select(Turno).where(Turno.profesional_id == catalogo.profesionales[0].id)
+            )
+        )
+
+
+def _activo(motor: Engine, paciente_id: UUID) -> bool:
+    with Session(motor) as sesion:
+        return bool(sesion.scalar(select(Paciente.activo).where(Paciente.id == paciente_id)))
+
+
+def test_alta_de_turno_espera_a_una_desactivacion_de_paciente_en_curso_y_responde_inactiva(
+    motor_concurrente: Engine, fabrica: sessionmaker[Session], catalogo_commiteado: Catalogo
+) -> None:
+    paciente = catalogo_commiteado.pacientes[0]
+
+    with fabrica() as desactivadora:
+        _desactivar_sin_confirmar(desactivadora, paciente.id)
+        alta = Hilo(
+            lambda: _con_sesion(
+                fabrica,
+                lambda sesion: CrearTurno(RepositorioTurnos(sesion), reloj=lambda: AHORA).ejecutar(
+                    _solicitud(catalogo_commiteado)
+                ),
+            )
+        )
+        _esperar_bloqueo(motor_concurrente, "FOR SHARE")
+        assert not alta.terminada.is_set()
+        desactivadora.commit()
+    error = alta.esperar()
+
+    assert isinstance(error, ReferenciaInvalidaError), error
+    assert (error.referencia, error.motivo) == ("paciente", "inactiva")
+    assert _turnos_del_profesional(motor_concurrente, catalogo_commiteado) == []
+
+
+def test_desactivacion_de_paciente_espera_a_un_alta_en_curso_y_el_turno_conserva_al_paciente(
+    motor_concurrente: Engine, fabrica: sessionmaker[Session], catalogo_commiteado: Catalogo
+) -> None:
+    paciente = catalogo_commiteado.pacientes[0]
+    detenida = threading.Event()
+    confirmar_alta = threading.Event()
+
+    def detener_tras_validar_referencias(_: TurnoPropuesto) -> None:
+        # Las referencias ya se cargaron (y bloquearon); el INSERT del turno todavía no ocurrió
+        detenida.set()
+        confirmar_alta.wait(timeout=ESPERA_S)
+
+    alta = Hilo(
+        lambda: _con_sesion(
+            fabrica,
+            lambda sesion: CrearTurno(
+                RepositorioTurnos(sesion),
+                reloj=lambda: AHORA,
+                validadores=[detener_tras_validar_referencias],
+            ).ejecutar(_solicitud(catalogo_commiteado)),
+        )
+    )
+    assert detenida.wait(timeout=ESPERA_S)
+    baja = Hilo(
+        lambda: _con_sesion(
+            fabrica,
+            lambda sesion: DesactivarRecurso(RepositorioPacientes(sesion)).ejecutar(paciente.id),
+        )
+    )
+    _esperar_bloqueo(motor_concurrente, "FOR UPDATE")
+    assert not baja.terminada.is_set()
+    assert _activo(motor_concurrente, paciente.id) is True
+
+    confirmar_alta.set()
+    resultado_alta, resultado_baja = alta.esperar(), baja.esperar()
+
+    assert not isinstance(resultado_alta, Exception), resultado_alta
+    assert not isinstance(resultado_baja, Exception), resultado_baja
+    turnos = _turnos_del_profesional(motor_concurrente, catalogo_commiteado)
+    assert [t.paciente_id for t in turnos] == [paciente.id]
+    assert _activo(motor_concurrente, paciente.id) is False
+
+
+def test_reprogramacion_espera_a_una_desactivacion_de_paciente_y_el_turno_no_se_mueve(
+    motor_concurrente: Engine, fabrica: sessionmaker[Session], catalogo_commiteado: Catalogo
+) -> None:
+    paciente = catalogo_commiteado.pacientes[0]
+    turno = _con_sesion(
+        fabrica,
+        lambda sesion: CrearTurno(RepositorioTurnos(sesion), reloj=lambda: AHORA).ejecutar(
+            _solicitud(catalogo_commiteado)
+        ),
+    )
+
+    with fabrica() as desactivadora:
+        _desactivar_sin_confirmar(desactivadora, paciente.id)
+        cambio = Hilo(
+            lambda: _con_sesion(
+                fabrica,
+                lambda sesion: ReprogramarTurno(
+                    RepositorioTurnos(sesion), reloj=lambda: AHORA
+                ).ejecutar(turno.id, SolicitudReprogramacion(inicio=OTRO_INICIO)),
+            )
+        )
+        _esperar_bloqueo(motor_concurrente, "FOR SHARE")
+        assert not cambio.terminada.is_set()
+        desactivadora.commit()
+    error = cambio.esperar()
+
+    assert isinstance(error, ReferenciaInvalidaError), error
+    assert (error.referencia, error.motivo) == ("paciente", "inactiva")
+    (guardado,) = _turnos_del_profesional(motor_concurrente, catalogo_commiteado)
+    assert guardado.inicio == INICIO
+
+
+def _con_sesion[T](fabrica: sessionmaker[Session], operacion: Callable[[Session], T]) -> T:
+    """Corre la operación en una sesión propia, como un request."""
+    with fabrica() as sesion:
+        return operacion(sesion)
