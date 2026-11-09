@@ -228,3 +228,56 @@ def test_post_pacientes_con_caracter_nulo_responde_422_no_500(
 
     assert respuesta.status_code == 422
     assert _cantidad(db_session) == 0
+
+
+# --- Formato mínimo del email -------------------------------------------------------------
+
+
+@pytest.mark.parametrize(
+    "email",
+    [
+        "carla.example.com",
+        "carla @example.com",
+        "carla@exam ple.com",
+        "@example.com",
+        "carla@",
+        "carla@a@example.com",
+        "carla\t@example.com",
+    ],
+    ids=[
+        "sin-arroba",
+        "espacio-local",
+        "espacio-dominio",
+        "sin-local",
+        "sin-dominio",
+        "dos",
+        "tab",
+    ],
+)
+def test_post_pacientes_con_email_mal_formado_responde_422_y_no_persiste(
+    client: TestClient, db_session: Session, email: str
+) -> None:
+    respuesta = client.post("/pacientes", json=_body(email=email))
+
+    assert respuesta.status_code == 422
+    assert _cantidad(db_session) == 0
+
+
+def test_post_pacientes_guarda_el_email_como_se_envio_sin_cambiar_mayusculas(
+    client: TestClient,
+) -> None:
+    respuesta = client.post("/pacientes", json=_body(email="Carla.Imaginaria@Example.COM"))
+
+    assert respuesta.status_code == 201
+    assert respuesta.json()["email"] == "Carla.Imaginaria@Example.COM"
+
+
+def test_post_pacientes_admite_un_email_repetido_entre_pacientes(
+    client: TestClient, db_session: Session
+) -> None:
+    uno = _crear(client, email="familia@example.com")
+    otro = _crear(client, documento="FIC-0102", email="familia@example.com")
+
+    assert uno["id"] != otro["id"]
+    assert _en_base(db_session, uno["id"]).email == "familia@example.com"
+    assert _en_base(db_session, otro["id"]).email == "familia@example.com"

@@ -17,6 +17,7 @@ from sqlalchemy.orm import Session
 from app.api.auth import RecepcionistaAutenticada
 from app.api.recursos import Entrada
 from app.application.gestion_recursos import CrearRecurso
+from app.domain.pacientes import email_valido
 from app.infrastructure.db.models import Paciente
 from app.infrastructure.db.repositorio_pacientes import RepositorioPacientes
 from app.infrastructure.db.session import get_session
@@ -38,6 +39,13 @@ def _texto(largo: int) -> Any:
     ]
 
 
+def _con_formato_de_email(valor: str) -> str:
+    """Chequeo mínimo del dominio (DD-31 m); el mensaje no cita el valor."""
+    if not email_valido(valor):
+        raise ValueError("el email debe tener la forma algo@algo, sin espacios")
+    return valor
+
+
 def _email_en_blanco_a_nulo(valor: Any) -> Any:
     if isinstance(valor, str):
         return valor.strip() or None
@@ -49,7 +57,13 @@ Apellido = _texto(100)
 Documento = _texto(20)
 Telefono = _texto(30)
 Email = Annotated[
-    Annotated[str, StringConstraints(max_length=254), AfterValidator(_sin_caracter_nulo)] | None,
+    Annotated[
+        str,
+        StringConstraints(max_length=254),
+        AfterValidator(_sin_caracter_nulo),
+        AfterValidator(_con_formato_de_email),
+    ]
+    | None,
     BeforeValidator(_email_en_blanco_a_nulo),
 ]
 
