@@ -31,8 +31,8 @@
 
 ## 5. Documento único
 
-- [ ] 5.1 RED→GREEN: requisito "Documento único" en alta, en edición y con un paciente desactivado: `409 recurso_duplicado` con `campo = "documento"` por el nombre `uq_paciente_documento` (D10); verificar con `test_api_pacientes.py`
-- [ ] 5.2 RED→GREEN: `tests/integration/test_concurrencia_pacientes.py` — escenario "Altas simultáneas con el mismo documento", con `motor_concurrente` y una primera transacción sin confirmar; el segundo responde `409`, no `500`, de forma determinista; verificar corriendo el archivo varias veces
+- [x] 5.1 RED→GREEN: requisito "Documento único" en alta, en edición y con un paciente desactivado: `409 recurso_duplicado` con `campo = "documento"` por el nombre `uq_paciente_documento` (D10); verificar con `test_api_pacientes.py`
+- [x] 5.2 RED→GREEN: `tests/integration/test_concurrencia_pacientes.py` — escenario "Altas simultáneas con el mismo documento", con `motor_concurrente` y una primera transacción sin confirmar; el segundo responde `409`, no `500`, de forma determinista; verificar corriendo el archivo varias veces
 
 ## 6. Edición
 

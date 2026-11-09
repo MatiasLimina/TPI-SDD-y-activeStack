@@ -281,3 +281,82 @@ def test_post_pacientes_admite_un_email_repetido_entre_pacientes(
     assert uno["id"] != otro["id"]
     assert _en_base(db_session, uno["id"]).email == "familia@example.com"
     assert _en_base(db_session, otro["id"]).email == "familia@example.com"
+
+
+# --- Documento único ----------------------------------------------------------------------
+
+CUERPO_DUPLICADO = {"detail": {"codigo": "recurso_duplicado", "campo": "documento"}}
+
+
+def _existente(
+    session: Session, documento: str = "FIC-0101", *, activo: bool = True, nombre: str = "Carla"
+) -> Paciente:
+    paciente = Paciente(
+        nombre=nombre,
+        apellido="Imaginaria",
+        documento=documento,
+        telefono="+54 11 5555-0101",
+        activo=activo,
+    )
+    session.add(paciente)
+    session.flush()
+    return paciente
+
+
+def _con_documento(session: Session, documento: str) -> int:
+    session.expire_all()
+    return (
+        session.scalar(
+            select(func.count()).select_from(Paciente).where(Paciente.documento == documento)
+        )
+        or 0
+    )
+
+
+def test_post_pacientes_con_documento_repetido_responde_409_aunque_traiga_espacios(
+    client: TestClient, db_session: Session
+) -> None:
+    _existente(db_session)
+
+    respuesta = client.post("/pacientes", json=_body(documento=" FIC-0101 ", nombre="Otra"))
+
+    assert respuesta.status_code == 409
+    assert respuesta.json() == CUERPO_DUPLICADO
+    assert _con_documento(db_session, "FIC-0101") == 1
+    assert _cantidad(db_session) == 1
+
+
+def test_post_pacientes_con_documento_de_un_desactivado_responde_409(
+    client: TestClient, db_session: Session
+) -> None:
+    _existente(db_session, activo=False)
+
+    respuesta = client.post("/pacientes", json=_body())
+
+    assert respuesta.status_code == 409
+    assert respuesta.json() == CUERPO_DUPLICADO
+    assert _cantidad(db_session) == 1
+
+
+def test_post_pacientes_tras_un_409_la_misma_sesion_sigue_aceptando_altas(
+    client: TestClient, db_session: Session
+) -> None:
+    _existente(db_session)
+    assert client.post("/pacientes", json=_body()).status_code == 409
+
+    respuesta = client.post("/pacientes", json=_body(documento="FIC-0102"))
+
+    assert respuesta.status_code == 201
+    assert _cantidad(db_session) == 2
+
+
+def test_post_pacientes_409_no_incluye_el_documento_ni_datos_del_existente(
+    client: TestClient, db_session: Session
+) -> None:
+    _existente(db_session, nombre="Nombre-Del-Existente")
+
+    respuesta = client.post("/pacientes", json=_body())
+
+    assert respuesta.status_code == 409
+    assert "FIC-0101" not in respuesta.text
+    assert "Nombre-Del-Existente" not in respuesta.text
