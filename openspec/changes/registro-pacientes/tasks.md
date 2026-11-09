@@ -19,9 +19,9 @@
 
 ## 3. Repositorio de pacientes
 
-- [ ] 3.1 RED→GREEN: `tests/integration/test_repositorio_pacientes.py` — `RepositorioPacientes.buscar` con `DEFINICION_PACIENTE`: orden apellido, nombre e `id`, inactivos incluidos, coincidencia parcial por cada campo, AND entre términos y plegado en ambos sentidos (D5, D6, D7); verificar con ese archivo en verde
-- [ ] 3.2 RED→GREEN: `buscar` escapa `%`, `_` y `\`, y aplica `limite` y `desplazamiento` después del orden, con páginas sin repetidos ante apellido y nombre iguales (D5, D8); verificar con el mismo archivo
-- [ ] 3.3 RED→GREEN: `tiene_turno_de(paciente_id, profesional_id)` — verdadero con un turno propio `programado` o cancelado, también pasado; falso con turnos solo de otro profesional, sin turnos o con un id inexistente (D3, D4); verificar con el mismo archivo
+- [x] 3.1 RED→GREEN: `tests/integration/test_repositorio_pacientes.py` — `RepositorioPacientes.buscar` con `DEFINICION_PACIENTE`: orden apellido, nombre e `id`, inactivos incluidos, coincidencia parcial por cada campo, AND entre términos y plegado en ambos sentidos (D5, D6, D7); verificar con ese archivo en verde
+- [x] 3.2 RED→GREEN: `buscar` escapa `%`, `_` y `\`, y aplica `limite` y `desplazamiento` después del orden, con páginas sin repetidos ante apellido y nombre iguales (D5, D8); verificar con el mismo archivo
+- [x] 3.3 RED→GREEN: `tiene_turno_de(paciente_id, profesional_id)` — verdadero con un turno propio `programado` o cancelado, también pasado; falso con turnos solo de otro profesional, sin turnos o con un id inexistente (D3, D4); verificar con el mismo archivo
 
 ## 4. Alta y validaciones
 
