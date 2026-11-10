@@ -1,6 +1,8 @@
 import { useSearchParams } from "react-router";
 
-import { contarElementos } from "../features/agenda/grilla";
+import { GrillaAgenda } from "../features/agenda/GrillaAgenda";
+import { armarColumnas, contarElementos } from "../features/agenda/grilla";
+import { crearNombres } from "../features/agenda/nombres";
 import { useAgenda } from "../features/agenda/useAgenda";
 import { useCatalogos } from "../features/agenda/useCatalogos";
 import { aRango, leerVista } from "../features/agenda/vistaAgenda";
@@ -34,6 +36,17 @@ export default function PaginaAgenda() {
     if (errorCatalogos !== null) reintentar();
     if (agenda.error !== null) agenda.recargar();
   };
+  const columnas =
+    datos === null || catalogos === null
+      ? []
+      : armarColumnas({
+          vista,
+          rol,
+          profesionalPropio: sesion?.claims.profesionalId ?? null,
+          datos,
+          profesionales: catalogos.profesionales,
+          sillones: catalogos.sillones,
+        });
   return (
     <main>
       <h1>Agenda</h1>
@@ -55,6 +68,9 @@ export default function PaginaAgenda() {
         <p>
           {conteo.canceladosOcultos > 0 ? TEXTO_SOLO_CANCELADOS : TEXTO_VACIO}
         </p>
+      )}
+      {catalogos !== null && (
+        <GrillaAgenda columnas={columnas} nombres={crearNombres(catalogos)} />
       )}
     </main>
   );

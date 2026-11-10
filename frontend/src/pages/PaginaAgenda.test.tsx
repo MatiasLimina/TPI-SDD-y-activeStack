@@ -1,8 +1,15 @@
-import { act, screen, waitFor } from "@testing-library/react";
+import { act, screen, waitFor, within } from "@testing-library/react";
 
 import { CLAVE_TOKEN } from "../features/sesion/almacenamiento";
-import { instalarApiFalsa } from "../test/apiFalsa";
-import { turno } from "../test/fabricas";
+import { instalarApiFalsa, type ApiFalsa } from "../test/apiFalsa";
+import {
+  bloqueo,
+  ID_LUIS,
+  prestacion,
+  profesional,
+  sillon,
+  turno,
+} from "../test/fabricas";
 import { renderizarApp } from "../test/renderizarApp";
 import { usarRelojFijo } from "../test/reloj";
 import {
@@ -311,6 +318,7 @@ describe("Actualización manual", () => {
     );
     expect(screen.queryByText("Cargando agenda…")).not.toBeInTheDocument();
     expect(screen.queryByText(VACIO)).not.toBeInTheDocument();
+    expect(screen.getByText("Imaginaria, Carla")).toBeInTheDocument();
     await act(async () => {
       pendiente.resolver(CON_UN_TURNO_DEL_DIA_9);
     });
@@ -345,7 +353,8 @@ describe("Actualización manual", () => {
     expect(
       await screen.findByText("No se pudo conectar con el servidor."),
     ).toBeInTheDocument();
-    // Sigue sin mostrar el período vacío ni la carga: los datos anteriores están a la vista
+    // Los datos anteriores siguen a la vista
+    expect(screen.getByText("Imaginaria, Carla")).toBeInTheDocument();
     expect(screen.queryByText(VACIO)).not.toBeInTheDocument();
     expect(screen.queryByText("Cargando agenda…")).not.toBeInTheDocument();
   });
@@ -367,5 +376,159 @@ describe("Actualización manual", () => {
     await user.click(screen.getByRole("button", { name: "Actualizar" }));
 
     expect(await screen.findByText(SOLO_CANCELADOS)).toBeInTheDocument();
+  });
+});
+
+interface Datos {
+  profesionales?: ReturnType<typeof profesional>[];
+  sillones?: ReturnType<typeof sillon>[];
+  prestaciones?: ReturnType<typeof prestacion>[];
+  turnos?: ReturnType<typeof turno>[];
+  bloqueos?: ReturnType<typeof bloqueo>[];
+}
+
+/** Configura los catálogos y la agenda; por defecto, Ana, `Sillón 1` y `Limpieza`. */
+function cargar(api: ApiFalsa, datos: Datos = {}) {
+  api.responder("GET /profesionales", {
+    status: 200,
+    cuerpo: datos.profesionales ?? [profesional()],
+  });
+  api.responder("GET /sillones", {
+    status: 200,
+    cuerpo: datos.sillones ?? [sillon()],
+  });
+  api.responder("GET /prestaciones", {
+    status: 200,
+    cuerpo: datos.prestaciones ?? [prestacion()],
+  });
+  api.responder("GET /turnos", {
+    status: 200,
+    cuerpo: { turnos: datos.turnos ?? [], bloqueos: datos.bloqueos ?? [] },
+  });
+}
+
+function columna(nombre: string) {
+  return screen.getByRole("region", { name: nombre });
+}
+
+describe("Contenido de la agenda", () => {
+  it("muestra el turno con su hora, el paciente y la prestación en la columna del profesional", async () => {
+    conSesion();
+    cargar(instalarApiFalsa(), { turnos: [turno()] });
+
+    renderizarApp("/agenda?fecha=2026-11-09");
+
+    const ana = await screen.findByRole("region", { name: "Ficticia, Ana" });
+    expect(within(ana).getByText("10:00")).toBeInTheDocument();
+    expect(within(ana).getByText("10:45")).toBeInTheDocument();
+    expect(within(ana).getByText("Imaginaria, Carla")).toBeInTheDocument();
+    expect(within(ana).getByText("Limpieza")).toBeInTheDocument();
+  });
+
+  it("muestra los horarios en Buenos Aires aunque el navegador esté en Tokio", async () => {
+    conSesion();
+    cargar(instalarApiFalsa(), {
+      turnos: [
+        turno({
+          inicio: "2026-11-09T22:30:00-03:00",
+          fin: "2026-11-09T23:15:00-03:00",
+        }),
+      ],
+    });
+
+    renderizarApp("/agenda?fecha=2026-11-09");
+
+    const ana = await screen.findByRole("region", { name: "Ficticia, Ana" });
+    expect(within(ana).getByText("22:30")).toBeInTheDocument();
+    expect(within(ana).getByText("23:15")).toBeInTheDocument();
+  });
+
+  it("muestra la medianoche como 00:00 y nunca como 24:00", async () => {
+    conSesion();
+    cargar(instalarApiFalsa(), {
+      turnos: [
+        turno({
+          inicio: "2026-11-09T00:00:00-03:00",
+          fin: "2026-11-09T00:30:00-03:00",
+        }),
+      ],
+    });
+
+    renderizarApp("/agenda?fecha=2026-11-09");
+
+    const ana = await screen.findByRole("region", { name: "Ficticia, Ana" });
+    expect(within(ana).getByText("00:00")).toBeInTheDocument();
+    expect(screen.queryByText(/24:00/)).not.toBeInTheDocument();
+  });
+
+  it("muestra el nombre de una prestación desactivada", async () => {
+    conSesion();
+    cargar(instalarApiFalsa(), {
+      prestaciones: [prestacion({ nombre: "Control", activa: false })],
+      turnos: [turno()],
+    });
+
+    renderizarApp("/agenda?fecha=2026-11-09");
+
+    expect(await screen.findByText("Control")).toBeInTheDocument();
+  });
+
+  it("un id ausente del catálogo se ve con un texto genérico y sin mostrar el id", async () => {
+    conSesion();
+    cargar(instalarApiFalsa(), {
+      prestaciones: [],
+      turnos: [
+        turno({ prestacion_id: "00000000-0000-4000-8000-0000000000d9" }),
+      ],
+    });
+
+    renderizarApp("/agenda?fecha=2026-11-09");
+
+    expect(
+      await screen.findByText("Prestación no disponible"),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByText(/00000000-0000-4000-8000-0000000000d9/),
+    ).not.toBeInTheDocument();
+  });
+
+  it("un turno de un profesional ausente del catálogo tiene su columna con texto genérico", async () => {
+    conSesion();
+    cargar(instalarApiFalsa(), {
+      turnos: [turno({ profesional_id: ID_LUIS })],
+    });
+
+    renderizarApp("/agenda?fecha=2026-11-09");
+
+    const columnaDesconocida = await screen.findByRole("region", {
+      name: "Profesional no disponible",
+    });
+    expect(
+      within(columnaDesconocida).getByText("Imaginaria, Carla"),
+    ).toBeInTheDocument();
+    expect(columna("Ficticia, Ana")).toBeInTheDocument();
+    expect(screen.queryByText(new RegExp(ID_LUIS))).not.toBeInTheDocument();
+  });
+
+  it("incluye en el nombre de las columnas a los profesionales desactivados con turnos", async () => {
+    conSesion();
+    cargar(instalarApiFalsa(), {
+      profesionales: [
+        profesional(),
+        profesional({
+          id: ID_LUIS,
+          nombre: "Luis",
+          apellido: "Inventado",
+          activo: false,
+        }),
+      ],
+      turnos: [turno({ profesional_id: ID_LUIS })],
+    });
+
+    renderizarApp("/agenda?fecha=2026-11-09");
+
+    expect(
+      await screen.findByRole("region", { name: "Inventado, Luis" }),
+    ).toBeInTheDocument();
   });
 });
