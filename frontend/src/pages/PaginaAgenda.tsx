@@ -1,11 +1,18 @@
 import { useSearchParams } from "react-router";
 
+import { BarraAgenda } from "../features/agenda/BarraAgenda";
+
 import { GrillaAgenda } from "../features/agenda/GrillaAgenda";
 import { armarColumnas, contarElementos } from "../features/agenda/grilla";
 import { crearNombres } from "../features/agenda/nombres";
 import { useAgenda } from "../features/agenda/useAgenda";
 import { useCatalogos } from "../features/agenda/useCatalogos";
-import { aRango, leerVista } from "../features/agenda/vistaAgenda";
+import {
+  aParametros,
+  aRango,
+  leerVista,
+  type VistaAgenda,
+} from "../features/agenda/vistaAgenda";
 import { useSesion } from "../features/sesion/ProveedorSesion";
 import { hoyLocal } from "../shared/tiempo/zonaConsultorio";
 
@@ -15,9 +22,10 @@ const TEXTO_SOLO_CANCELADOS =
 
 export default function PaginaAgenda() {
   const { sesion } = useSesion();
-  const [parametros] = useSearchParams();
+  const [parametros, setParametros] = useSearchParams();
   const rol = sesion?.claims.rol ?? "odontologo";
-  const vista = leerVista(parametros, rol, hoyLocal());
+  const hoy = hoyLocal();
+  const vista = leerVista(parametros, rol, hoy);
   const { desde, hasta } = aRango(vista);
   const agenda = useAgenda({
     desde,
@@ -32,6 +40,8 @@ export default function PaginaAgenda() {
   const error = errorCatalogos ?? agenda.error;
   const sinDatos = datos === null || catalogos === null;
   const conteo = datos === null ? null : contarElementos(datos, vista);
+  const cambiarVista = (nueva: VistaAgenda) =>
+    setParametros(aParametros(nueva));
   const reintentarTodo = () => {
     if (errorCatalogos !== null) reintentar();
     if (agenda.error !== null) agenda.recargar();
@@ -50,9 +60,12 @@ export default function PaginaAgenda() {
   return (
     <main>
       <h1>Agenda</h1>
-      <button type="button" onClick={agenda.recargar}>
-        Actualizar
-      </button>
+      <BarraAgenda
+        vista={vista}
+        hoy={hoy}
+        alCambiar={cambiarVista}
+        alActualizar={agenda.recargar}
+      />
       {error !== null && (
         <div role="alert">
           <p>{error.mensaje}</p>

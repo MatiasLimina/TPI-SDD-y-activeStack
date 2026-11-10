@@ -25,12 +25,15 @@ const VACIO = "No hay turnos ni bloqueos en este período.";
 const SOLO_CANCELADOS =
   "Solo hay turnos cancelados en este período. Activá Mostrar cancelados para verlos.";
 
-function conSesion(rol: "recepcionista" | "odontologo" = "recepcionista") {
+function conSesion(
+  rol: "recepcionista" | "odontologo" = "recepcionista",
+  exp: number = VIGENTE,
+) {
   sessionStorage.setItem(
     CLAVE_TOKEN,
     rol === "recepcionista"
-      ? tokenDeRecepcionista(VIGENTE)
-      : tokenDeOdontologo(VIGENTE),
+      ? tokenDeRecepcionista(exp)
+      : tokenDeOdontologo(exp),
   );
 }
 
@@ -530,5 +533,250 @@ describe("Contenido de la agenda", () => {
     expect(
       await screen.findByRole("region", { name: "Inventado, Luis" }),
     ).toBeInTheDocument();
+  });
+});
+
+/** `desde` y `hasta` del último `GET /turnos` hecho. */
+function rangoPedido(api: ApiFalsa): [string | null, string | null] {
+  const pedidos = api.pedidos("GET /turnos");
+  const ultimo = pedidos[pedidos.length - 1];
+  return [
+    ultimo?.parametros.get("desde") ?? null,
+    ultimo?.parametros.get("hasta") ?? null,
+  ];
+}
+
+async function esperarCarga() {
+  await waitFor(() =>
+    expect(screen.queryByText("Cargando agenda…")).not.toBeInTheDocument(),
+  );
+}
+
+describe("Vistas diaria y semanal", () => {
+  it("la semana va de lunes a domingo con una columna por día", async () => {
+    conSesion();
+    const api = instalarApiFalsa();
+
+    renderizarApp("/agenda?vista=semana&fecha=2026-11-12");
+
+    expect(
+      await screen.findByRole("region", { name: "Lunes 09/11" }),
+    ).toBeInTheDocument();
+    expect(screen.getAllByRole("region")).toHaveLength(7);
+    expect(
+      screen.getByRole("region", { name: "Domingo 15/11" }),
+    ).toBeInTheDocument();
+    expect(rangoPedido(api)).toEqual(["2026-11-09", "2026-11-15"]);
+  });
+
+  it.each([
+    ["lunes", "2026-11-09"],
+    ["domingo", "2026-11-15"],
+  ])("con una fecha que es %s la semana es la misma", async (_dia, fecha) => {
+    conSesion();
+    const api = instalarApiFalsa();
+
+    renderizarApp(`/agenda?vista=semana&fecha=${fecha}`);
+
+    await esperarCarga();
+    expect(rangoPedido(api)).toEqual(["2026-11-09", "2026-11-15"]);
+  });
+
+  it("de día a semana muestra la semana de la fecha en curso", async () => {
+    conSesion();
+    const api = instalarApiFalsa();
+    const { user } = renderizarApp("/agenda?fecha=2026-11-12");
+    await esperarCarga();
+
+    await user.click(screen.getByRole("button", { name: "Semana" }));
+
+    await waitFor(() =>
+      expect(rangoPedido(api)).toEqual(["2026-11-09", "2026-11-15"]),
+    );
+  });
+
+  it("de semana a día pide la fecha en curso", async () => {
+    conSesion();
+    const api = instalarApiFalsa();
+    const { user } = renderizarApp("/agenda?vista=semana&fecha=2026-11-12");
+    await esperarCarga();
+
+    await user.click(screen.getByRole("button", { name: "Día" }));
+
+    await waitFor(() =>
+      expect(rangoPedido(api)).toEqual(["2026-11-12", "2026-11-12"]),
+    );
+  });
+});
+
+describe("Navegación entre períodos", () => {
+  it("el período siguiente de un día es el día siguiente, con cambio de mes", async () => {
+    conSesion();
+    const api = instalarApiFalsa();
+    const { user } = renderizarApp("/agenda?fecha=2026-11-30");
+    await esperarCarga();
+
+    await user.click(screen.getByRole("button", { name: "Período siguiente" }));
+
+    await waitFor(() =>
+      expect(rangoPedido(api)).toEqual(["2026-12-01", "2026-12-01"]),
+    );
+  });
+
+  it("el período anterior de una semana es la semana anterior", async () => {
+    conSesion();
+    const api = instalarApiFalsa();
+    const { user } = renderizarApp("/agenda?vista=semana&fecha=2026-11-09");
+    await esperarCarga();
+
+    await user.click(screen.getByRole("button", { name: "Período anterior" }));
+
+    await waitFor(() =>
+      expect(rangoPedido(api)).toEqual(["2026-11-02", "2026-11-08"]),
+    );
+  });
+
+  it("una semana que cruza el año pasa a la siguiente", async () => {
+    conSesion();
+    const api = instalarApiFalsa();
+    const { user } = renderizarApp("/agenda?vista=semana&fecha=2026-12-21");
+    await esperarCarga();
+
+    await user.click(screen.getByRole("button", { name: "Período siguiente" }));
+
+    await waitFor(() =>
+      expect(rangoPedido(api)).toEqual(["2026-12-28", "2027-01-03"]),
+    );
+  });
+
+  it("Hoy vuelve al día actual en la vista diaria", async () => {
+    conSesion();
+    const api = instalarApiFalsa();
+    const { user } = renderizarApp("/agenda?fecha=2026-12-20");
+    await esperarCarga();
+
+    await user.click(screen.getByRole("button", { name: "Hoy" }));
+
+    await waitFor(() =>
+      expect(rangoPedido(api)).toEqual(["2026-11-09", "2026-11-09"]),
+    );
+  });
+
+  it("Hoy en la vista semanal muestra la semana actual", async () => {
+    conSesion();
+    const api = instalarApiFalsa();
+    const { user } = renderizarApp("/agenda?vista=semana&fecha=2026-12-14");
+    await esperarCarga();
+
+    await user.click(screen.getByRole("button", { name: "Hoy" }));
+
+    await waitFor(() =>
+      expect(rangoPedido(api)).toEqual(["2026-11-09", "2026-11-15"]),
+    );
+  });
+});
+
+describe("La vista se conserva en la URL", () => {
+  it("recargar desde la URL conserva la vista y el filtro de sillón", async () => {
+    conSesion();
+    const api = instalarApiFalsa();
+
+    renderizarApp(
+      "/agenda?vista=semana&fecha=2026-11-12&sillon=00000000-0000-4000-8000-0000000000c1",
+    );
+
+    await esperarCarga();
+    const [pedido] = api.pedidos("GET /turnos");
+    expect(pedido?.parametros.get("desde")).toBe("2026-11-09");
+    expect(pedido?.parametros.get("hasta")).toBe("2026-11-15");
+    expect(pedido?.parametros.get("sillon_id")).toBe(
+      "00000000-0000-4000-8000-0000000000c1",
+    );
+  });
+
+  it("cada cambio hace una navegación nueva: volver atrás recupera la vista anterior", async () => {
+    conSesion();
+    const api = instalarApiFalsa();
+    const { user, volver } = renderizarApp("/agenda?fecha=2026-11-09");
+    await esperarCarga();
+    await user.click(screen.getByRole("button", { name: "Período siguiente" }));
+    await waitFor(() =>
+      expect(rangoPedido(api)).toEqual(["2026-11-10", "2026-11-10"]),
+    );
+
+    await volver();
+
+    await waitFor(() =>
+      expect(rangoPedido(api)).toEqual(["2026-11-09", "2026-11-09"]),
+    );
+    expect(screen.getByTestId("busqueda").textContent).toBe(
+      "?fecha=2026-11-09",
+    );
+  });
+
+  it("la URL de la vista no contiene datos de pacientes", async () => {
+    conSesion();
+    const api = instalarApiFalsa();
+    api.responder("GET /turnos", CON_UN_TURNO_DEL_DIA_9);
+    const { user } = renderizarApp("/agenda?fecha=2026-11-09");
+    await esperarCarga();
+
+    await user.click(screen.getByRole("button", { name: "Semana" }));
+
+    const busqueda = screen.getByTestId("busqueda").textContent ?? "";
+    expect(busqueda).toBe("?vista=semana&fecha=2026-11-09");
+    expect(busqueda).not.toMatch(/Carla|Imaginaria/);
+  });
+
+  it.each([
+    ["una fecha que no existe", "2026-02-30", "2026-11-09"],
+    ["un año posterior al admitido", "9999-12-31", "2026-11-09"],
+    ["un año anterior al admitido", "0999-12-31", "2026-11-09"],
+    ["el último año admitido", "9998-12-31", "9998-12-31"],
+    ["el primer año admitido", "1000-01-01", "1000-01-01"],
+  ])("con %s pide la fecha que corresponde", async (_caso, fecha, pedida) => {
+    conSesion();
+    const api = instalarApiFalsa();
+
+    renderizarApp(`/agenda?fecha=${fecha}`);
+
+    await esperarCarga();
+    expect(rangoPedido(api)).toEqual([pedida, pedida]);
+  });
+
+  it("un filtro mal formado se ignora", async () => {
+    conSesion();
+    const api = instalarApiFalsa();
+
+    renderizarApp("/agenda?fecha=2026-11-09&profesional=no-es-un-id");
+
+    await esperarCarga();
+    expect(
+      api.pedidos("GET /turnos")[0]?.parametros.has("profesional_id"),
+    ).toBe(false);
+  });
+});
+
+describe("Día actual del consultorio", () => {
+  it("a las 23:00 en Buenos Aires la agenda abre el día de Buenos Aires, no el de Tokio", async () => {
+    vi.setSystemTime("2026-11-10T02:00:00Z");
+    conSesion("recepcionista", AHORA_SEGUNDOS + 7 * 86400);
+    const api = instalarApiFalsa();
+
+    renderizarApp("/agenda");
+
+    await esperarCarga();
+    expect(rangoPedido(api)).toEqual(["2026-11-09", "2026-11-09"]);
+  });
+
+  it("a las 00:00 en Buenos Aires ya es el día siguiente", async () => {
+    vi.setSystemTime("2026-11-10T03:00:00Z");
+    conSesion("recepcionista", AHORA_SEGUNDOS + 7 * 86400);
+    const api = instalarApiFalsa();
+
+    renderizarApp("/agenda");
+
+    await esperarCarga();
+    expect(rangoPedido(api)).toEqual(["2026-11-10", "2026-11-10"]);
   });
 });

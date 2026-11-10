@@ -18,6 +18,11 @@ function Ubicacion() {
   return <output data-testid="ubicacion">{useLocation().pathname}</output>;
 }
 
+/** Muestra los parámetros de la ruta actual, donde `/agenda` guarda su vista. */
+function Busqueda() {
+  return <output data-testid="busqueda">{useLocation().search}</output>;
+}
+
 /** Muestra cómo se llegó a la ruta actual (`POP`, `PUSH` o `REPLACE`): así se prueba que una redirección reemplaza la entrada del historial. */
 function TipoNavegacion() {
   return <output data-testid="tipo-navegacion">{useNavigationType()}</output>;
@@ -61,6 +66,7 @@ export function renderizarApp(ruta: string = "/") {
       </ProveedorSesion>
       <SondaNavegacion alObtener={(obtenida) => (navegar = obtenida)} />
       <Ubicacion />
+      <Busqueda />
       <TipoNavegacion />
     </MemoryRouter>,
   );
@@ -72,6 +78,8 @@ export function renderizarApp(ruta: string = "/") {
     cliente: cliente as ClienteApi,
     /** Navega como si se escribiera la ruta en la barra de direcciones. */
     navegarA: (ruta: string) => act(() => void irA(ruta)),
+    /** Vuelve atrás en el historial, como el botón del navegador. */
+    volver: () => act(() => void irA(-1)),
     ...vista,
   };
 }
