@@ -490,3 +490,66 @@ Ninguna tiene respuesta en la KB ni en las decisiones aprobadas. Las opciones so
 - No hay código del change: nada de esto se ejecutó. Solo se comprobaron `Intl`, los días de la semana, `AwareDatetime` y el camino de reprogramación del backend.
 - No se reabrieron D1 a D13 ni P1 a P8.
 - No son hallazgos: las fallas previas de `openspec validate --specs --strict` en otros cuatro specs, ni la cita a DD-34, que se crea en la tarea 11.1.
+
+## Revisión 3 — 2026-11-10
+
+- Fecha: 2026-11-10, sobre `8099863` (después del segundo `/opsx:update`).
+- **Pasada acotada por decisión del usuario**: solo el estado de H25 a H39 y 17 requirements (8 de `frontend-agenda`, 9 de `frontend-turnos`). Solo cuenta como BLOQUEANTE o MAYOR una contradicción real, una regla fuera de la KB y de las decisiones aprobadas, o un escenario no verificable o sin tarea. No se amplió la cobertura ni se buscaron bordes nuevos.
+- Specs en la rama: `frontend-agenda` (21 requirements, 90 escenarios), `frontend-turnos` (20, 92), `frontend-sesion` (1, 4). Total: 42 requirements, 186 escenarios, contados con `grep`.
+- Reglas aplicables: las de la revisión 2, más P9 a P15. No se reabrió ninguna decisión.
+- `openspec validate frontend-agenda-turnos --strict`: válido.
+- Veredicto: **LISTO PARA APPLY**
+- Conteo: 0 BLOQUEANTE, 0 MAYOR, 2 MENOR, 0 SUGERENCIA.
+
+### Estado de H25 a H39
+
+Comprobados uno por uno en los artefactos, no en la nota de actualización.
+
+| Hallazgo | Estado | Evidencia |
+|----------|--------|-----------|
+| H25 | Resuelto | "Filtro por un profesional desactivado sin elementos" (vista diaria, respuesta vacía) y "... con solo cancelados ocultos"; tarea 6.3 |
+| H26 | Resuelto | "Los obligatorios MUST comprobarse antes de comparar"; GIVEN de "Sin cambios" acotado; "Prestación que pasó a requerir sillón" envía; tarea 9.4 |
+| H27 | Resuelto | Requirement "Formulario de reprogramación" y "Hora y fecha vaciadas"; tarea 9.4 |
+| H28 | Resuelto | "Para ella, un recurso desactivado..." y "Profesional desactivado sin elementos"; tareas 4.3 y 6.5 |
+| H29 | Resuelto | "Cambiar el valor rechazado" acotado al alta y "Valor rechazado que es el actual del turno"; tarea 9.5 |
+| H30 | Resuelto | "Salvo el paciente", "Valor rechazado inexistente", "Prestación inactiva al reprogramar" y su texto en D12; tareas 7.1, 9.3 y 9.5 |
+| H31 | Resuelto | "Prestación que requiere sillón" ahora envía y afirma `Completá este campo.`; tarea 9.1 |
+| H32 | Resuelto | Requirement "Columnas con filtros", "Filtrar por profesional" con su agrupación y "Filtro con un id que no existe" sin columna; tareas 4.3 y 6.3 |
+| H33 | Resuelto | "Nombres de los recursos" y "Turno de un profesional ausente del catálogo"; D7; tareas 4.3 y 6.1 |
+| H34 | Resuelto | "carga inicial de los catálogos" y "Relectura de catálogos fallida con el formulario abierto"; tarea 9.7 |
+| H35 | Resuelto | "Inicio no alineado"; tarea 9.3 |
+| H36 | Resuelto | "El detalle se cierra al abrir una operación"; "no queda ningún diálogo abierto" en "Reprogramación exitosa" y "Desistir"; tarea 9.7 |
+| H37 | Resuelto | "activos más el valor actual" y "Profesional desactivado"; "Profesional del filtro" y "Solo recursos activos"; tareas 9.1 y 9.4 |
+| H38 | Resuelto | Los cuatro puntos: GIVEN con la casilla activa, "Reenvío con otro error", bordes `0999-12-31` y `1000-01-01`, años en 6.2 y `POST` con `renderizarApp` en 9.3 |
+| H39 | Resuelto | `proposal.md` ya no anuncia `06` y lista `08`; coincide con 11.1 a 11.3 y con el cierre en `CHANGES.md` |
+
+### Requirements del alcance
+
+Sin contradicciones entre requirements ni escenarios, salvo la redacción de H40 y H41. No aparecen reglas fuera de la KB o de D1 a D19 y P1 a P15. Cada escenario de estos requirements tiene una tarea que lo nombra o nombra su caso.
+
+### Lecturas pedidas
+
+1. **P12 y P13: confirmada.** "Un id de filtro ausente del catálogo MUST NOT generar una columna por sí mismo" compone sin conflicto con "un elemento visible cuyo id no figura MUST tener columna": la columna la genera el elemento, y D1 lo dice en esos términos. "A lo sumo su columna" sigue valiendo, porque la API filtrada solo trae elementos de ese id. Además, el choque casi no existe: por DD-32 l, un id que no existe da `200` vacío, así que un id con elementos es un recurso real que falta en un catálogo viejo. Es decir, P12 habla de inexistentes y P13 de ausentes del catálogo cargado. No hace falta otro escenario.
+2. **P11: confirmada.** "El actual del turno, mientras lo sea" se refiere al valor del turno, no al elegido en el formulario. Ese valor solo cambia con un `PATCH` exitoso, y ahí el formulario se cierra, de modo que la opción sigue ofrecida todo el tiempo que el formulario esté abierto. Coincide con D7 ("más el valor actual al reprogramar"), con el requirement "Formulario de reprogramación" y con el escenario "Valor rechazado que es el actual del turno". Un valor rechazado que no es el actual sigue la regla general, "hasta cambiarlo".
+
+### Hallazgos
+
+Numeración continua. Ninguno frena el Apply; corregir solo si se vuelve a tocar el spec.
+
+#### H40 — "Filtrar por profesional" no dice que el profesional esté activo · MENOR
+- **Dónde**: `frontend-agenda`, requirement "Filtros por profesional y por sillón", escenario "Filtrar por profesional".
+- **Problema**: "se ve una sola columna" no vale para un desactivado sin elementos, que tiene su propio escenario con "ninguna columna". El escenario específico lo resuelve.
+- **Fuente**: P1; D3; control C5.
+- **Sugerencia**: decir "un profesional activo" en el GIVEN.
+
+#### H41 — "Sillón según la prestación" no se limita al alta · MENOR
+- **Dónde**: `frontend-turnos`, requirements "Sillón según la prestación" y "Reprogramación parcial".
+- **Problema**: "el pedido MUST NOT incluir `sillon_id`", leído aparte, choca con el `sillon_id` nulo de "Prestación que dejó de requerir sillón". No es una contradicción real: habla de "la prestación elegida", que solo existe en el alta, y todos sus escenarios son de `POST /turnos`.
+- **Fuente**: D10; control C5.
+- **Sugerencia**: decir "el `POST /turnos` MUST NOT incluir `sillon_id`".
+
+### Fuera de esta revisión
+
+- Los requirements fuera de la lista, salvo para contrastar los del alcance.
+- Casos de borde nuevos, por decisión del usuario.
+- No hay código del change: nada se ejecutó.
