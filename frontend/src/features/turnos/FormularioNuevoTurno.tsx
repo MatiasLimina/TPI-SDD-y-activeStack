@@ -7,7 +7,14 @@ import type { Catalogos } from "../agenda/useCatalogos";
 import { SelectorPaciente } from "../pacientes/SelectorPaciente";
 import type { PacienteBusqueda } from "../pacientes/tipos";
 import { useClienteApi } from "../sesion/ProveedorSesion";
+import {
+  nombreProfesional,
+  PROFESIONAL_NO_DISPONIBLE,
+  SILLON_NO_DISPONIBLE,
+} from "../agenda/grilla";
+import { PRESTACION_NO_DISPONIBLE } from "../agenda/nombres";
 import { Campo } from "./Campo";
+import { OpcionesRecurso } from "./OpcionesRecurso";
 import { comoErrorApi } from "../agenda/errores";
 import { interpretarErrorTurno, type CampoTurno } from "./erroresTurno";
 
@@ -53,6 +60,7 @@ function Contenido({
   alCrear,
   alCerrar,
   alReleerAgenda,
+  alReleerCatalogos,
 }: PropsFormularioNuevoTurno) {
   const cliente = useClienteApi();
   const activoInicial = catalogos.profesionales.some(
@@ -68,11 +76,27 @@ function Contenido({
   const [hora, setHora] = useState("");
   const [duracion, setDuracion] = useState("");
   const [errores, setErrores] = useState<ErroresPorCampo>({});
-  const [general, setGeneral] = useState<string | null>(null);
+  const [generales, setGenerales] = useState<string[]>([]);
+  // El sillón se muestra aunque el catálogo no lo pida, si la API dijo que hace falta
+  const [sillonForzado, setSillonForzado] = useState(false);
+  // Valor rechazado de cada selector: sigue como opción hasta que se cambie (P5)
+  const [rechazado, setRechazado] = useState<
+    Partial<Record<"profesional" | "prestacion" | "sillon", string>>
+  >({});
   const [enviando, setEnviando] = useState(false);
 
   const prestacion = catalogos.prestaciones.find((p) => p.id === prestacionId);
-  const requiereSillon = prestacion?.requiere_sillon === true;
+  const mostrarSillon = prestacion?.requiere_sillon === true || sillonForzado;
+
+  /** El valor rechazado se ofrece mientras siga elegido. */
+  function conservar(
+    campo: "profesional" | "prestacion" | "sillon",
+    elegido: string,
+  ): string[] {
+    return rechazado[campo] !== undefined && rechazado[campo] === elegido
+      ? [elegido]
+      : [];
+  }
 
   async function enviar(evento: FormEvent) {
     evento.preventDefault();
@@ -82,11 +106,11 @@ function Contenido({
     if (paciente === null) faltantes.paciente = "Elegí un paciente.";
     if (profesionalId === "") faltantes.profesional = OBLIGATORIO;
     if (prestacionId === "") faltantes.prestacion = OBLIGATORIO;
-    if (requiereSillon && sillonId === "") faltantes.sillon = OBLIGATORIO;
+    if (mostrarSillon && sillonId === "") faltantes.sillon = OBLIGATORIO;
     if (fecha === "") faltantes.fecha = OBLIGATORIO;
     if (hora === "") faltantes.hora = OBLIGATORIO;
     setErrores(faltantes);
-    setGeneral(null);
+    setGenerales([]);
     if (Object.keys(faltantes).length > 0 || paciente === null) return;
 
     const inicio = aInstanteConDesfasaje(fecha, hora);
@@ -96,15 +120,38 @@ function Contenido({
         profesional_id: profesionalId,
         paciente_id: paciente.id,
         prestacion_id: prestacionId,
-        ...(requiereSillon ? { sillon_id: sillonId } : {}),
+        ...(mostrarSillon ? { sillon_id: sillonId } : {}),
         inicio,
         ...(duracion.trim() === "" ? {} : { duracion_min: Number(duracion) }),
       });
     } catch (causa) {
-      const interpretado = interpretarErrorTurno(comoErrorApi(causa), "crear");
-      setGeneral(interpretado.general);
+      const error = comoErrorApi(causa);
+      const interpretado = interpretarErrorTurno(error, "crear");
+      setErrores(interpretado.porCampo);
+      if (interpretado.porCampo.sillon !== undefined) setSillonForzado(true);
+      const referencia = error.datos.referencia;
+      if (
+        error.codigo === "referencia_invalida" &&
+        (referencia === "profesional" ||
+          referencia === "prestacion" ||
+          referencia === "sillon")
+      )
+        setRechazado({
+          [referencia]: {
+            profesional: profesionalId,
+            prestacion: prestacionId,
+            sillon: sillonId,
+          }[referencia],
+        });
+      setGenerales(interpretado.general === null ? [] : [interpretado.general]);
       if (interpretado.releerAgenda) alReleerAgenda();
       setEnviando(false);
+      if (interpretado.releerCatalogos) {
+        const falla = await alReleerCatalogos();
+        // El formulario sigue abierto: la falla se suma como error general (D7, P14)
+        if (falla !== null)
+          setGenerales((anteriores) => [...anteriores, falla.mensaje]);
+      }
       return;
     }
     alCrear(inicio);
@@ -112,7 +159,13 @@ function Contenido({
 
   return (
     <form noValidate onSubmit={(e) => void enviar(e)}>
-      {general !== null && <div role="alert">{general}</div>}
+      {generales.length > 0 && (
+        <div role="alert">
+          {generales.map((texto) => (
+            <p key={texto}>{texto}</p>
+          ))}
+        </div>
+      )}
       <fieldset>
         <legend>Paciente</legend>
         <SelectorPaciente
@@ -130,13 +183,13 @@ function Contenido({
             onChange={(e) => setProfesionalId(e.target.value)}
           >
             <option value="">Elegir…</option>
-            {catalogos.profesionales
-              .filter((p) => p.activo)
-              .map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.apellido}, {p.nombre}
-                </option>
-              ))}
+            <OpcionesRecurso
+              catalogo={catalogos.profesionales}
+              estaActivo={(p) => p.activo}
+              nombreDe={nombreProfesional}
+              nombreAusente={PROFESIONAL_NO_DISPONIBLE}
+              conservar={conservar("profesional", profesionalId)}
+            />
           </select>
         )}
       </Campo>
@@ -148,17 +201,17 @@ function Contenido({
             onChange={(e) => setPrestacionId(e.target.value)}
           >
             <option value="">Elegir…</option>
-            {catalogos.prestaciones
-              .filter((p) => p.activa)
-              .map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.nombre}
-                </option>
-              ))}
+            <OpcionesRecurso
+              catalogo={catalogos.prestaciones}
+              estaActivo={(p) => p.activa}
+              nombreDe={(p) => p.nombre}
+              nombreAusente={PRESTACION_NO_DISPONIBLE}
+              conservar={conservar("prestacion", prestacionId)}
+            />
           </select>
         )}
       </Campo>
-      {requiereSillon && (
+      {mostrarSillon && (
         <Campo etiqueta="Sillón" error={errores.sillon}>
           {(atributos) => (
             <select
@@ -167,13 +220,13 @@ function Contenido({
               onChange={(e) => setSillonId(e.target.value)}
             >
               <option value="">Elegir…</option>
-              {catalogos.sillones
-                .filter((s) => s.activo)
-                .map((s) => (
-                  <option key={s.id} value={s.id}>
-                    {s.nombre}
-                  </option>
-                ))}
+              <OpcionesRecurso
+                catalogo={catalogos.sillones}
+                estaActivo={(x) => x.activo}
+                nombreDe={(x) => x.nombre}
+                nombreAusente={SILLON_NO_DISPONIBLE}
+                conservar={conservar("sillon", sillonId)}
+              />
             </select>
           )}
         </Campo>

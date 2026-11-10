@@ -71,9 +71,14 @@ export function SelectorPaciente({
         <p>
           {elegido.apellido}, {elegido.nombre}
         </p>
-        <button type="button" onClick={alCambiar}>
+        <button
+          type="button"
+          onClick={alCambiar}
+          aria-describedby={error !== undefined ? idError : undefined}
+        >
           Cambiar paciente
         </button>
+        {error !== undefined && <p id={idError}>{error}</p>}
       </div>
     );
   }

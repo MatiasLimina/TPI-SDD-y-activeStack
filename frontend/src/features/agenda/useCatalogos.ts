@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 import type { ErrorApi } from "../../shared/api/errorApi";
 import { useClienteApi } from "../sesion/ProveedorSesion";
@@ -20,11 +20,30 @@ export function useCatalogos(): {
   /** Falla de la carga inicial: la pantalla ofrece `Reintentar`. */
   error: ErrorApi | null;
   reintentar: () => void;
+  /**
+   * Vuelve a pedir los tres catálogos tras un error que revela uno desactualizado (D7). Si falla,
+   * conserva los anteriores y devuelve el error, para que lo muestre el formulario abierto.
+   */
+  recargar: () => Promise<ErrorApi | null>;
 } {
   const cliente = useClienteApi();
   const [catalogos, setCatalogos] = useState<Catalogos | null>(null);
   const [error, setError] = useState<ErrorApi | null>(null);
   const [version, setVersion] = useState(0);
+
+  const recargar = useCallback(async (): Promise<ErrorApi | null> => {
+    try {
+      const [profesionales, sillones, prestaciones] = await Promise.all([
+        cliente.pedir<Profesional[]>("GET", "/profesionales"),
+        cliente.pedir<Sillon[]>("GET", "/sillones"),
+        cliente.pedir<Prestacion[]>("GET", "/prestaciones"),
+      ]);
+      setCatalogos({ profesionales, sillones, prestaciones });
+      return null;
+    } catch (causa) {
+      return comoErrorApi(causa);
+    }
+  }, [cliente]);
 
   useEffect(() => {
     let vigente = true;
@@ -49,6 +68,7 @@ export function useCatalogos(): {
   return {
     catalogos,
     error,
+    recargar,
     reintentar: () => {
       setError(null);
       setVersion((anterior) => anterior + 1);

@@ -2004,3 +2004,53 @@ describe("Errores del alta que cambian la agenda", () => {
     ).not.toBeInTheDocument();
   });
 });
+
+describe("Alta: sesión y permisos", () => {
+  it("un 401 no_autenticado al enviar lleva a /login con el aviso de sesión vencida", async () => {
+    conSesion();
+    const api = instalarApiFalsa();
+    cargar(api);
+    api.responder("POST /turnos", {
+      status: 401,
+      cuerpo: {
+        detail: { codigo: "no_autenticado", mensaje: "No autenticado" },
+      },
+    });
+    const { user } = renderizarApp("/agenda?fecha=2026-11-12");
+    const dialogo = await abrirNuevoTurno(user);
+    await llenarAlta(user, api, dialogo);
+
+    await enviarAlta(user, dialogo);
+
+    await waitFor(() => expect(ubicacion()).toBe("/login"));
+    expect(
+      screen.getByText("Tu sesión venció. Iniciá sesión de nuevo."),
+    ).toBeInTheDocument();
+    expect(sessionStorage.getItem(CLAVE_TOKEN)).toBeNull();
+  });
+
+  it("un 403 rol_insuficiente no cierra la sesión y deja el formulario abierto", async () => {
+    conSesion();
+    const token = sessionStorage.getItem(CLAVE_TOKEN);
+    const api = instalarApiFalsa();
+    cargar(api);
+    api.responder("POST /turnos", {
+      status: 403,
+      cuerpo: { detail: { codigo: "rol_insuficiente", mensaje: "técnico" } },
+    });
+    const { user } = renderizarApp("/agenda?fecha=2026-11-12");
+    const dialogo = await abrirNuevoTurno(user);
+    await llenarAlta(user, api, dialogo);
+
+    await enviarAlta(user, dialogo);
+
+    expect(await within(dialogo).findByRole("alert")).toHaveTextContent(
+      "No tenés permiso para esta operación.",
+    );
+    expect(sessionStorage.getItem(CLAVE_TOKEN)).toBe(token);
+    expect(ubicacion()).toBe("/agenda");
+    expect(
+      screen.getByRole("dialog", { name: "Nuevo turno" }),
+    ).toBeInTheDocument();
+  });
+});

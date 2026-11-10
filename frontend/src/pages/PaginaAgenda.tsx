@@ -40,7 +40,12 @@ export default function PaginaAgenda() {
     profesionalId: vista.profesionalId,
     sillonId: vista.sillonId,
   });
-  const { catalogos, error: errorCatalogos, reintentar } = useCatalogos();
+  const {
+    catalogos,
+    error: errorCatalogos,
+    reintentar,
+    recargar: recargarCatalogos,
+  } = useCatalogos();
   const { datos } = agenda;
 
   // La carga inicial de catálogos o la lectura de la agenda sin datos previos ofrecen Reintentar
@@ -128,7 +133,7 @@ export default function PaginaAgenda() {
             agenda.recargar();
           }}
           alCerrar={() => setNuevoAbierto(false)}
-          alReleerCatalogos={() => Promise.resolve(null)}
+          alReleerCatalogos={recargarCatalogos}
           alReleerAgenda={agenda.recargar}
         />
       )}
