@@ -131,18 +131,22 @@ La vista, la fecha, los filtros, el modo de columnas y la casilla de cancelados 
 
 #### Scenario: Año anterior al admitido
 - **GIVEN** dado el reloj en el 2026-11-09 hora local
-- **WHEN** cuando se abre `/agenda?fecha=0050-01-15`
+- **WHEN** cuando se abre `/agenda?fecha=0999-12-31`
 - **THEN** entonces se hace `GET /turnos?desde=2026-11-09&hasta=2026-11-09`
 
 #### Scenario: Año en el borde admitido
 - **WHEN** cuando se abre `/agenda?fecha=9998-12-31`
 - **THEN** entonces se hace `GET /turnos?desde=9998-12-31&hasta=9998-12-31`
 
+#### Scenario: Año en el borde inferior admitido
+- **WHEN** cuando se abre `/agenda?fecha=1000-01-01`
+- **THEN** entonces se hace `GET /turnos?desde=1000-01-01&hasta=1000-01-01`
+
 ### Requirement: Filtros por profesional y por sillón
 La agenda SHALL filtrarse por profesional y por sillón con los parámetros `profesional_id` y `sillon_id` de la API, combinables (US-008). Los selectores MUST incluir los recursos desactivados, identificados como inactivos, porque conservan su agenda (DD-32 l). Filtrar por sillón MUST seguir mostrando los bloqueos del profesional (DD-32 h).
 
 #### Scenario: Filtrar por profesional
-- **GIVEN** dada una recepcionista en la agenda del 2026-11-09
+- **GIVEN** dada una recepcionista en la agenda diaria del 2026-11-09, agrupada por profesional
 - **WHEN** cuando elige un profesional en el filtro
 - **THEN** entonces se hace `GET /turnos` con `profesional_id` igual a ese id y se ve una sola columna
 
@@ -167,17 +171,35 @@ La agenda SHALL filtrarse por profesional y por sillón con los parámetros `pro
 - **THEN** entonces se ve el bloqueo
 
 #### Scenario: Filtro por un profesional desactivado sin elementos
-- **GIVEN** dado un profesional desactivado sin elementos visibles en el día
+- **GIVEN** dada la vista diaria, un profesional desactivado y una respuesta `{"turnos": [], "bloqueos": []}`
 - **WHEN** cuando la recepcionista filtra por él
 - **THEN** entonces no se ve ninguna columna y se ve `No hay turnos ni bloqueos en este período.`
+
+#### Scenario: Filtro por un profesional desactivado con solo cancelados ocultos
+- **GIVEN** dada la vista diaria filtrada por un profesional desactivado cuyo único turno está `cancelado` y la casilla `Mostrar cancelados` apagada
+- **WHEN** cuando se muestra la agenda
+- **THEN** entonces no se ve ninguna columna y se ve `Solo hay turnos cancelados en este período. Activá Mostrar cancelados para verlos.`
 
 #### Scenario: Filtro con un id que no existe
 - **GIVEN** dado un id bien formado que no figura en el catálogo y una respuesta `200` vacía (DD-32 l)
 - **WHEN** cuando se abre `/agenda?fecha=2026-11-09&profesional=00000000-0000-4000-8000-0000000000a9`
-- **THEN** entonces el pedido incluye `profesional_id`, el filtro muestra `Profesional no disponible` y se ve `No hay turnos ni bloqueos en este período.`
+- **THEN** entonces el pedido incluye `profesional_id`, el filtro muestra `Profesional no disponible`, no se ve ninguna columna y se ve `No hay turnos ni bloqueos en este período.`
+
+### Requirement: Columnas con filtros
+Agrupando por profesional, el filtro de profesional MUST dejar a lo sumo su columna. Agrupando por sillón, el filtro de profesional MUST conservar las columnas de los sillones, y el de sillón MUST dejar ese sillón y `Bloqueos` si tiene elementos visibles. Un id de filtro ausente del catálogo MUST NOT generar una columna por sí mismo (D1, DD-34).
+
+#### Scenario: Filtro de profesional agrupando por sillón
+- **GIVEN** dados dos sillones activos y la vista diaria agrupada por sillón
+- **WHEN** cuando la recepcionista filtra por un profesional
+- **THEN** entonces siguen viéndose las columnas de los dos sillones
+
+#### Scenario: Filtro de sillón agrupando por sillón
+- **GIVEN** dados los sillones activos "Sillón 1" y "Sillón 2", la vista diaria agrupada por sillón y una respuesta con un bloqueo
+- **WHEN** cuando la recepcionista filtra por "Sillón 1"
+- **THEN** entonces solo se ven las columnas `Sillón 1` y `Bloqueos`
 
 ### Requirement: Columnas de la vista diaria
-La vista diaria de la recepcionista SHALL mostrar una columna por profesional o, si elige agrupar por sillón, una por sillón. Un recurso desactivado MUST tener columna solo si tiene elementos visibles. Agrupando por sillón, los turnos sin sillón MUST ir en `Sin sillón` y los bloqueos en `Bloqueos` (DD-30 d), columnas que MUST aparecer solo si tienen elementos visibles. `columnas=sillon` MUST ignorarse en la vista semanal y con rol `odontologo`.
+La vista diaria de la recepcionista SHALL mostrar una columna por profesional o, si elige agrupar por sillón, una por sillón. Para ella, un recurso desactivado MUST tener columna solo si tiene elementos visibles. Agrupando por sillón, los turnos sin sillón MUST ir en `Sin sillón` y los bloqueos en `Bloqueos` (DD-30 d), columnas que MUST aparecer solo si tienen elementos visibles. `columnas=sillon` MUST ignorarse en la vista semanal y con rol `odontologo`.
 
 #### Scenario: Una columna por profesional activo
 - **GIVEN** dados dos profesionales activos y uno desactivado sin turnos en el día
@@ -217,7 +239,7 @@ Cada turno de la agenda MUST mostrar su horario, paciente (`apellido, nombre`) y
 - **THEN** entonces el turno muestra `Ficticia, Ana` y `Sillón 1`
 
 #### Scenario: Detalle de un turno
-- **GIVEN** dado un turno `cancelado` con motivo "Viaje"
+- **GIVEN** dado un turno `cancelado` con motivo "Viaje" y la casilla `Mostrar cancelados` activa
 - **WHEN** cuando se lo elige en la agenda
 - **THEN** entonces se abre un detalle que muestra el estado `Cancelado` y el motivo `Viaje`
 
@@ -227,7 +249,7 @@ Cada turno de la agenda MUST mostrar su horario, paciente (`apellido, nombre`) y
 - **THEN** entonces el sillón se muestra como `Sin sillón`
 
 ### Requirement: Nombres de los recursos
-Los ids de profesional, sillón y prestación MUST presentarse con su nombre, incluidos los de recursos desactivados. Un id que no figura en el catálogo cargado MUST mostrarse con un texto genérico, sin mostrar el id y sin impedir ver la agenda.
+Los ids de profesional, sillón y prestación MUST presentarse con su nombre, incluidos los de recursos desactivados. Un id que no figura en el catálogo cargado MUST mostrarse con un texto genérico, sin mostrar el id y sin impedir ver la agenda. Agrupando por ese recurso, un elemento visible cuyo id no figura MUST tener columna con ese texto (D7, DD-34).
 
 #### Scenario: Prestación desactivada
 - **GIVEN** dado un turno cuya prestación "Control" fue desactivada
@@ -238,6 +260,11 @@ Los ids de profesional, sillón y prestación MUST presentarse con su nombre, in
 - **GIVEN** dado un turno cuyo `prestacion_id` no está en el catálogo cargado
 - **WHEN** cuando se muestra la agenda
 - **THEN** entonces el turno se ve con el texto `Prestación no disponible` y no se ve el id
+
+#### Scenario: Turno de un profesional ausente del catálogo
+- **GIVEN** dada la vista diaria agrupada por profesional y un turno cuyo `profesional_id` no está en el catálogo cargado
+- **WHEN** cuando se muestra la agenda
+- **THEN** entonces el turno se ve en una columna `Profesional no disponible`
 
 ### Requirement: Turnos cancelados
 Los turnos `cancelado` MUST ocultarse por defecto y mostrarse al activar `Mostrar cancelados` (D3, DD-34), sin un pedido nuevo, porque la API siempre los trae (DD-32 f). Visibles, MUST distinguirse con el texto `Cancelado` y no solo por color, y un cancelado y un programado del mismo horario MUST verse los dos, sin taparse.
@@ -349,7 +376,7 @@ Los bloqueos del período MUST mostrarse con su horario, su motivo y una identif
 - **THEN** entonces el bloqueo muestra `Ficticia, Ana`
 
 ### Requirement: Agenda del odontólogo
-Con rol `odontologo`, la agenda SHALL ser de solo lectura y mostrar únicamente la agenda de su profesional (RN-AU-02). El pedido MUST omitir `profesional_id`, aunque la URL lo traiga, y la pantalla MUST NOT ofrecer filtro de profesional ni agrupar por sillón. La vista diaria MUST tener una sola columna, la de su profesional, aunque esté vacía (D16, DD-34). MUST NOT pedir `GET /pacientes` (DD-31 b).
+Con rol `odontologo`, la agenda SHALL ser de solo lectura y mostrar únicamente la agenda de su profesional (RN-AU-02). El pedido MUST omitir `profesional_id`, aunque la URL lo traiga, y la pantalla MUST NOT ofrecer filtro de profesional ni agrupar por sillón. La vista diaria MUST tener una sola columna, la de su profesional, aunque esté vacía o él esté desactivado (D16, DD-34). MUST NOT pedir `GET /pacientes` (DD-31 b).
 
 #### Scenario: Odontólogo sin filtro de profesional
 - **GIVEN** dada una sesión de `odontologo`
@@ -376,13 +403,18 @@ Con rol `odontologo`, la agenda SHALL ser de solo lectura y mostrar únicamente 
 - **WHEN** cuando ve la agenda diaria
 - **THEN** entonces hay una sola columna, la de A, y se ve `No hay turnos ni bloqueos en este período.`
 
+#### Scenario: Profesional desactivado sin elementos
+- **GIVEN** dada una sesión de `odontologo` vinculada al profesional A, desactivado, y una respuesta sin elementos
+- **WHEN** cuando ve la agenda diaria
+- **THEN** entonces hay una sola columna, la de A
+
 #### Scenario: Agrupar por sillón ignorado
 - **GIVEN** dada una sesión de `odontologo` vinculada al profesional A
 - **WHEN** cuando abre `/agenda?fecha=2026-11-09&columnas=sillon`
 - **THEN** entonces hay una sola columna, la de A
 
 ### Requirement: Errores al cargar la agenda
-Si falla la carga de la agenda o de los catálogos, la pantalla MUST mostrar el mensaje del error, conservar la vista y ofrecer `Reintentar`. Un `403` MUST mostrarse sin cerrar la sesión (DD-33 e). Una recarga fallida del mismo período MUST conservar visibles los datos anteriores.
+Si falla la carga de la agenda o la carga inicial de los catálogos, la pantalla MUST mostrar el mensaje del error, conservar la vista y ofrecer `Reintentar`. Un `403` MUST mostrarse sin cerrar la sesión (DD-33 e). Una recarga fallida del mismo período MUST conservar visibles los datos anteriores.
 
 #### Scenario: Sin conexión
 - **GIVEN** dado que el pedido de agenda falla por red

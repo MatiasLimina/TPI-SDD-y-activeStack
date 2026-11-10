@@ -14,7 +14,7 @@ El backend de la agenda y de los turnos está completo (C-03, C-04, C-05, C-07, 
 - **Spec modificado**: `/agenda` deja de ser una pantalla provisoria en `frontend-sesion`.
 - **Primer CSS del frontend**: C-14 no tiene estilos y la grilla los necesita (design D5).
 
-Las decisiones que la KB no fija figuran en `design.md` con sus trade-offs. El usuario las aprobó el 2026-11-10 con la opción recomendada, junto con las respuestas P1 a P8 de la revisión de escenarios (tarea 1.2); se registran como **DD-34**.
+Las decisiones que la KB no fija figuran en `design.md` con sus trade-offs. El usuario las aprobó el 2026-11-10 con la opción recomendada, junto con las respuestas P1 a P15 de la revisión de escenarios (tarea 1.2); se registran como **DD-34**.
 
 ## Non-goals
 
@@ -42,4 +42,4 @@ Las decisiones que la KB no fija figuran en `design.md` con sus trade-offs. El u
 - **Tests de C-14**: los que renderizan `/agenda` y encolan respuestas de `fetch` deben adaptarse, porque la pantalla ahora hace pedidos al montarse (tarea 2.3).
 - **API consumida, sin cambios**: `GET /turnos`, `POST /turnos`, `PATCH /turnos/{id}/reprogramar`, `POST /turnos/{id}/cancelar`, `GET /profesionales`, `GET /sillones`, `GET /prestaciones`, `GET /pacientes`.
 - **Dependencias**: ninguna nueva.
-- **Documentación**: `knowledge-base/09` (DD-34), `10`, `02` y `07` (`GET /disponibilidad` no implementado), `06` (US-008) y `CHANGES.md`.
+- **Documentación**: `knowledge-base/09` (DD-34), `10`, `02` y `07` (`GET /disponibilidad` no implementado), `08` (`shared/tiempo`, `shared/ui`, `shared/estilos`), `CLAUDE.md`, `AGENTS.md` y `CHANGES.md`.

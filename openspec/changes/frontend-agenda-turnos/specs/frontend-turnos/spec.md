@@ -14,10 +14,10 @@ Crear, reprogramar y cancelar SHALL ofrecerse únicamente a `recepcionista` (`03
 - **THEN** entonces no se ven `Nuevo turno`, `Reprogramar` ni `Cancelar turno`
 
 ### Requirement: Operaciones según el estado del turno
-`Reprogramar` y `Cancelar turno` MUST ofrecerse solo para un turno `programado` cuyo `inicio` sea posterior al reloj (RN-AG-13, DD-23). Esta condición solo decide qué se muestra: la API sigue siendo la autoridad.
+`Reprogramar` y `Cancelar turno` MUST ofrecerse solo para un turno `programado` cuyo `inicio` sea posterior al reloj (RN-AG-13, DD-23). Esta condición solo decide qué se muestra: la API sigue siendo la autoridad. Al elegir una, el detalle MUST cerrarse, y `Volver` o el éxito MUST llevar a la agenda (D6, DD-34).
 
 #### Scenario: Turno cancelado
-- **GIVEN** dada una recepcionista y un turno `cancelado` futuro
+- **GIVEN** dada una recepcionista, un turno `cancelado` futuro y la casilla `Mostrar cancelados` activa
 - **WHEN** cuando abre su detalle
 - **THEN** entonces no se ven `Reprogramar` ni `Cancelar turno`
 
@@ -31,13 +31,23 @@ Crear, reprogramar y cancelar SHALL ofrecerse únicamente a `recepcionista` (`03
 - **WHEN** cuando la recepcionista abre su detalle
 - **THEN** entonces se ven `Reprogramar` y `Cancelar turno`
 
+#### Scenario: El detalle se cierra al abrir una operación
+- **GIVEN** dada una recepcionista con el detalle abierto de un turno `programado` futuro
+- **WHEN** cuando elige `Reprogramar`
+- **THEN** entonces hay un solo diálogo abierto, el de la reprogramación
+
 ### Requirement: Formulario de nuevo turno
-`Nuevo turno` SHALL abrir un formulario con profesional, paciente, prestación, sillón cuando corresponda, fecha, hora y duración opcional. Los selectores MUST ofrecer solo recursos activos (D9, DD-34; la API rechaza los inactivos, DD-21 c). La fecha MUST tomar por defecto la fecha en curso de la agenda. Un campo obligatorio vacío MUST impedir el envío con un error propio. El formulario MUST usar `noValidate`: lo demás lo decide la API (D9, DD-34).
+`Nuevo turno` SHALL abrir un formulario con profesional, paciente, prestación, sillón cuando corresponda, fecha, hora y duración opcional. Los selectores MUST ofrecer solo recursos activos (D9, DD-34; la API rechaza los inactivos, DD-21 c). La fecha MUST tomar por defecto la de la agenda y el profesional, el del filtro si está activo. Un campo obligatorio vacío MUST impedir el envío con un error propio. El formulario MUST usar `noValidate`: lo demás lo decide la API (D9, DD-34).
 
 #### Scenario: Solo recursos activos
-- **GIVEN** dados un profesional activo y uno desactivado
+- **GIVEN** dados un profesional activo y uno desactivado, y la agenda filtrada por el desactivado
 - **WHEN** cuando la recepcionista abre `Nuevo turno`
-- **THEN** entonces el selector de profesional ofrece solo el activo
+- **THEN** entonces el selector de profesional ofrece solo el activo y no tiene ninguno elegido
+
+#### Scenario: Profesional del filtro
+- **GIVEN** dada la agenda filtrada por un profesional activo
+- **WHEN** cuando la recepcionista abre `Nuevo turno`
+- **THEN** entonces el selector de profesional tiene elegido a ese profesional
 
 #### Scenario: Fecha por defecto
 - **GIVEN** dada la agenda en la fecha 2026-11-12
@@ -63,9 +73,9 @@ Crear, reprogramar y cancelar SHALL ofrecerse únicamente a `recepcionista` (`03
 El campo sillón MUST mostrarse y ser obligatorio solo si la prestación elegida tiene `requiere_sillon` verdadero (DD-09, RN-AG-10). Si no lo requiere, el pedido MUST NOT incluir `sillon_id`, aunque antes se hubiera elegido uno.
 
 #### Scenario: Prestación que requiere sillón
-- **GIVEN** dada una prestación con `requiere_sillon` verdadero
-- **WHEN** cuando se la elige en el formulario
-- **THEN** entonces el campo `Sillón` se muestra y es obligatorio
+- **GIVEN** dado un formulario completo con una prestación con `requiere_sillon` verdadero y el sillón sin elegir
+- **WHEN** cuando se envía
+- **THEN** entonces el campo `Sillón` se muestra con `Completá este campo.` y no se hace ningún `POST /turnos`
 
 #### Scenario: Prestación que no requiere sillón
 - **GIVEN** dado un formulario con un sillón elegido
@@ -189,7 +199,7 @@ El selector MUST mostrar apellido, nombre y documento de cada resultado, en el o
 - **THEN** entonces se ve `No se pudo conectar con el servidor.` y los demás datos del formulario se conservan
 
 ### Requirement: Formulario de reprogramación
-`Reprogramar` SHALL abrir un formulario con profesional, sillón cuando corresponda, fecha, hora y duración, precargados con el turno. Paciente y prestación MUST verse como texto no editable, con la indicación de cancelar y crear otro turno para cambiarlos, y MUST NOT enviarse (DD-23 b). Un recurso actual desactivado MUST seguir figurando como opción. La duración MUST ser obligatoria, con error propio y sin pedido (D10, DD-34). Como en el alta, MUST usar `noValidate`.
+`Reprogramar` SHALL abrir un formulario precargado con profesional, sillón cuando corresponda, fecha, hora y duración. Paciente y prestación MUST verse como texto, con la indicación de cancelar y crear otro turno, y MUST NOT enviarse (DD-23 b). Los selectores MUST ofrecer los recursos activos más el valor actual (D7). MUST usar `noValidate`: fecha, hora o sillón requerido vacíos MUST mostrar `Completá este campo.` y la duración vacía, `Ingresá la duración.`, sin pedido (D10, DD-34).
 
 #### Scenario: Datos precargados
 - **GIVEN** dado un turno `programado` del 2026-11-12 de 10:00 a 10:45 hora local
@@ -201,17 +211,22 @@ El selector MUST mostrar apellido, nombre y documento de cada resultado, en el o
 - **THEN** entonces paciente y prestación se ven como texto, sin controles editables, junto con `Para cambiarlos, cancelá este turno y creá uno nuevo.`
 
 #### Scenario: Profesional desactivado
-- **GIVEN** dado un turno cuyo profesional fue desactivado
+- **GIVEN** dado un turno cuyo profesional "Ana Ficticia" fue desactivado y otro profesional desactivado "Luis Inventado"
 - **WHEN** cuando se abre el formulario de reprogramación
-- **THEN** entonces el selector muestra ese profesional marcado como inactivo
+- **THEN** entonces el selector muestra `Ficticia, Ana (inactivo)` y no ofrece a `Inventado, Luis`
 
 #### Scenario: Duración vaciada
 - **GIVEN** dado el formulario de un turno de 45 minutos
 - **WHEN** cuando se vacía la duración y se envía
 - **THEN** entonces el campo `Duración` muestra `Ingresá la duración.` y no se hace ningún `PATCH`
 
+#### Scenario: Hora y fecha vaciadas
+- **GIVEN** dado el formulario de un turno
+- **WHEN** cuando se vacían la hora y la fecha y se envía
+- **THEN** entonces los campos `Hora` y `Fecha` muestran `Completá este campo.` y no se hace ningún `PATCH`
+
 ### Requirement: Reprogramación parcial
-El `PATCH /turnos/{id}/reprogramar` MUST incluir solo los campos que cambiaron respecto del turno, porque lo omitido se conserva (DD-23 a), y MUST NOT incluir `paciente_id` ni `prestacion_id`. Sin cambios, MUST informarlo sin hacer ningún pedido. Si la prestación ya no requiere sillón y el turno tiene uno, MUST enviar `sillon_id` nulo solo junto con otro cambio (D10, DD-34).
+El `PATCH /turnos/{id}/reprogramar` MUST incluir solo los campos que cambiaron respecto del turno, porque lo omitido se conserva (DD-23 a), y MUST NOT incluir `paciente_id` ni `prestacion_id`. Los obligatorios MUST comprobarse antes de comparar. Sin cambios, MUST informarlo sin hacer ningún pedido. Si la prestación ya no requiere sillón y el turno tiene uno, MUST enviar `sillon_id` nulo solo junto con otro cambio (D10, DD-34).
 
 #### Scenario: Solo cambia la hora
 - **GIVEN** dado el formulario de un turno del 2026-11-12 a las 10:00 hora local con duración 45
@@ -234,7 +249,7 @@ El `PATCH /turnos/{id}/reprogramar` MUST incluir solo los campos que cambiaron r
 - **THEN** entonces el cuerpo del `PATCH` es exactamente `{"duracion_min": 60}`
 
 #### Scenario: Sin cambios
-- **GIVEN** dado el formulario sin modificar
+- **GIVEN** dado el formulario sin modificar de un turno con sus campos obligatorios completos
 - **WHEN** cuando se envía
 - **THEN** entonces se ve `No hiciste cambios.` y no se hace ningún `PATCH`
 
@@ -249,14 +264,14 @@ El `PATCH /turnos/{id}/reprogramar` MUST incluir solo los campos que cambiaron r
 - **THEN** entonces el cuerpo del `PATCH` incluye `sillon_id` nulo y el nuevo `inicio`
 
 #### Scenario: Prestación que pasó a requerir sillón
-- **GIVEN** dado un turno sin sillón cuya prestación ahora tiene `requiere_sillon` verdadero (DD-26)
-- **WHEN** cuando se abre el formulario de reprogramación
-- **THEN** entonces el campo `Sillón` se muestra vacío y es obligatorio
+- **GIVEN** dado un turno sin sillón cuya prestación ahora tiene `requiere_sillon` verdadero (DD-26) y el formulario sin modificar
+- **WHEN** cuando se envía
+- **THEN** entonces el campo `Sillón` se muestra vacío con `Completá este campo.`, no se ve `No hiciste cambios.` y no se hace ningún `PATCH`
 
 #### Scenario: Reprogramación exitosa
-- **GIVEN** dado un formulario con un cambio válido
+- **GIVEN** dado un formulario abierto desde el detalle, con un cambio válido
 - **WHEN** cuando se envía y la API responde `200`
-- **THEN** entonces el formulario se cierra, se hace un `GET /turnos` nuevo y se ve `Turno reprogramado.`
+- **THEN** entonces no queda ningún diálogo abierto, se hace un `GET /turnos` nuevo y se ve `Turno reprogramado.`
 
 ### Requirement: Cancelación con confirmación
 `Cancelar turno` SHALL pedir confirmación, mostrando paciente, día y hora, y un motivo opcional de hasta 255 caracteres. Solo al confirmar MUST hacerse `POST /turnos/{id}/cancelar`, con el motivo si no está en blanco y sin cuerpo si lo está. MUST poder desistirse sin hacer pedidos.
@@ -272,9 +287,9 @@ El `PATCH /turnos/{id}/reprogramar` MUST incluir solo los campos que cambiaron r
 - **THEN** entonces el `POST /turnos/{id}/cancelar` se hace sin cuerpo
 
 #### Scenario: Desistir
-- **GIVEN** dado el diálogo de cancelación
+- **GIVEN** dado el diálogo de cancelación abierto desde el detalle
 - **WHEN** cuando se elige `Volver`
-- **THEN** entonces el diálogo se cierra y no se hace ningún pedido
+- **THEN** entonces no queda ningún diálogo abierto y no se hace ningún pedido
 
 #### Scenario: Motivo limitado
 - **WHEN** cuando se abre el diálogo de cancelación
@@ -326,6 +341,11 @@ Los `422` de negocio MUST mostrarse en español, en su campo (`duracion_invalida
 - **WHEN** cuando se recibe la respuesta
 - **THEN** entonces el campo `Hora` muestra `El inicio no puede estar en el pasado.`
 
+#### Scenario: Inicio no alineado
+- **GIVEN** dado un formulario enviado y una respuesta `422` con código `inicio_no_alineado`
+- **WHEN** cuando se recibe la respuesta
+- **THEN** entonces el campo `Hora` muestra `El horario debe ser múltiplo de 5 minutos.`
+
 #### Scenario: Duración inválida
 - **GIVEN** dado un formulario enviado y una respuesta `422` con código `duracion_invalida`
 - **WHEN** cuando se recibe la respuesta
@@ -347,7 +367,7 @@ Los `422` de negocio MUST mostrarse en español, en su campo (`duracion_invalida
 - **THEN** entonces se ve `Esta prestación no usa sillón.` como error general y se piden otra vez los catálogos
 
 ### Requirement: Referencias inválidas
-Un `422 referencia_invalida` MUST indicar qué recurso falla según `referencia` y `motivo`, en su campo si existe en el formulario y, si no, como error general (DD-21 c). MUST releer los catálogos; el valor rechazado MUST seguir como opción marcada `(inactivo)` hasta que se cambie (D9, DD-34). Al reprogramar con paciente o prestación inactivos, MUST indicar que el turno solo se puede cancelar (DD-26).
+Un `422 referencia_invalida` MUST indicar el recurso según `referencia` y `motivo`, en su campo si existe y, si no, como error general (DD-21 c), y releer los catálogos. Salvo el paciente, el valor rechazado MUST seguir como opción hasta cambiarlo, marcado `(inactivo)` o, si no existe, con el texto genérico; el actual del turno, mientras lo sea (D9, DD-34). Al reprogramar con paciente o prestación inactivos, MUST indicar que el turno solo se puede cancelar (DD-26).
 
 #### Scenario: Sillón inactivo
 - **GIVEN** dado un formulario enviado con el sillón "Sillón 1" y una respuesta `422` con `{"detail": {"codigo": "referencia_invalida", "referencia": "sillon", "motivo": "inactiva"}}`
@@ -355,14 +375,29 @@ Un `422 referencia_invalida` MUST indicar qué recurso falla según `referencia`
 - **THEN** entonces el campo `Sillón` muestra `El sillón está inactivo.`, se piden otra vez los catálogos y sigue elegida la opción `Sillón 1 (inactivo)`
 
 #### Scenario: Cambiar el valor rechazado
-- **GIVEN** dado el campo `Sillón` con la opción `Sillón 1 (inactivo)` tras un rechazo
+- **GIVEN** dado un formulario de `Nuevo turno` con la opción `Sillón 1 (inactivo)` tras un rechazo
 - **WHEN** cuando se elige otro sillón activo
 - **THEN** entonces la opción `Sillón 1 (inactivo)` deja de ofrecerse
+
+#### Scenario: Valor rechazado que es el actual del turno
+- **GIVEN** dado un formulario de reprogramación de un turno cuyo profesional "Ana Ficticia" fue desactivado y un rechazo `referencia_invalida` sobre ese profesional
+- **WHEN** cuando se elige otro profesional activo
+- **THEN** entonces la opción `Ficticia, Ana (inactivo)` se sigue ofreciendo
+
+#### Scenario: Valor rechazado inexistente
+- **GIVEN** dado un formulario enviado, una respuesta `422` con `referencia` `profesional` y `motivo` `inexistente`, y un catálogo releído que ya no incluye a ese profesional
+- **WHEN** cuando se recibe la respuesta
+- **THEN** entonces el campo `Profesional` muestra `El profesional no existe.` y sigue elegida la opción `Profesional no disponible`, sin `(inactivo)`
 
 #### Scenario: Paciente inactivo al reprogramar
 - **GIVEN** dado un formulario de reprogramación y una respuesta `422` con `referencia` `paciente` y `motivo` `inactiva`
 - **WHEN** cuando se recibe la respuesta
 - **THEN** entonces se ve `El paciente está inactivo: este turno no se puede reprogramar, pero sí cancelar.`
+
+#### Scenario: Prestación inactiva al reprogramar
+- **GIVEN** dado un formulario de reprogramación y una respuesta `422` con `referencia` `prestacion` y `motivo` `inactiva`
+- **WHEN** cuando se recibe la respuesta
+- **THEN** entonces se ve `La prestación está inactiva: este turno no se puede reprogramar, pero sí cancelar.`
 
 ### Requirement: Errores de validación por campo
 Un `422` de validación MUST marcar cada campo identificado por `campo` y mapear `inicio` al campo hora. MUST mostrar textos propios en español y MUST NOT mostrar el `msg` de la API, que no es apto para mostrar (spec `frontend-cliente-http`). Un error con `campo` nulo o desconocido MUST mostrarse como error general.
@@ -401,7 +436,7 @@ Un `409 turno_ya_cancelado`, un `409 turno_ya_iniciado` o un `404 turno_inexiste
 - **THEN** entonces el `PATCH` lleva solo `inicio` y la relectura muestra el profesional que cargó el otro usuario
 
 ### Requirement: Conservación de los datos ante un error
-Ante cualquier error de envío, el formulario MUST seguir abierto con todos los datos cargados, y MUST permitir corregirlos y volver a enviar, salvo en un turno que cambió. Los errores previos MUST limpiarse al reenviar.
+Ante cualquier error de envío, el formulario MUST seguir abierto con todos los datos cargados, y MUST permitir corregirlos y volver a enviar, salvo en un turno que cambió. Los errores previos MUST limpiarse al reenviar. Si falla la relectura de catálogos que sigue a un error, el formulario MUST seguir abierto y mostrar ese error como general (D7, DD-34).
 
 #### Scenario: Datos conservados tras un conflicto
 - **GIVEN** dado un formulario completo con paciente elegido y una respuesta `409 solapamiento`
@@ -411,7 +446,17 @@ Ante cualquier error de envío, el formulario MUST seguir abierto con todos los 
 #### Scenario: Reenvío exitoso
 - **GIVEN** dado un formulario con un error de conflicto en pantalla
 - **WHEN** cuando se cambia la hora, se reenvía y la API responde `201`
-- **THEN** entonces el formulario se cierra y el error desaparece
+- **THEN** entonces hubo un segundo `POST /turnos` y el formulario se cierra
+
+#### Scenario: Reenvío con otro error
+- **GIVEN** dado un formulario con `Ese horario ya está ocupado para el profesional.` en pantalla
+- **WHEN** cuando se cambia la hora, se reenvía y la API responde `422` con código `fuera_de_horario`
+- **THEN** entonces se ve `El turno queda fuera del horario de atención del profesional.` y ya no se ve el error anterior
+
+#### Scenario: Relectura de catálogos fallida con el formulario abierto
+- **GIVEN** dado un formulario enviado, una respuesta `422 referencia_invalida` sobre el sillón y un `GET /sillones` posterior que falla por red
+- **WHEN** cuando se recibe el error de la relectura
+- **THEN** entonces el formulario sigue abierto con sus datos, `No se pudo conectar con el servidor.` se ve como error general y no se ve la acción `Reintentar`
 
 ### Requirement: Falta de permiso y fallas de red
 Un `403` MUST mostrar `No tenés permiso para esta operación.` sin cerrar la sesión (DD-33 a, e). Una falla de red o un error sin `codigo` MUST mostrar el `mensaje` del error. Ambos MUST conservar el formulario abierto. Un `401 no_autenticado` lo resuelve la sesión (DD-33 d).

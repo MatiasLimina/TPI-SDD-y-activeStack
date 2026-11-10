@@ -42,7 +42,7 @@ Ver `proposal.md` y los delta specs `frontend-agenda`, `frontend-turnos` y `fron
 
 ## Decisions
 
-La KB fija los roles y permisos (03, DD-31 b, DD-32 i), la zona (RN-CU-04), la grilla de 5 minutos (DD-15), los campos editables (DD-23), que las respuestas traen cancelados y al paciente embebido (DD-32 f, j), y `fetch` falso en tests (DD-33 k, D15 de este documento). **Las decisiones marcadas como aprobadas no las fija la KB: el usuario las aprobó el 2026-11-10 con la opción recomendada** (tarea 1.2), junto con las respuestas P1 a P8 de `revision-escenarios.md`, y se registran como **DD-34**. Si alguna cambia, primero `/opsx:update`.
+La KB fija los roles y permisos (03, DD-31 b, DD-32 i), la zona (RN-CU-04), la grilla de 5 minutos (DD-15), los campos editables (DD-23), que las respuestas traen cancelados y al paciente embebido (DD-32 f, j), y `fetch` falso en tests (DD-33 k, D15 de este documento). **Las decisiones marcadas como aprobadas no las fija la KB: el usuario las aprobó el 2026-11-10 con la opción recomendada** (tarea 1.2), junto con las respuestas P1 a P15 de `revision-escenarios.md`, y se registran como **DD-34**. Si alguna cambia, primero `/opsx:update`.
 
 | # | Decisión | Estado | Opción |
 |---|----------|--------|--------------------|
@@ -74,7 +74,8 @@ La KB fija los roles y permisos (03, DD-31 b, DD-32 i), la zona (RN-CU-04), la g
 | Ventana variable (08:00 a 20:00, ampliada según los elementos) | Sin scroll en el día típico | Lógica extra, y un bloqueo de varios días obliga a decidir qué extremos amplían la ventana o queda oculto |
 | Lista por día, sin eje horario | La más simple | No muestra los huecos ni la duración de un vistazo, que es el diferencial del producto (DD-01) |
 
-- **Vista diaria**: una columna por profesional (activos, más desactivados con elementos visibles en el período). La recepcionista puede cambiar a una columna por sillón (`columnas=sillon`), con `Sin sillón` y `Bloqueos` solo si tienen elementos visibles, porque un bloqueo no pertenece a un sillón (DD-30 d). `columnas=sillon` se ignora en la vista semanal y con rol `odontologo`. El odontólogo tiene siempre una sola columna (D16).
+- **Vista diaria**: una columna por profesional (activos, más desactivados con elementos visibles en el período). La recepcionista puede cambiar a una columna por sillón (`columnas=sillon`), con `Sin sillón` y `Bloqueos` solo si tienen elementos visibles, porque un bloqueo no pertenece a un sillón (DD-30 d). `columnas=sillon` se ignora en la vista semanal y con rol `odontologo`. El odontólogo tiene siempre una sola columna (D16), también si su profesional está desactivado (P10): la regla de los desactivados vale solo para la recepcionista.
+- **Filtros y columnas (P12)**: al agrupar por profesional, el filtro de profesional deja a lo sumo su columna; al agrupar por sillón, siguen los sillones, y el filtro de sillón deja ese sillón y `Bloqueos` si tiene elementos visibles. Un id de filtro ausente del catálogo no genera una columna por sí mismo. Si llega un elemento de un recurso ausente del catálogo, ese elemento sí tiene columna (P13, D7).
 - **Vista semanal**: siete columnas, una por día, sin agrupar. El pedido "por profesional y por sillón" se cubre con los filtros, y cada tarjeta, turno o bloqueo, nombra al profesional (y el turno, al sillón) cuando la columna no lo dice. Con 7 días × 5 profesionales, una matriz tendría 35 columnas.
 - Cada fila son 5 minutos (288 por día): `grid-row` sale de los minutos del día. Los bloqueos pueden no estar alineados (DD-30 f), así que el inicio se redondea hacia abajo y el fin hacia arriba solo para ubicarlos; el texto muestra la hora real. El contrato de filas, recorte y carriles está en el requirement "Ubicación en la grilla", sobre funciones puras; la geometría y el scroll inicial se verifican a mano (tarea 10.2).
 - Una columna con N carriles define N subcolumnas de al menos 90 px, y la grilla se desplaza en horizontal si no entra.
@@ -93,7 +94,7 @@ La KB fija los roles y permisos (03, DD-31 b, DD-32 i), la zona (RN-CU-04), la g
 
 Es una decisión de UI: DD-32 f solo sostiene que la API trae los cancelados. Visibles, llevan el texto `Cancelado`, tachado y borde punteado (no solo color) y van en su propio carril. La casilla se guarda en la URL (`cancelados=1`).
 
-**Qué cuenta como elemento (P1)**: solo lo visible. Sin elementos visibles se usa el mensaje de período vacío; si la respuesta trae solo cancelados ocultos, `Solo hay turnos cancelados en este período. Activá Mostrar cancelados para verlos.`; un profesional desactivado sin nada visible no tiene columna, tampoco si se lo filtra.
+**Qué cuenta como elemento (P1)**: solo lo visible. Sin elementos visibles se usa el mensaje de período vacío; si la respuesta trae solo cancelados ocultos, `Solo hay turnos cancelados en este período. Activá Mostrar cancelados para verlos.`; para la recepcionista, un profesional desactivado sin nada visible no tiene columna, tampoco si se lo filtra.
 
 ### D4 — Superposición y cruce de días
 
@@ -120,7 +121,7 @@ Dos funciones puras en `features/agenda/grilla.ts`:
 
 Parámetros: `vista` (`dia`, `semana`), `fecha`, `profesional`, `sillon`, `columnas`, `cancelados`. Se validan con una función pura: `fecha` por formato, calendario real y **año de 1000 a 9998 (P7)**, porque `Date.UTC` interpreta los años 0 a 99 como 19xx y `9999-12-31` da `422 rango_invalido`; ids por forma de UUID (uno mal formado daría `422`), y un valor inválido se ignora. Un UUID bien formado que no existe da `200` vacío (DD-32 l) y el selector lo muestra con el texto genérico (`Profesional no disponible`). Cada cambio hace una navegación nueva. Ningún dato de paciente va en la URL (DD-31 o).
 
-**Diálogos**: `<dialog>` nativo con `showModal()`, que da foco atrapado, `Esc` y `::backdrop` sin dependencias. jsdom no lo implementa, así que `src/test/setup.ts` agrega un reemplazo de `showModal` y `close` que además es espía, para afirmar que se abrió como modal y no solo con `open`. `Dialogo` sincroniza su estado con los eventos `cancel` y `close`, para que un `Esc` no impida volver a abrirlo. El detalle del turno es un diálogo para ambos roles, con acciones solo para la recepcionista.
+**Diálogos**: `<dialog>` nativo con `showModal()`, que da foco atrapado, `Esc` y `::backdrop` sin dependencias. jsdom no lo implementa, así que `src/test/setup.ts` agrega un reemplazo de `showModal` y `close` que además es espía, para afirmar que se abrió como modal y no solo con `open`. `Dialogo` sincroniza su estado con los eventos `cancel` y `close`, para que un `Esc` no impida volver a abrirlo. El detalle del turno es un diálogo para ambos roles, con acciones solo para la recepcionista. **Sin diálogos apilados (P15)**: el detalle se cierra al abrir `Reprogramar` o `Cancelar turno`, y `Volver` o el éxito llevan a la agenda, no al detalle.
 
 ### D7 — Catálogos **[Aprobada por el usuario el 2026-11-10]**
 
@@ -132,7 +133,7 @@ Parámetros: `vista` (`dia`, `semana`), `fecha`, `profesional`, `sillon`, `colum
 | Contexto global con caché | Un solo pedido por sesión | Hay que invalidarlo cuando C-16 cambia un recurso, y no se pidió |
 | Hacer `GET /{recurso}/{id}` por cada id | Datos exactos | Decenas de pedidos por vista |
 
-Los mapas incluyen inactivos, porque hay turnos históricos que los referencian. Los filtros muestran todos, con la marca `(inactivo)`; los formularios, solo los activos, más el valor actual al reprogramar. Se releen ante `referencia_invalida`, `sillon_requerido` y `sillon_no_corresponde`, porque los tres revelan un catálogo desactualizado (DD-26). Un id desconocido se ve con un texto genérico.
+Los mapas incluyen inactivos, porque hay turnos históricos que los referencian. Los filtros muestran todos, con la marca `(inactivo)`; los formularios, solo los activos, más el valor actual al reprogramar. Se releen ante `referencia_invalida`, `sillon_requerido` y `sillon_no_corresponde`, porque los tres revelan un catálogo desactualizado (DD-26); `Actualizar` no los relee. Un id desconocido se ve con un texto genérico y, si la agrupación es por ese recurso, tiene columna (P13), para que el turno no desaparezca. Si falla una relectura con el formulario abierto, el formulario sigue abierto y el error se muestra como general (P14); la pantalla de error con `Reintentar` queda para la carga inicial.
 
 ### D8 — Selector de paciente **[Aprobada por el usuario el 2026-11-10]**
 
@@ -153,8 +154,8 @@ El documento se muestra solo aquí, para distinguir homónimos: la recepcionista
 Campos: profesional, paciente, prestación, sillón (según `requiere_sillon`), fecha (`date`), hora (`time`, `step=300`) y duración (`number`, `step=5`, `min=5`, `max=480`).
 
 - **Duración vacía usa la de la prestación** y se omite del pedido, con la leyenda `Por defecto: 45 min`. La alternativa de precargarla enviaría siempre un valor y dejaría de distinguir un ajuste real.
-- **Fecha por defecto**: la de la agenda en curso. **Hora**: vacía, para obligar a elegirla. **Profesional**: el del filtro, si hay uno.
-- **Selectores**: solo recursos activos, en el orden en que los entrega la API (D7). Tras un `referencia_invalida`, el valor rechazado sigue como opción marcada `(inactivo)` hasta que se cambie (P5), con su nombre del catálogo o, si ya no figura, el texto genérico.
+- **Fecha por defecto**: la de la agenda en curso. **Hora**: vacía, para obligar a elegirla. **Profesional**: el del filtro, si hay uno y está activo; un filtro por un desactivado no precarga nada.
+- **Selectores**: solo recursos activos, en el orden en que los entrega la API (D7). Tras un `referencia_invalida`, el valor rechazado sigue como opción hasta que se cambie (P5): marcado `(inactivo)` con su nombre del catálogo o, si ya no figura (`inexistente`), con el texto genérico y sin la marca. Si es el valor actual del turno, sigue ofreciéndose mientras lo sea (P11). No aplica al paciente, que no es una opción de una lista.
 - **Validación (P8)**: el formulario usa `noValidate`. Los obligatorios se comprueban con errores propios (`Elegí un paciente.`, `Completá este campo.`), y DD-15, RN-AG-12, horario y bloqueos **no se validan por adelantado**: `step`, `min` y `max` solo guían al usuario, y la API decide con errores ya traducidos (D12). Hay una sola vía de error y no se duplican reglas de dominio en el cliente.
 
 Tras un alta exitosa la agenda **no** salta a la fecha del turno: se confirma con día y hora. La alternativa de saltar haría perder el contexto de quien carga varios turnos.
@@ -170,7 +171,8 @@ Paciente y prestación se muestran como texto (DD-23 b). Si el catálogo cambió
 
 - **Duración vaciada (P3)**: obligatoria, con `Ingresá la duración.` y sin pedido, porque acá vacío no significa "la de la prestación" y `duracion_min: null` da `422` (DD-23 a).
 - **Formulario intacto con sillón sobrante (P4)**: `No hiciste cambios.` y sin pedido; el `sillon_id` nulo por sí solo no cuenta como cambio.
-- **Orden**: primero los obligatorios y después la comparación. Un turno sin sillón cuya prestación ahora lo requiere pide el sillón antes de evaluar si hubo cambios.
+- **Orden (P9)**: primero los obligatorios y después la comparación. Fecha, hora y sillón requerido vacíos muestran `Completá este campo.` sin pedido, y la duración, `Ingresá la duración.`. Un turno sin sillón cuya prestación ahora lo requiere pide el sillón antes de evaluar si hubo cambios.
+- **Selectores**: los recursos activos más el valor actual del turno (D7).
 - Como en el alta, el formulario usa `noValidate` (P8).
 
 ### D11 — Cancelación
@@ -192,7 +194,7 @@ Una función pura `interpretarErrorTurno(error, operacion)` devuelve `{general, 
 | `sillon_requerido` | Sillón, que se muestra aunque el catálogo no lo pida; relee catálogos | `Esta prestación requiere un sillón.` |
 | `sillon_no_corresponde` | General, relee catálogos | `Esta prestación no usa sillón.` |
 | `referencia_invalida` | Su campo, o general; relee catálogos | `El sillón está inactivo.` / `El profesional no existe.` / `La prestación está inactiva.` … |
-| `referencia_invalida` en reprogramar, de `paciente` o `prestacion` | General | `El paciente está inactivo: este turno no se puede reprogramar, pero sí cancelar.` (DD-26) |
+| `referencia_invalida` en reprogramar, de `paciente` o `prestacion` | General | `El paciente está inactivo: este turno no se puede reprogramar, pero sí cancelar.` / `La prestación está inactiva: este turno no se puede reprogramar, pero sí cancelar.` (DD-26) |
 | `turno_ya_cancelado` | General, obsoleto, relee la agenda | `Este turno ya fue cancelado.` |
 | `turno_ya_iniciado` | General, obsoleto, relee la agenda | `Este turno ya inició: no se puede modificar.` |
 | `turno_inexistente` | General, obsoleto, relee la agenda | `Este turno ya no existe.` |
@@ -240,7 +242,7 @@ Alternativas: `date-fns-tz` o `Luxon` (dependencia para cuatro funciones) y `Tem
 |---|---|---|
 | Agenda | Todos los profesionales | La suya, sin enviar `profesional_id` (DD-32 i) |
 | Filtro de profesional, agrupar por sillón | Sí | No |
-| Columnas de la vista diaria | Por profesional o por sillón | Una sola, la de su profesional (claim `profesional_id`), aunque esté vacía (P2) |
+| Columnas de la vista diaria | Por profesional o por sillón | Una sola, la de su profesional (claim `profesional_id`), aunque esté vacía (P2) o él esté desactivado (P10) |
 | Filtro de sillón, vistas, cancelados | Sí | Sí |
 | Detalle del turno | Con acciones | Solo lectura |
 | `Nuevo turno`, reprogramar, cancelar | Sí | No se renderizan |
