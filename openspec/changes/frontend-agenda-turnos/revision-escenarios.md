@@ -261,3 +261,230 @@ Ninguna tiene respuesta en la KB; las opciones son propuestas. La recomendada va
 - No se verificó qué responde `AwareDatetime` a un desfasaje con segundos, porque no hay un entorno de Python del backend en la máquina.
 - La geometría real de la grilla, el scroll inicial, el foco atrapado y `Esc` no se pueden probar en jsdom; quedan en la tarea 10.2, que hace el usuario.
 - No son hallazgos: el comportamiento ya entregado del backend, las pantallas de C-16, la UI de recordatorios y de auditoría, y las fallas previas de `openspec validate --specs --strict` en otros cuatro specs.
+
+## Revisión 2 — 2026-11-10
+
+- Fecha: 2026-11-10, sobre `d99fc04` (después de `/opsx:update`).
+- Specs revisados: `specs/frontend-agenda/spec.md` (20 requirements, 84 escenarios), `specs/frontend-turnos/spec.md` (20, 83), `specs/frontend-sesion/spec.md` (1, 4). Total: 41 requirements, 171 escenarios, contados con `grep`; 46 son nuevos respecto de la revisión 1.
+- Reglas aplicables: las de la revisión 1, más DD-26 h, y las decisiones aprobadas D1 a D13 y P1 a P8, que se registran como DD-34 (tarea 11.1). No se reabre ninguna.
+- Veredicto: **CORREGIR ANTES DE APPLY**
+- Conteo: 0 BLOQUEANTE, 3 MAYOR, 11 MENOR, 1 SUGERENCIA.
+
+Los 24 hallazgos anteriores se atendieron y el update no introdujo errores de cálculo: filas, carriles, fechas y días de la semana de los escenarios nuevos son correctos. Lo que queda son tres casos en los que una decisión aprobada no llegó entera a los escenarios: dos son justamente el cruce de P1 con el filtro y el orden de D10. Se corrigen con pocas líneas y sin decisiones de fondo, salvo las preguntas de abajo.
+
+### Estado de H1 a H24
+
+Comprobados uno por uno en los artefactos, no en la nota de actualización.
+
+| Hallazgo | Estado | Evidencia |
+|----------|--------|-----------|
+| H1 | Resuelto | "Horarios en la zona del consultorio": "el o los días locales que abarca" |
+| H2 | Resuelto | Requirement "Ubicación en la grilla", con 5 escenarios y lo manual declarado; tareas 4.2 y 4.3 |
+| H3 | Resuelto | "Bloqueo que termina justo a la medianoche" y "Bloqueo que cruza el fin de la semana visible" |
+| H4 | **Parcial** | "Solo hay turnos cancelados ocultos" y "Profesional desactivado con solo cancelados ocultos" lo resuelven sin filtro; con filtro, ver H25 |
+| H5 | Resuelto | "Una sola columna aunque esté vacía"; queda un caso derivado (H28) |
+| H6 | Resuelto | "Duración vaciada" con `Ingresá la duración.`; el mismo vacío en hora y fecha es H27 |
+| H7 | Resuelto | "Sin cambios con un sillón sobrante" y "solo junto con otro cambio" |
+| H8 | Resuelto | "Sillón requerido con el catálogo desactualizado" y el simétrico |
+| H9 | Resuelto | "Sillón inactivo" y "Cambiar el valor rechazado"; casos derivados en H29 y H30 |
+| H10 | Resuelto | Tres escenarios de desfasaje. Recomprobado: `Intl` en Node da `GMT-02:00` en 2008-01-15, `GMT-03:00` en 2009-03-16 y `GMT-04:16:48` en 1900 |
+| H11 | Resuelto | "Hora local" definida en cada spec |
+| H12 | Resuelto | Citas a D3, D9 y DD-34; la cláusula de orden se quitó |
+| H13 | Resuelto | "Contiguos que comparten una fila redondeada" |
+| H14 | **Parcial** | Columnas especiales, id inexistente y `columnas=sillon` resueltos; el filtro por inactivo sin elementos es H25 |
+| H15 | Resuelto | Tres escenarios nuevos y verificación de pantalla en 6.2 |
+| H16 | Resuelto | Años fuera de 1000 a 9998 en el requirement y tres escenarios |
+| H17 | Resuelto | `noValidate` en ambos formularios y "Valores que decide la API" |
+| H18 | Resuelto | "En un bloqueo", "Lectura vieja después de un alta", "Relectura fallida después del alta" |
+| H19 | Resuelto | "Bloqueo en la semana sin filtro" |
+| H20 | Resuelto | Los siete puntos, uno por uno |
+| H21 | Resuelto | "Apertura modal", "Cierre con Esc", espías en 2.3 y tarea 2.4 |
+| H22 | Resuelto | Nombrados en 9.4 y 9.1 |
+| H23 | Resuelto | "Última escritura gana"; la mezcla queda en 11.1 |
+| H24 | Resuelto | "Enter en el campo de búsqueda" y el THEN de "Selector de paciente con teclado" |
+
+La afirmación que la revisión 1 dejó sin verificar también se comprobó: `AwareDatetime` (Pydantic 2.14.2 del `.venv`) rechaza `-04:16:48` y acepta `-04:16`, como dice D14.
+
+### Controles específicos de esta pasada
+
+- **Literales de D12**: coherentes en todos los lugares donde aparecen. `Completá este campo.` (`frontend-turnos` "Falta otro campo obligatorio"; D9, D12), `Ingresá la duración.` ("Duración vaciada"; D10, D12), `Solo hay turnos cancelados en este período. Activá Mostrar cancelados para verlos.` ("Solo hay turnos cancelados ocultos"; D3) y `Lunes 09/11` ("Semana de lunes a domingo", "Nombre de las columnas de la semana"; D17, tarea 6.6). También coinciden con D12 el resto de los textos afirmados en los escenarios. Lo que falta es dónde se aplican: H26, H27 y H31.
+- **Tareas**: los 46 escenarios nuevos tienen tarea que los nombra o nombra su caso. Las dos observaciones de C9 están en H38.
+- **Alcance**: nada invade C-16 ni depende de algo inexistente. No aparecen reglas fuera de la KB o de las decisiones aprobadas; `columnas=sillon` ignorado se deriva de D1 y D16.
+- `openspec validate frontend-agenda-turnos --strict`: válido.
+
+### Cobertura
+
+E = esperado, N = error de negocio, B = borde.
+
+#### frontend-agenda
+
+| Requirement | Escenarios | E | N | B | Reglas cubiertas |
+|-------------|-----------:|:-:|:-:|:-:|------------------|
+| Pantalla de agenda | 4 | Sí | — | Sí | US-008, DD-32 a, D3, P1 |
+| Horarios en la zona del consultorio | 2 | Sí | — | Sí | RN-CU-04, DD-06, DD-32 g |
+| Día actual del consultorio | 2 | — | — | Sí | RN-CU-04 |
+| Vistas diaria y semanal | 5 | Sí | — | Sí | US-008, DD-32 d, DD-27 a, D2 |
+| Navegación entre períodos | 5 | Sí | — | Sí | US-008 |
+| La vista se conserva en la URL | 7 | Sí | — | Sí | DD-31 o, DD-32 l, D6, P7 |
+| Filtros por profesional y por sillón | 7 | Sí | — | Sí | US-008, DD-32 h, l, DD-26 g, P1 |
+| Columnas de la vista diaria | 6 | Sí | — | Sí | DD-30 d, DD-26 g, D1, P1 |
+| Datos visibles de cada turno | 3 | Sí | — | Sí | DD-32 j, DD-08 |
+| Nombres de los recursos | 2 | Sí | — | Sí | DD-26 g |
+| Turnos cancelados | 3 | Sí | — | Sí | D3, DD-32 f, RN-AG-07 |
+| Ubicación en la grilla | 5 | Sí | — | Sí | D1, D4, DD-15, P6 |
+| Elementos superpuestos en una columna | 4 | Sí | — | Sí | RN-AG-03, DD-30 b, f, P6 |
+| Elementos que cruzan días | 5 | Sí | — | Sí | DD-32 b, e, DD-30 f, RN-AG-03 |
+| Bloqueos en la agenda | 2 | Sí | — | — | DD-30, D1 |
+| Agenda del odontólogo | 6 | Sí | Sí | Sí | RN-AU-02, DD-31 b, DD-32 i, P2 |
+| Errores al cargar la agenda | 5 | — | Sí | Sí | DD-33 e, DD-32 i |
+| Respuestas fuera de orden | 4 | — | — | Sí | D13 |
+| Actualización manual | 2 | Sí | — | — | D13 |
+| Accesibilidad de la agenda | 5 | Sí | — | — | D17 |
+
+#### frontend-turnos
+
+| Requirement | Escenarios | E | N | B | Reglas cubiertas |
+|-------------|-----------:|:-:|:-:|:-:|------------------|
+| Operaciones solo para la recepcionista | 2 | Sí | Sí | — | RN-AU-02, matriz de 03 |
+| Operaciones según el estado del turno | 3 | Sí | Sí | Sí | RN-AG-13, DD-14, DD-23 d |
+| Formulario de nuevo turno | 5 | Sí | Sí | Sí | D9, DD-21 c, US-004, P8 |
+| Sillón según la prestación | 2 | Sí | — | Sí | DD-09, RN-AG-10, DD-21 a |
+| Duración por defecto y ajustable | 2 | Sí | — | — | RN-AG-04 |
+| Inicio con zona horaria | 5 | Sí | — | Sí | RN-CU-04, DD-15, SU-08, D14 |
+| Alta exitosa | 3 | Sí | — | Sí | US-004, D13 |
+| Búsqueda de pacientes | 5 | Sí | — | Sí | DD-31 e, D8 |
+| Resultados de la búsqueda de pacientes | 6 | Sí | Sí | Sí | DD-31 g, DD-21 c |
+| Formulario de reprogramación | 4 | Sí | Sí | Sí | DD-23 a, b, DD-26 g, P3 |
+| Reprogramación parcial | 9 | Sí | — | Sí | DD-23 a, DD-26, P4 |
+| Cancelación con confirmación | 5 | Sí | — | Sí | US-006, DD-14, D11 |
+| Conflicto por solapamiento | 4 | — | Sí | — | RN-AG-01, 02, 14, DD-21 b |
+| Reglas de agenda rechazadas por la API | 7 | — | Sí | Sí | RN-AG-04, 05, 06, 10, 12, D7, D13 |
+| Referencias inválidas | 3 | — | Sí | Sí | DD-21 c, DD-26, P5 |
+| Errores de validación por campo | 2 | — | Sí | Sí | DD-33 l, `frontend-cliente-http` |
+| Turno que cambió mientras se editaba | 4 | — | Sí | Sí | DD-22, DD-23 c, d, D13 |
+| Conservación de los datos ante un error | 2 | Sí | Sí | — | US-005 |
+| Falta de permiso y fallas de red | 3 | — | Sí | Sí | DD-33 a, d, e |
+| Accesibilidad de los formularios | 7 | Sí | — | Sí | D6, D17 |
+
+#### frontend-sesion
+
+| Requirement | Escenarios | E | N | B | Reglas cubiertas |
+|-------------|-----------:|:-:|:-:|:-:|------------------|
+| Layout de la aplicación (MODIFIED) | 4 | Sí | Sí | — | DD-33 g, RN-AU-03 |
+
+C1 se cumple en el conjunto. Reglas del scope sin escenario: **el orden de D10** (H26). Las demás filas de la revisión 1 quedaron cubiertas.
+
+### Hallazgos
+
+Numeración continua respecto de la revisión 1. H25 a H27 y H29 salen de lo que agregó el update; el resto son casos que la revisión 1 no había visto.
+
+#### H25 — El filtro por un profesional desactivado contradice P1 cuando solo tiene cancelados ocultos · MAYOR
+- **Dónde**: `frontend-agenda`, requirement "Filtros por profesional y por sillón", escenario "Filtro por un profesional desactivado sin elementos". Tarea 6.3.
+- **Problema**: el GIVEN dice "sin elementos **visibles** en el día" y el THEN exige `No hay turnos ni bloqueos en este período.`. Si ese profesional tiene un único turno `cancelado` y la casilla está apagada, el GIVEN se cumple; y para esa misma respuesta "Solo hay turnos cancelados ocultos" exige el otro texto y que **no** se vea ese. Los dos escenarios no pueden pasar a la vez, y el GIVEN tampoco dice que sea la vista diaria, donde "ninguna columna" tiene sentido.
+- **Fuente**: P1; D3 ("Qué cuenta como elemento"); requirement "Pantalla de agenda"; controles C2 y C7.
+- **Sugerencia**: GIVEN "la vista diaria, un profesional desactivado y una respuesta `{"turnos": [], "bloqueos": []}`". Agregar, sin regla nueva: GIVEN la vista diaria filtrada por un profesional desactivado cuyo único turno está `cancelado` y la casilla apagada, THEN no se ve ninguna columna y se ve `Solo hay turnos cancelados en este período. Activá Mostrar cancelados para verlos.`
+
+#### H26 — El orden de D10 no está en el spec, y "Sin cambios" lo contradice · MAYOR
+- **Dónde**: `frontend-turnos`, requirement "Reprogramación parcial", escenarios "Sin cambios" y "Prestación que pasó a requerir sillón"; falta un escenario. Tarea 9.4.
+- **Problema**: D10 fija "primero los obligatorios y después la comparación". El requirement dice, sin excepción, "Sin cambios, MUST informarlo sin hacer ningún pedido", y el escenario "Sin cambios" tiene un GIVEN que incluye a un turno sin sillón cuya prestación ahora lo requiere: debería verse `No hiciste cambios.`, justo lo que D10 descarta. "Prestación que pasó a requerir sillón" termina al abrir el formulario, así que nada verifica el orden, y la tarea 9.4 tampoco lo menciona. Por la regla dura, Apply no puede implementar lo que no está en el spec.
+- **Fuente**: D10 (Orden); `CLAUDE.md` §Reglas duras §Proceso; DD-26 (consecuencias); controles C2, C7 y C9.
+- **Sugerencia**: agregar al requirement "los obligatorios se comprueban antes de comparar". Escenario: GIVEN un turno sin sillón cuya prestación ahora tiene `requiere_sillon` verdadero y el formulario sin modificar, WHEN se envía, THEN el campo `Sillón` muestra su error de obligatorio, no se ve `No hiciste cambios.` y no se hace ningún `PATCH`. El texto depende de P9. Sumarlo a 9.4.
+
+#### H27 — Hora o fecha vaciadas al reprogramar · MAYOR
+- **Dónde**: `frontend-turnos`, requirement "Formulario de reprogramación", falta. D10.
+- **Problema**: el requirement solo hace obligatoria la duración. Con `noValidate` (P8) el navegador ya no frena un `Hora` o `Fecha` vacíos, y la comparación contra el turno ve un cambio: según la implementación, `aInstanteConDesfasaje` lanza, o sale un `PATCH` con un `inicio` inválido. Es el mismo problema de H6 en otros dos campos. D10 habla de "los obligatorios", en plural, y el spec no dice cuáles son.
+- **Fuente**: P8, D10 (Orden), D14; requirement "Formulario de nuevo turno" ("Un campo obligatorio vacío MUST impedir el envío"), que aplica solo al alta; control C7.
+- **Sugerencia**: pregunta P9.
+
+#### H28 — Odontólogo de un profesional desactivado: P1 contra P2 · MENOR
+- **Dónde**: `frontend-agenda`, requirements "Columnas de la vista diaria" y "Agenda del odontólogo". Tareas 4.3 y 6.5.
+- **Problema**: desactivar un profesional no afecta a su usuario `odontologo`, que sigue entrando. Sin elementos, "Un recurso desactivado MUST tener columna solo si tiene elementos visibles" le quita la columna, y "una sola columna, la de su profesional, aunque esté vacía" se la da. La primera oración del requirement de columnas habla de la recepcionista, pero el resto no se limita a ella y la última regla menciona al odontólogo. Una función de columnas común (tarea 4.3) daría cero columnas.
+- **Fuente**: DD-26 h; P1; P2; D3; D16.
+- **Sugerencia**: pregunta P10.
+
+#### H29 — Un valor rechazado que es el actual del turno · MENOR
+- **Dónde**: `frontend-turnos`, requirements "Formulario de reprogramación" y "Referencias inválidas", escenarios "Profesional desactivado" y "Cambiar el valor rechazado".
+- **Problema**: como `aplicar_cambios` fusiona lo omitido y `cargar_referencias` exige referencias activas, un `PATCH` que cambia solo la hora de un turno con profesional desactivado devuelve `referencia_invalida` sobre ese profesional. Al elegir otro, "Cambiar el valor rechazado" dice que la opción "deja de ofrecerse", y el otro requirement dice que el recurso actual "MUST seguir figurando".
+- **Fuente**: P5; D7 ("más el valor actual al reprogramar"); DD-26 (consecuencias); `backend/app/application/reprogramar_turno.py`, `repositorio_turnos.py`.
+- **Sugerencia**: pregunta P11.
+
+#### H30 — Alcance de `(inactivo)` y un texto sin definir · MENOR
+- **Dónde**: `frontend-turnos`, requirement "Referencias inválidas".
+- **Problema**: "el valor rechazado MUST seguir como opción marcada `(inactivo)`" no contempla dos casos. Con `motivo` `inexistente` el recurso no está inactivo, y D9 dice que se usa el texto genérico. El paciente en el alta no es una opción de un selector. Además, el requirement pide indicar que el turno solo se puede cancelar con "paciente o prestación", pero D12 y el escenario solo dan el texto del paciente, y la tarea 7.1 afirma ambos.
+- **Fuente**: P5; D9; D12; DD-26 (consecuencias); control C5.
+- **Sugerencia**: un escenario con `motivo` `inexistente`; acotar la frase a los selectores; agregar a D12 y al spec el texto para `prestacion`.
+
+#### H31 — "Es obligatorio" no se puede afirmar con `noValidate` · MENOR
+- **Dónde**: `frontend-turnos`, escenarios "Prestación que requiere sillón" y "Prestación que pasó a requerir sillón".
+- **Problema**: con P8, `required` no tiene efecto, y ningún escenario envía el formulario con el sillón vacío. "Falta otro campo obligatorio" solo prueba `Hora`. Un campo sin validación pasa los dos THEN si la prueba mira otra cosa.
+- **Fuente**: P8; D9; control C5.
+- **Sugerencia**: en el alta, GIVEN una prestación con `requiere_sillon` verdadero y el sillón sin elegir, WHEN se envía, THEN el campo `Sillón` muestra `Completá este campo.` y no se hace ningún `POST /turnos`.
+
+#### H32 — Las columnas con filtro solo están en un escenario · MENOR
+- **Dónde**: `frontend-agenda`, "Columnas de la vista diaria", escenarios "Filtrar por profesional" y "Filtro con un id que no existe".
+- **Problema**: ningún requirement dice cómo un filtro reduce las columnas. "Se ve una sola columna" no fija la agrupación: agrupando por sillón, las columnas son sillones. Tampoco está definido filtrar por sillón agrupando por sillón (¿solo ese, o todos?), ni si un id inexistente tiene columna; el escenario afirma el texto, pero no eso.
+- **Fuente**: D1, D6, DD-30 d, DD-32 l; control C7.
+- **Sugerencia**: pregunta P12.
+
+#### H33 — Un turno de un recurso ausente del catálogo no tiene columna · MENOR
+- **Dónde**: `frontend-agenda`, "Nombres de los recursos" y "Columnas de la vista diaria". D7.
+- **Problema**: el catálogo se carga al montar la página y `Actualizar` no lo relee. Un turno de un profesional dado de alta después no pertenece a ninguna columna diaria: es un elemento visible que no se ve, sin el mensaje de vacío, cuando el requirement dice "sin impedir ver la agenda". Agrupando por sillón pasa lo mismo.
+- **Fuente**: requirement "Nombres de los recursos"; D1, D7; DD-26 a.
+- **Sugerencia**: pregunta P13.
+
+#### H34 — Relectura de catálogos fallida con el formulario abierto · MENOR
+- **Dónde**: `frontend-agenda`, "Errores al cargar la agenda"; `frontend-turnos`, "Conservación de los datos ante un error".
+- **Problema**: el update amplió las relecturas de catálogos a tres códigos, pero "Si falla la carga […] de los catálogos, la pantalla MUST mostrar el mensaje" no distingue la carga inicial de una relectura. Sin escenario, una implementación puede reemplazar la pantalla y perder el formulario.
+- **Fuente**: D7; requirement "Conservación de los datos ante un error".
+- **Sugerencia**: pregunta P14.
+
+#### H35 — `inicio_no_alineado` sin escenario · MENOR
+- **Dónde**: `frontend-turnos`, "Reglas de agenda rechazadas por la API".
+- **Problema**: el requirement lo lista y "Valores que decide la API" envía justo `10:07`, pero ningún escenario afirma su respuesta. La tarea 7.1 cubre el traductor; la 9.3 no lo nombra.
+- **Fuente**: P8; DD-15; D12.
+- **Sugerencia**: GIVEN un formulario enviado y una respuesta `422` con código `inicio_no_alineado`, THEN el campo `Hora` muestra `El horario debe ser múltiplo de 5 minutos.`
+
+#### H36 — El detalle queda indefinido bajo los formularios · MENOR
+- **Dónde**: `frontend-turnos`, "Reprogramación exitosa", "Desistir" y "Turno creado"; `frontend-agenda`, "Detalle de un turno". D6.
+- **Problema**: `Reprogramar` y `Cancelar turno` se abren desde el detalle, que también es un diálogo. Ningún escenario dice si sigue abierto. Si sigue, tras un éxito muestra datos viejos y las mismas acciones, y `queryByRole("dialog")` no da lo que afirma "el formulario se cierra".
+- **Fuente**: D6; control C7.
+- **Sugerencia**: pregunta P15.
+
+#### H37 — Reglas de D7 y D9 que no llegaron al spec · MENOR
+- **Dónde**: `frontend-turnos`, "Formulario de reprogramación" y "Formulario de nuevo turno".
+- **Problema**: D7 dice que el formulario de reprogramación ofrece solo activos más el valor actual, pero solo está escrito para el alta. D9 dice que el profesional toma el del filtro, sin requirement; y si el filtro es un profesional desactivado, choca con "solo recursos activos".
+- **Fuente**: D7, D9; `CLAUDE.md` §Reglas duras §Proceso.
+- **Sugerencia**: agregar ambas al spec con su escenario, con el desactivado sin precargar, o quitar del diseño la del profesional.
+
+#### H38 — Escenarios imprecisos · MENOR
+- **Dónde y problema**:
+  - "Detalle de un turno" (`frontend-agenda`) y "Turno cancelado" (`frontend-turnos`): con D3 un cancelado no se puede elegir sin activar la casilla, y el GIVEN no lo dice.
+  - "Reenvío exitoso": "el error desaparece" no puede fallar, porque el formulario se cierra. La cláusula "Los errores previos MUST limpiarse al reenviar" no tiene escenario efectivo.
+  - "Año anterior al admitido" usa `0050`, y el borde inferior (`1000-01-01` válida, `0999-12-31` inválida) no se prueba; un mínimo de 100 pasaría.
+  - C9: los tres escenarios de años afirman un `GET`, y la tarea 4.1 prueba solo la función. "Sesión vencida al enviar" habla de un `POST /turnos`, y la tarea 9.5 está en el test de reprogramar, donde además hace falta `renderizarApp` para ver `/login`.
+- **Fuente**: controles C5 y C9; D3; P7; DD-33 d.
+- **Sugerencia**: completar los GIVEN; un escenario de reenvío que falla con otro error; el borde inferior; sumar los años a 6.2 y `POST` a 9.3.
+
+#### H39 — Documentación del proposal sin tarea · SUGERENCIA
+- **Dónde**: `proposal.md` (Impact) y tarea 11.2.
+- **Problema**: el proposal anuncia cambios en `knowledge-base/06` (US-008) y ninguna tarea lo toca; 11.2 toca `08`, que el proposal no lista.
+- **Fuente**: `proposal.md`; `tasks.md`.
+- **Sugerencia**: alinear las dos listas.
+
+### Preguntas abiertas
+
+Ninguna tiene respuesta en la KB ni en las decisiones aprobadas. Las opciones son propuestas; la recomendada va primero.
+
+- **P9 (H26, H27)**: obligatorios al reprogramar. (a) Fecha, hora, y sillón cuando se requiere, con `Completá este campo.` y sin pedido, antes de comparar, igual que en el alta. (b) Hora o fecha vacías conservan el valor del turno. Recomendada: (a), porque es lo que anticipa D10 y una sola vía de error.
+- **P10 (H28)**: odontólogo de un profesional desactivado. (a) Una sola columna, aunque esté vacía: P2 es la regla específica, y conviene limitar la regla de desactivados a la recepcionista. (b) Sin columna, como P1. Recomendada: (a).
+- **P11 (H29)**: valor rechazado que es el actual del turno. (a) Sigue como opción mientras sea el actual; "deja de ofrecerse" vale para los demás. (b) Deja de ofrecerse también. Recomendada: (a), porque coincide con D7.
+- **P12 (H32)**: columnas con filtro. (a) El filtro de profesional deja una columna solo al agrupar por profesional; al agrupar por sillón, siguen los sillones; el filtro de sillón al agrupar por sillón deja ese sillón y `Bloqueos` si hay; un id inexistente, sin columna. (b) Las columnas no dependen de los filtros. Recomendada: (a).
+- **P13 (H33)**: turno de un recurso ausente del catálogo. (a) Tiene columna, con el texto genérico, como un desactivado con elementos. (b) Releer los catálogos con `Actualizar`, además, para reducir el caso. Recomendada: (a), y (b) se puede sumar.
+- **P14 (H34)**: relectura de catálogos fallida con el formulario abierto. (a) El formulario sigue abierto con sus datos y el error se muestra como general. (b) Error de pantalla con `Reintentar`. Recomendada: (a), por "Conservación de los datos".
+- **P15 (H36)**: detalle al abrir un formulario. (a) Se cierra al abrir el formulario, y `Volver` o el éxito llevan a la agenda. (b) Sigue abierto y se actualiza. Recomendada: (a), porque evita diálogos apilados.
+
+### Fuera de esta revisión
+
+- No hay código del change: nada de esto se ejecutó. Solo se comprobaron `Intl`, los días de la semana, `AwareDatetime` y el camino de reprogramación del backend.
+- No se reabrieron D1 a D13 ni P1 a P8.
+- No son hallazgos: las fallas previas de `openspec validate --specs --strict` en otros cuatro specs, ni la cita a DD-34, que se crea en la tarea 11.1.
