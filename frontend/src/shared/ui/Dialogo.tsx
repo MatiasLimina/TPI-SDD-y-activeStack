@@ -12,7 +12,7 @@ interface PropsDialogo {
 
 /**
  * `<dialog>` nativo abierto con `showModal()`: foco atrapado, `Esc` y `::backdrop` sin
- * dependencias. El estado `abierto` se sincroniza con el evento `close`, para que un `Esc`
+ * dependencias; `Esc` en un campo de búsqueda también cierra de una vez. El estado `abierto` se sincroniza con el evento `close`, para que un `Esc`
  * no impida volver a abrirlo (D6).
  */
 export function Dialogo({ abierto, titulo, onCerrar, children }: PropsDialogo) {
@@ -32,6 +32,19 @@ export function Dialogo({ abierto, titulo, onCerrar, children }: PropsDialogo) {
       className={estilos.dialogo}
       aria-labelledby={idTitulo}
       onClose={onCerrar}
+      onKeyDownCapture={(e) => {
+        // Chrome usa el primer Esc de un `<input type="search">` para borrar el texto y recién el
+        // segundo cierra el diálogo. Se evita el borrado y se cierra con una sola pulsación
+        const objetivo = e.target;
+        if (
+          e.key === "Escape" &&
+          objetivo instanceof HTMLInputElement &&
+          objetivo.type === "search"
+        ) {
+          e.preventDefault();
+          e.currentTarget.close();
+        }
+      }}
     >
       <h2 id={idTitulo}>{titulo}</h2>
       {children}

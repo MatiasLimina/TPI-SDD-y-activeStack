@@ -69,4 +69,50 @@ describe("Dialogo", () => {
     expect(HTMLDialogElement.prototype.close).toHaveBeenCalledTimes(1);
     expect(screen.queryByRole("dialog")).toBeNull();
   });
+
+  describe("Esc dentro de un campo de búsqueda", () => {
+    function ConBuscador() {
+      const [abierto, setAbierto] = useState(true);
+      return (
+        <Dialogo
+          abierto={abierto}
+          titulo="Nuevo turno"
+          onCerrar={() => setAbierto(false)}
+        >
+          <input type="search" aria-label="Buscar" defaultValue="per" />
+          <input type="text" aria-label="Nombre" defaultValue="ana" />
+        </Dialogo>
+      );
+    }
+
+    it("cierra el diálogo con una sola pulsación y evita el borrado nativo del texto", () => {
+      render(<ConBuscador />);
+      const campo = screen.getByLabelText("Buscar");
+
+      const noCancelado = fireEvent.keyDown(campo, { key: "Escape" });
+
+      expect(noCancelado).toBe(false);
+      expect(HTMLDialogElement.prototype.close).toHaveBeenCalledTimes(1);
+      expect(screen.queryByRole("dialog")).toBeNull();
+    });
+
+    it("en un campo de texto común no interviene: lo resuelve el navegador", () => {
+      render(<ConBuscador />);
+
+      const noCancelado = fireEvent.keyDown(screen.getByLabelText("Nombre"), {
+        key: "Escape",
+      });
+
+      expect(noCancelado).toBe(true);
+      expect(HTMLDialogElement.prototype.close).not.toHaveBeenCalled();
+    });
+
+    it("otras teclas en el campo de búsqueda no lo cierran", () => {
+      render(<ConBuscador />);
+
+      fireEvent.keyDown(screen.getByLabelText("Buscar"), { key: "a" });
+
+      expect(HTMLDialogElement.prototype.close).not.toHaveBeenCalled();
+    });
+  });
 });
