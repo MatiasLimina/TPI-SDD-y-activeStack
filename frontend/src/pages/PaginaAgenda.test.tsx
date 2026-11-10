@@ -4,7 +4,10 @@ import { CLAVE_TOKEN } from "../features/sesion/almacenamiento";
 import { instalarApiFalsa, type ApiFalsa } from "../test/apiFalsa";
 import {
   bloqueo,
+  ID_ANA,
   ID_LUIS,
+  ID_SILLON_1,
+  ID_SILLON_2,
   prestacion,
   profesional,
   sillon,
@@ -414,6 +417,11 @@ function columna(nombre: string) {
   return screen.getByRole("region", { name: nombre });
 }
 
+/** Solo los elementos de una columna, sin su encabezado. */
+function elementos(region: HTMLElement) {
+  return within(within(region).getByRole("list"));
+}
+
 describe("Contenido de la agenda", () => {
   it("muestra el turno con su hora, el paciente y la prestación en la columna del profesional", async () => {
     conSesion();
@@ -778,5 +786,356 @@ describe("Día actual del consultorio", () => {
 
     await esperarCarga();
     expect(rangoPedido(api)).toEqual(["2026-11-10", "2026-11-10"]);
+  });
+});
+
+const ID_INEXISTENTE = "00000000-0000-4000-8000-0000000000a9";
+const LUIS_INACTIVO = profesional({
+  id: ID_LUIS,
+  nombre: "Luis",
+  apellido: "Inventado",
+  activo: false,
+});
+
+function ultimoTurnos(api: ApiFalsa) {
+  const pedidos = api.pedidos("GET /turnos");
+  const ultimo = pedidos[pedidos.length - 1];
+  if (ultimo === undefined) throw new Error("No hubo pedidos a /turnos");
+  return ultimo;
+}
+
+describe("Filtros por profesional y por sillón", () => {
+  it("filtrar por profesional pide solo ese profesional y deja una columna", async () => {
+    conSesion();
+    const api = instalarApiFalsa();
+    cargar(api, {
+      profesionales: [
+        profesional(),
+        profesional({ id: ID_LUIS, nombre: "Luis", apellido: "Inventado" }),
+      ],
+    });
+    const { user } = renderizarApp("/agenda?fecha=2026-11-09");
+    await screen.findByRole("region", { name: "Ficticia, Ana" });
+    expect(screen.getAllByRole("region")).toHaveLength(2);
+
+    await user.selectOptions(
+      screen.getByLabelText("Profesional"),
+      "Inventado, Luis",
+    );
+
+    await waitFor(() =>
+      expect(ultimoTurnos(api).parametros.get("profesional_id")).toBe(ID_LUIS),
+    );
+    await waitFor(() => expect(screen.getAllByRole("region")).toHaveLength(1));
+    expect(
+      screen.getByRole("region", { name: "Inventado, Luis" }),
+    ).toBeInTheDocument();
+  });
+
+  it("filtrar por profesional y sillón a la vez envía los dos parámetros", async () => {
+    conSesion();
+    const api = instalarApiFalsa();
+    cargar(api, {
+      sillones: [sillon(), sillon({ id: ID_SILLON_2, nombre: "Sillón 2" })],
+    });
+    const { user } = renderizarApp("/agenda?fecha=2026-11-09");
+    await esperarCarga();
+
+    await user.selectOptions(
+      screen.getByLabelText("Profesional"),
+      "Ficticia, Ana",
+    );
+    await user.selectOptions(screen.getByLabelText("Sillón"), "Sillón 2");
+
+    await waitFor(() => {
+      const ultimo = ultimoTurnos(api);
+      expect(ultimo.parametros.get("profesional_id")).toBe(ID_ANA);
+      expect(ultimo.parametros.get("sillon_id")).toBe(ID_SILLON_2);
+    });
+  });
+
+  it("la opción Todos los sillones quita el filtro", async () => {
+    conSesion();
+    const api = instalarApiFalsa();
+    cargar(api);
+    const { user } = renderizarApp(
+      "/agenda?fecha=2026-11-09&sillon=" + ID_SILLON_1,
+    );
+    await esperarCarga();
+    expect(ultimoTurnos(api).parametros.get("sillon_id")).toBe(ID_SILLON_1);
+
+    await user.selectOptions(
+      screen.getByLabelText("Sillón"),
+      "Todos los sillones",
+    );
+
+    await waitFor(() =>
+      expect(ultimoTurnos(api).parametros.has("sillon_id")).toBe(false),
+    );
+  });
+
+  it("los selectores incluyen a los desactivados, identificados como inactivos", async () => {
+    conSesion();
+    const api = instalarApiFalsa();
+    cargar(api, {
+      profesionales: [profesional(), LUIS_INACTIVO],
+      sillones: [
+        sillon({ id: ID_SILLON_2, nombre: "Sillón 2", activo: false }),
+      ],
+    });
+
+    renderizarApp("/agenda?fecha=2026-11-09");
+
+    expect(
+      await screen.findByRole("option", { name: "Inventado, Luis (inactivo)" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("option", { name: "Sillón 2 (inactivo)" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("option", { name: "Todos los profesionales" }),
+    ).toBeInTheDocument();
+  });
+
+  it("filtrar por un desactivado sin elementos no deja columnas y informa el período vacío", async () => {
+    conSesion();
+    const api = instalarApiFalsa();
+    cargar(api, { profesionales: [profesional(), LUIS_INACTIVO] });
+
+    renderizarApp("/agenda?fecha=2026-11-09&profesional=" + ID_LUIS);
+
+    expect(await screen.findByText(VACIO)).toBeInTheDocument();
+    expect(screen.queryAllByRole("region")).toHaveLength(0);
+  });
+
+  it("filtrar por un desactivado con solo cancelados ocultos no deja columnas y usa el texto propio", async () => {
+    conSesion();
+    const api = instalarApiFalsa();
+    cargar(api, {
+      profesionales: [profesional(), LUIS_INACTIVO],
+      turnos: [turno({ profesional_id: ID_LUIS, estado: "cancelado" })],
+    });
+
+    renderizarApp("/agenda?fecha=2026-11-09&profesional=" + ID_LUIS);
+
+    expect(await screen.findByText(SOLO_CANCELADOS)).toBeInTheDocument();
+    expect(screen.queryAllByRole("region")).toHaveLength(0);
+  });
+
+  it("un id bien formado que no existe se pide, se muestra como no disponible y no genera columna", async () => {
+    conSesion();
+    const api = instalarApiFalsa();
+    cargar(api);
+
+    renderizarApp("/agenda?fecha=2026-11-09&profesional=" + ID_INEXISTENTE);
+
+    expect(await screen.findByText(VACIO)).toBeInTheDocument();
+    expect(ultimoTurnos(api).parametros.get("profesional_id")).toBe(
+      ID_INEXISTENTE,
+    );
+    expect(
+      screen.getByRole("option", {
+        name: "Profesional no disponible",
+        selected: true,
+      }),
+    ).toBeInTheDocument();
+    expect(screen.queryAllByRole("region")).toHaveLength(0);
+  });
+});
+
+describe("Bloqueos en la agenda", () => {
+  it("muestra el bloqueo con su identificación, horario y motivo, sin acciones", async () => {
+    conSesion();
+    const api = instalarApiFalsa();
+    cargar(api, { bloqueos: [bloqueo()] });
+
+    renderizarApp("/agenda?fecha=2026-11-09");
+
+    const ana = await screen.findByRole("region", { name: "Ficticia, Ana" });
+    expect(within(ana).getByText("Bloqueo")).toBeInTheDocument();
+    expect(within(ana).getByText("15:00")).toBeInTheDocument();
+    expect(within(ana).getByText("16:00")).toBeInTheDocument();
+    expect(within(ana).getByText("Congreso")).toBeInTheDocument();
+    expect(within(ana).queryByRole("button")).not.toBeInTheDocument();
+  });
+
+  it("con filtro de sillón sigue mostrando el bloqueo del profesional", async () => {
+    conSesion();
+    const api = instalarApiFalsa();
+    cargar(api, { bloqueos: [bloqueo()] });
+
+    renderizarApp("/agenda?fecha=2026-11-09&sillon=" + ID_SILLON_1);
+
+    expect(await screen.findByText("Congreso")).toBeInTheDocument();
+  });
+
+  it("en la semana sin filtro de profesional el bloqueo nombra a su profesional", async () => {
+    conSesion();
+    const api = instalarApiFalsa();
+    cargar(api, { bloqueos: [bloqueo()] });
+
+    renderizarApp("/agenda?vista=semana&fecha=2026-11-09");
+
+    const lunes = await screen.findByRole("region", { name: "Lunes 09/11" });
+    expect(within(lunes).getByText("Ficticia, Ana")).toBeInTheDocument();
+  });
+
+  it("en la vista por profesional el bloqueo no repite el nombre que ya dice la columna", async () => {
+    conSesion();
+    const api = instalarApiFalsa();
+    cargar(api, { bloqueos: [bloqueo()] });
+
+    renderizarApp("/agenda?fecha=2026-11-09");
+
+    const ana = await screen.findByRole("region", { name: "Ficticia, Ana" });
+    expect(elementos(ana).queryByText("Ficticia, Ana")).not.toBeInTheDocument();
+  });
+});
+
+describe("Datos visibles de cada turno según las columnas", () => {
+  it("en la semana el turno muestra el profesional y el sillón", async () => {
+    conSesion();
+    const api = instalarApiFalsa();
+    cargar(api, { turnos: [turno()] });
+
+    renderizarApp("/agenda?vista=semana&fecha=2026-11-09");
+
+    const lunes = await screen.findByRole("region", { name: "Lunes 09/11" });
+    expect(within(lunes).getByText("Ficticia, Ana")).toBeInTheDocument();
+    expect(within(lunes).getByText("Sillón 1")).toBeInTheDocument();
+  });
+
+  it("en la vista por profesional el turno muestra el sillón y no repite al profesional", async () => {
+    conSesion();
+    const api = instalarApiFalsa();
+    cargar(api, { turnos: [turno()] });
+
+    renderizarApp("/agenda?fecha=2026-11-09");
+
+    const ana = await screen.findByRole("region", { name: "Ficticia, Ana" });
+    expect(within(ana).getByText("Sillón 1")).toBeInTheDocument();
+    expect(elementos(ana).queryByText("Ficticia, Ana")).not.toBeInTheDocument();
+  });
+
+  it("en la vista por sillón el turno muestra al profesional y no repite el sillón", async () => {
+    conSesion();
+    const api = instalarApiFalsa();
+    cargar(api, { turnos: [turno()] });
+
+    renderizarApp("/agenda?fecha=2026-11-09&columnas=sillon");
+
+    const columnaSillon = await screen.findByRole("region", {
+      name: "Sillón 1",
+    });
+    expect(
+      within(columnaSillon).getByText("Ficticia, Ana"),
+    ).toBeInTheDocument();
+    expect(
+      elementos(columnaSillon).queryByText("Sillón 1"),
+    ).not.toBeInTheDocument();
+  });
+});
+
+describe("Agrupar la vista diaria por sillón", () => {
+  it("elegir agrupar por sillón cambia las columnas y queda en la URL", async () => {
+    conSesion();
+    const api = instalarApiFalsa();
+    cargar(api, {
+      turnos: [turno({ id: "t1" }), turno({ id: "t2", sillon_id: null })],
+      bloqueos: [bloqueo()],
+    });
+    const { user } = renderizarApp("/agenda?fecha=2026-11-09");
+    await screen.findByRole("region", { name: "Ficticia, Ana" });
+
+    await user.selectOptions(screen.getByLabelText("Agrupar por"), "Sillón");
+
+    const columnaSillon = await screen.findByRole("region", {
+      name: "Sillón 1",
+    });
+    expect(
+      within(columnaSillon).getByText("Imaginaria, Carla"),
+    ).toBeInTheDocument();
+    expect(
+      within(screen.getByRole("region", { name: "Sin sillón" })).getByText(
+        "Imaginaria, Carla",
+      ),
+    ).toBeInTheDocument();
+    const bloqueos = screen.getByRole("region", { name: "Bloqueos" });
+    expect(within(bloqueos).getByText("Ficticia, Ana")).toBeInTheDocument();
+    expect(screen.getByTestId("busqueda").textContent).toContain(
+      "columnas=sillon",
+    );
+  });
+
+  it("sin turnos sin sillón ni bloqueos no se ven esas columnas", async () => {
+    conSesion();
+    const api = instalarApiFalsa();
+    cargar(api, { turnos: [turno()] });
+
+    renderizarApp("/agenda?fecha=2026-11-09&columnas=sillon");
+
+    await screen.findByRole("region", { name: "Sillón 1" });
+    expect(
+      screen.queryByRole("region", { name: "Sin sillón" }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("region", { name: "Bloqueos" }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("agrupando por sillón, el filtro de profesional conserva las columnas de sillones", async () => {
+    conSesion();
+    const api = instalarApiFalsa();
+    cargar(api, {
+      sillones: [sillon(), sillon({ id: ID_SILLON_2, nombre: "Sillón 2" })],
+    });
+    const { user } = renderizarApp("/agenda?fecha=2026-11-09&columnas=sillon");
+    await screen.findByRole("region", { name: "Sillón 1" });
+
+    await user.selectOptions(
+      screen.getByLabelText("Profesional"),
+      "Ficticia, Ana",
+    );
+
+    await waitFor(() =>
+      expect(ultimoTurnos(api).parametros.get("profesional_id")).toBe(ID_ANA),
+    );
+    expect(
+      screen.getByRole("region", { name: "Sillón 1" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("region", { name: "Sillón 2" }),
+    ).toBeInTheDocument();
+  });
+
+  it("agrupando por sillón, el filtro de sillón deja ese sillón y Bloqueos", async () => {
+    conSesion();
+    const api = instalarApiFalsa();
+    cargar(api, {
+      sillones: [sillon(), sillon({ id: ID_SILLON_2, nombre: "Sillón 2" })],
+      bloqueos: [bloqueo()],
+    });
+
+    renderizarApp(
+      "/agenda?fecha=2026-11-09&columnas=sillon&sillon=" + ID_SILLON_1,
+    );
+
+    await screen.findByRole("region", { name: "Sillón 1" });
+    expect(
+      screen.getByRole("region", { name: "Bloqueos" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("region", { name: "Sillón 2" }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("en la vista semanal no se ofrece agrupar por sillón", async () => {
+    conSesion();
+    instalarApiFalsa();
+
+    renderizarApp("/agenda?vista=semana&fecha=2026-11-09");
+
+    await esperarCarga();
+    expect(screen.queryByLabelText("Agrupar por")).not.toBeInTheDocument();
   });
 });

@@ -62,6 +62,8 @@ export default function PaginaAgenda() {
       <h1>Agenda</h1>
       <BarraAgenda
         vista={vista}
+        rol={rol}
+        catalogos={catalogos}
         hoy={hoy}
         alCambiar={cambiarVista}
         alActualizar={agenda.recargar}
@@ -83,7 +85,11 @@ export default function PaginaAgenda() {
         </p>
       )}
       {catalogos !== null && (
-        <GrillaAgenda columnas={columnas} nombres={crearNombres(catalogos)} />
+        <GrillaAgenda
+          columnas={columnas}
+          vista={vista}
+          nombres={crearNombres(catalogos)}
+        />
       )}
     </main>
   );
