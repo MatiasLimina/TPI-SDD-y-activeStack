@@ -6,7 +6,7 @@ Define cómo la SPA se comunica con la API: de dónde sale la URL base, cómo vi
 ## Requirements
 
 ### Requirement: URL base de la API
-El cliente HTTP SHALL armar cada URL con la base configurada en `VITE_API_URL` y, si la variable no está definida, con `http://localhost:8000`. Una barra final en la base MUST NOT producir una barra doble.
+El cliente HTTP SHALL armar cada URL con la base configurada en `VITE_API_URL` y, si la variable no está definida o está vacía (como en `docker-compose.yml`), con `http://localhost:8000`. Una barra final en la base MUST NOT producir una barra doble.
 
 #### Scenario: URL configurada
 - **GIVEN** dado `VITE_API_URL` igual a `http://api.example.test:9000`
@@ -15,6 +15,11 @@ El cliente HTTP SHALL armar cada URL con la base configurada en `VITE_API_URL` y
 
 #### Scenario: Sin configuración
 - **GIVEN** dado que `VITE_API_URL` no está definida
+- **WHEN** cuando se pide `/auth/login`
+- **THEN** entonces el pedido va a `http://localhost:8000/auth/login`
+
+#### Scenario: Variable vacía
+- **GIVEN** dado `VITE_API_URL` definida con una cadena vacía
 - **WHEN** cuando se pide `/auth/login`
 - **THEN** entonces el pedido va a `http://localhost:8000/auth/login`
 
@@ -132,3 +137,8 @@ El cliente SHALL lanzar el mismo tipo de error, con `codigo` nulo y `mensaje` `O
 - **GIVEN** dada una respuesta `200` cuya conexión se corta antes de terminar de leer el cuerpo
 - **WHEN** cuando se completa el pedido
 - **THEN** entonces el error tiene `status` `0` y `mensaje` `No se pudo conectar con el servidor.`
+
+#### Scenario: Conexión cortada al leer el cuerpo de un error
+- **GIVEN** dada una respuesta `401` cuya conexión se corta antes de terminar de leer el cuerpo, con una sesión activa
+- **WHEN** cuando se completa el pedido
+- **THEN** entonces el error tiene `status` `0` y `mensaje` `No se pudo conectar con el servidor.`, y no se cierra la sesión
