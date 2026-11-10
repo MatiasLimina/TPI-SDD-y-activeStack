@@ -1,6 +1,6 @@
 import { screen } from "@testing-library/react";
 
-import { instalarFetchFalso } from "../../test/fetchFalso";
+import { instalarApiFalsa } from "../../test/apiFalsa";
 import { renderizarApp } from "../../test/renderizarApp";
 import { usarRelojFijo } from "../../test/reloj";
 import {
@@ -11,6 +11,11 @@ import {
 import { CLAVE_TOKEN } from "./almacenamiento";
 
 usarRelojFijo();
+
+// La agenda hace pedidos al montarse: la API falsa los responde vacíos en todos los tests
+beforeEach(() => {
+  instalarApiFalsa();
+});
 
 function ubicacion(): string {
   return screen.getByTestId("ubicacion").textContent ?? "";
@@ -26,8 +31,6 @@ describe("Guarda de autenticación", () => {
   it.each(["/agenda", "/configuracion", "/"])(
     "sin sesión, %s lleva a /login",
     (ruta) => {
-      instalarFetchFalso();
-
       renderizarApp(ruta);
 
       expect(ubicacion()).toBe("/login");

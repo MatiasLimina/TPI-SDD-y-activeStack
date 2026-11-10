@@ -1,7 +1,7 @@
 import { screen } from "@testing-library/react";
 
 import { CLAVE_TOKEN } from "../../features/sesion/almacenamiento";
-import { instalarFetchFalso } from "../../test/fetchFalso";
+import { instalarApiFalsa } from "../../test/apiFalsa";
 import { renderizarApp } from "../../test/renderizarApp";
 import { usarRelojFijo } from "../../test/reloj";
 import {
@@ -11,6 +11,11 @@ import {
 } from "../../test/tokens";
 
 usarRelojFijo();
+
+// La agenda hace pedidos al montarse: la API falsa los responde vacíos
+beforeEach(() => {
+  instalarApiFalsa();
+});
 
 const VIGENTE = AHORA_SEGUNDOS + 3600;
 const AVISO_VENCIDA = "Tu sesión venció. Iniciá sesión de nuevo.";
@@ -54,18 +59,17 @@ describe("Layout de la aplicación", () => {
     expect(screen.queryByText("Recepcionista")).not.toBeInTheDocument();
   });
 
-  it("las pantallas provisorias no hacen pedidos a la API", async () => {
+  it("la pantalla provisoria de configuración no hace pedidos a la API", () => {
     sessionStorage.setItem(CLAVE_TOKEN, tokenDeRecepcionista(VIGENTE));
-    const falso = instalarFetchFalso();
-    const { user } = renderizarApp("/agenda");
+    const api = instalarApiFalsa();
 
-    await user.click(screen.getByRole("link", { name: "Configuración" }));
+    renderizarApp("/configuracion");
 
     expect(ubicacion()).toBe("/configuracion");
     expect(
       screen.getByRole("heading", { name: "Configuración" }),
     ).toBeInTheDocument();
-    expect(falso).not.toHaveBeenCalled();
+    expect(api.fetch).not.toHaveBeenCalled();
   });
 
   it("cerrar sesión elimina el token, lleva a /login sin aviso y volver a /agenda pide login", async () => {

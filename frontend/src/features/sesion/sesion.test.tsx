@@ -1,6 +1,6 @@
 import { act, screen } from "@testing-library/react";
 
-import { instalarFetchFalso, respuestaJson } from "../../test/fetchFalso";
+import { instalarApiFalsa, type ApiFalsa } from "../../test/apiFalsa";
 import { renderizarApp } from "../../test/renderizarApp";
 import { usarRelojFijo } from "../../test/reloj";
 import {
@@ -25,14 +25,13 @@ describe("Arranque con un token guardado", () => {
     ["odontologo", tokenDeOdontologo(AHORA_SEGUNDOS + 60)],
   ])("un token vigente de %s conserva la sesión en /agenda", (_rol, token) => {
     sessionStorage.setItem(CLAVE_TOKEN, token);
-    const falso = instalarFetchFalso();
+    instalarApiFalsa();
 
     renderizarApp("/agenda");
 
     expect(screen.getByRole("heading", { name: "Agenda" })).toBeInTheDocument();
     expect(ubicacion()).toBe("/agenda");
     expect(sessionStorage.getItem(CLAVE_TOKEN)).toBe(token);
-    expect(falso).not.toHaveBeenCalled();
   });
 
   it.each([
@@ -90,11 +89,12 @@ function sesionDe(token: string): void {
 async function iniciarSesionConLogin(
   user: ReturnType<typeof renderizarApp>["user"],
   token: string,
+  api: ApiFalsa = instalarApiFalsa(),
 ) {
-  const falso = instalarFetchFalso();
-  falso.mockResolvedValue(
-    respuestaJson(200, { access_token: token, token_type: "bearer" }),
-  );
+  api.responder("POST /auth/login", {
+    status: 200,
+    cuerpo: { access_token: token, token_type: "bearer" },
+  });
   await user.type(screen.getByLabelText("Email"), "recepcion@example.com");
   await user.type(screen.getByLabelText("Contraseña"), "clave-ficticia");
   await user.click(screen.getByRole("button", { name: "Ingresar" }));
@@ -103,6 +103,7 @@ async function iniciarSesionConLogin(
 
 describe("Temporizador de vencimiento", () => {
   it("a los 59 segundos sigue la sesión y al minuto se cierra con aviso", async () => {
+    instalarApiFalsa();
     const token = tokenDeRecepcionista(AHORA_SEGUNDOS + 60);
     sesionDe(token);
     renderizarApp("/agenda");
@@ -129,6 +130,7 @@ describe("Temporizador de vencimiento", () => {
   });
 
   it("el cierre manual cancela el temporizador: no hay aviso al llegar el exp viejo", async () => {
+    instalarApiFalsa();
     sesionDe(tokenDeRecepcionista(AHORA_SEGUNDOS + 60));
     const { user } = renderizarApp("/agenda");
 
@@ -140,11 +142,12 @@ describe("Temporizador de vencimiento", () => {
   });
 
   it("una sesión nueva no hereda el temporizador de la anterior", async () => {
+    const api = instalarApiFalsa();
     sesionDe(tokenDeRecepcionista(AHORA_SEGUNDOS + 60));
     const { user } = renderizarApp("/agenda");
     await user.click(screen.getByRole("button", { name: "Cerrar sesión" }));
     const tokenNuevo = tokenDeRecepcionista(AHORA_SEGUNDOS + 3600);
-    await iniciarSesionConLogin(user, tokenNuevo);
+    await iniciarSesionConLogin(user, tokenNuevo, api);
 
     await pasar(60);
 
@@ -156,6 +159,7 @@ describe("Temporizador de vencimiento", () => {
     const treintaDias = AHORA_SEGUNDOS + 30 * 24 * 3600;
     const token = tokenDeRecepcionista(treintaDias);
     sesionDe(token);
+    instalarApiFalsa();
     renderizarApp("/agenda");
 
     await pasar(1);
@@ -180,20 +184,27 @@ describe("Temporizador de vencimiento", () => {
   });
 });
 
-function errorDeApi(status: number, codigo: string, mensaje: string): Response {
-  return respuestaJson(status, { detail: { codigo, mensaje } });
+function errorDeApi(status: number, codigo: string, mensaje: string) {
+  return { status, cuerpo: { detail: { codigo, mensaje } } };
 }
+
+// Estos pedidos se hacen a una ruta que la agenda no usa, para que sus propias lecturas
+// (`GET /turnos` y catálogos) no se mezclen con el error que se provoca.
+const RUTA_DE_PRUEBA = "/pacientes";
 
 describe("Respuestas de la API en plena sesión", () => {
   it("un 401 no_autenticado a un pedido con el token vigente cierra la sesión con aviso", async () => {
     sesionDe(tokenDeRecepcionista(AHORA_SEGUNDOS + 3600));
-    const falso = instalarFetchFalso();
-    falso.mockResolvedValue(
+    const api = instalarApiFalsa();
+    api.responder(
+      `GET ${RUTA_DE_PRUEBA}`,
       errorDeApi(401, "no_autenticado", "No autenticado"),
     );
     const { cliente } = renderizarApp("/agenda");
 
-    await act(() => cliente.pedir("GET", "/turnos").catch(() => undefined));
+    await act(() =>
+      cliente.pedir("GET", RUTA_DE_PRUEBA).catch(() => undefined),
+    );
 
     expect(ubicacion()).toBe("/login");
     expect(screen.getByText(AVISO_VENCIDA)).toBeInTheDocument();
@@ -203,13 +214,16 @@ describe("Respuestas de la API en plena sesión", () => {
   it("un 401 con otro código no cierra la sesión", async () => {
     const token = tokenDeRecepcionista(AHORA_SEGUNDOS + 3600);
     sesionDe(token);
-    const falso = instalarFetchFalso();
-    falso.mockResolvedValue(
+    const api = instalarApiFalsa();
+    api.responder(
+      `GET ${RUTA_DE_PRUEBA}`,
       errorDeApi(401, "credenciales_invalidas", "Credenciales inválidas"),
     );
     const { cliente } = renderizarApp("/agenda");
 
-    await act(() => cliente.pedir("GET", "/turnos").catch(() => undefined));
+    await act(() =>
+      cliente.pedir("GET", RUTA_DE_PRUEBA).catch(() => undefined),
+    );
 
     expect(ubicacion()).toBe("/agenda");
     expect(sessionStorage.getItem(CLAVE_TOKEN)).toBe(token);
@@ -241,12 +255,12 @@ describe("Respuestas de la API en plena sesión", () => {
     "un 403 %s no cierra la sesión ni cambia la ruta",
     async (codigo, mensaje, token) => {
       sesionDe(token);
-      const falso = instalarFetchFalso();
-      falso.mockResolvedValue(errorDeApi(403, codigo, mensaje));
+      const api = instalarApiFalsa();
+      api.responder(`GET ${RUTA_DE_PRUEBA}`, errorDeApi(403, codigo, mensaje));
       const { cliente } = renderizarApp("/agenda");
 
       const error = await act(() =>
-        cliente.pedir("GET", "/turnos").catch((causa: unknown) => causa),
+        cliente.pedir("GET", RUTA_DE_PRUEBA).catch((causa: unknown) => causa),
       );
 
       expect(error).toMatchObject({ status: 403, codigo });
@@ -258,25 +272,15 @@ describe("Respuestas de la API en plena sesión", () => {
   it("un 401 a un pedido hecho con un token anterior no cierra la sesión actual", async () => {
     sesionDe(tokenDeRecepcionista(AHORA_SEGUNDOS + 3600));
     const tokenNuevo = tokenDeOdontologo(AHORA_SEGUNDOS + 3600);
-    let responderPedido: (respuesta: Response) => void = () => {};
-    const falso = instalarFetchFalso();
-    falso.mockImplementation((url) =>
-      String(url).endsWith("/auth/login")
-        ? Promise.resolve(
-            respuestaJson(200, {
-              access_token: tokenNuevo,
-              token_type: "bearer",
-            }),
-          )
-        : new Promise<Response>((resolver) => (responderPedido = resolver)),
-    );
+    const api = instalarApiFalsa();
+    const pendiente = api.pendiente(`GET ${RUTA_DE_PRUEBA}`);
     const { user, cliente } = renderizarApp("/agenda");
 
-    const pedido = cliente.pedir("GET", "/turnos").catch(() => undefined);
+    const pedido = cliente.pedir("GET", RUTA_DE_PRUEBA).catch(() => undefined);
     await user.click(screen.getByRole("button", { name: "Cerrar sesión" }));
-    await iniciarSesionConLogin(user, tokenNuevo);
+    await iniciarSesionConLogin(user, tokenNuevo, api);
     await act(async () => {
-      responderPedido(errorDeApi(401, "no_autenticado", "No autenticado"));
+      pendiente.resolver(errorDeApi(401, "no_autenticado", "No autenticado"));
       await pedido;
     });
 
@@ -287,17 +291,14 @@ describe("Respuestas de la API en plena sesión", () => {
 
   it("un 401 que llega después de un cierre manual deja /login sin aviso", async () => {
     sesionDe(tokenDeRecepcionista(AHORA_SEGUNDOS + 3600));
-    let responderPedido: (respuesta: Response) => void = () => {};
-    const falso = instalarFetchFalso();
-    falso.mockReturnValue(
-      new Promise<Response>((resolver) => (responderPedido = resolver)),
-    );
+    const api = instalarApiFalsa();
+    const pendiente = api.pendiente(`GET ${RUTA_DE_PRUEBA}`);
     const { user, cliente } = renderizarApp("/agenda");
 
-    const pedido = cliente.pedir("GET", "/turnos").catch(() => undefined);
+    const pedido = cliente.pedir("GET", RUTA_DE_PRUEBA).catch(() => undefined);
     await user.click(screen.getByRole("button", { name: "Cerrar sesión" }));
     await act(async () => {
-      responderPedido(errorDeApi(401, "no_autenticado", "No autenticado"));
+      pendiente.resolver(errorDeApi(401, "no_autenticado", "No autenticado"));
       await pedido;
     });
 
