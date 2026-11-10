@@ -1,7 +1,7 @@
 # frontend-agenda Specification
 
 ## Purpose
-TBD - created by archiving change frontend-agenda-turnos. Update Purpose after archive.
+Define cómo la SPA muestra la agenda diaria y semanal de turnos y bloqueos (US-008, Flujo 7): la grilla de 24 horas con filas de 5 minutos, los filtros por profesional y sillón, la presentación en `America/Argentina/Buenos_Aires` sin importar la zona del navegador, los turnos cancelados y lo que ve cada rol. Los datos vienen de `GET /turnos` (DD-32) y las decisiones de presentación están en DD-34.
 
 ## Requirements
 

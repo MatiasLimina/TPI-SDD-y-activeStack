@@ -1,7 +1,7 @@
 # frontend-turnos Specification
 
 ## Purpose
-TBD - created by archiving change frontend-agenda-turnos. Update Purpose after archive.
+Define cómo la recepcionista crea, reprograma y cancela turnos desde la agenda (Épica 2, Flujos 2, 3 y 4): los formularios en diálogos, el selector de paciente, qué se envía a la API y cómo se presentan sus rechazos (409 y 422) sin perder lo cargado. Las reglas de agenda las decide el backend; la SPA no las duplica (DD-34).
 
 ## Requirements
 
