@@ -65,6 +65,7 @@ function Item({
   return (
     <li style={posicion(item)} data-tipo="turno" data-estado={turno.estado}>
       <button type="button">
+        {turno.estado === "cancelado" && <strong>Cancelado</strong>}
         <Horario inicio={turno.inicio} fin={turno.fin} />
         <span>
           {turno.paciente.apellido}, {turno.paciente.nombre}

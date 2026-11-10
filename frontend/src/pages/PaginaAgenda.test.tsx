@@ -1139,3 +1139,193 @@ describe("Agrupar la vista diaria por sillón", () => {
     expect(screen.queryByLabelText("Agrupar por")).not.toBeInTheDocument();
   });
 });
+
+const BRUNO = {
+  id: "00000000-0000-4000-8000-0000000000e2",
+  nombre: "Bruno",
+  apellido: "Ejemplo",
+};
+
+describe("Turnos cancelados", () => {
+  it("están ocultos por defecto y se ve solo el programado", async () => {
+    conSesion();
+    const api = instalarApiFalsa();
+    cargar(api, {
+      turnos: [
+        turno({ id: "t1" }),
+        turno({ id: "t2", paciente: BRUNO, estado: "cancelado" }),
+      ],
+    });
+
+    renderizarApp("/agenda?fecha=2026-11-09");
+
+    expect(await screen.findByText("Imaginaria, Carla")).toBeInTheDocument();
+    expect(screen.queryByText("Ejemplo, Bruno")).not.toBeInTheDocument();
+    expect(screen.getByLabelText("Mostrar cancelados")).not.toBeChecked();
+  });
+
+  it("Mostrar cancelados los muestra con el texto Cancelado y sin un pedido nuevo", async () => {
+    conSesion();
+    const api = instalarApiFalsa();
+    cargar(api, {
+      turnos: [
+        turno({ id: "t1" }),
+        turno({ id: "t2", paciente: BRUNO, estado: "cancelado" }),
+      ],
+    });
+    const { user } = renderizarApp("/agenda?fecha=2026-11-09");
+    await screen.findByText("Imaginaria, Carla");
+    const pedidosAntes = api.pedidos().length;
+
+    await user.click(screen.getByLabelText("Mostrar cancelados"));
+
+    const cancelado = (await screen.findByText("Ejemplo, Bruno")).closest(
+      "li",
+    )!;
+    const programado = screen.getByText("Imaginaria, Carla").closest("li")!;
+    expect(within(cancelado).getByText("Cancelado")).toBeInTheDocument();
+    expect(within(programado).queryByText("Cancelado")).not.toBeInTheDocument();
+    expect(api.pedidos()).toHaveLength(pedidosAntes);
+    expect(screen.getByTestId("busqueda").textContent).toContain(
+      "cancelados=1",
+    );
+  });
+
+  it("desactivar la casilla los vuelve a ocultar y quita el parámetro", async () => {
+    conSesion();
+    const api = instalarApiFalsa();
+    cargar(api, {
+      turnos: [turno({ id: "t2", paciente: BRUNO, estado: "cancelado" })],
+    });
+    const { user } = renderizarApp("/agenda?fecha=2026-11-09&cancelados=1");
+    await screen.findByText("Ejemplo, Bruno");
+
+    await user.click(screen.getByLabelText("Mostrar cancelados"));
+
+    await waitFor(() =>
+      expect(screen.queryByText("Ejemplo, Bruno")).not.toBeInTheDocument(),
+    );
+    expect(screen.getByTestId("busqueda").textContent).not.toContain(
+      "cancelados",
+    );
+  });
+
+  it("la casilla se conserva al recargar desde la URL", async () => {
+    conSesion();
+    cargar(instalarApiFalsa());
+
+    renderizarApp("/agenda?fecha=2026-11-09&cancelados=1");
+
+    expect(await screen.findByLabelText("Mostrar cancelados")).toBeChecked();
+  });
+
+  it("un profesional desactivado con solo cancelados ocultos no tiene columna, y sí al mostrarlos", async () => {
+    conSesion();
+    const api = instalarApiFalsa();
+    cargar(api, {
+      profesionales: [profesional(), LUIS_INACTIVO],
+      turnos: [turno({ profesional_id: ID_LUIS, estado: "cancelado" })],
+    });
+    const { user } = renderizarApp("/agenda?fecha=2026-11-09");
+    await screen.findByRole("region", { name: "Ficticia, Ana" });
+    expect(
+      screen.queryByRole("region", { name: "Inventado, Luis" }),
+    ).not.toBeInTheDocument();
+
+    await user.click(screen.getByLabelText("Mostrar cancelados"));
+
+    expect(
+      await screen.findByRole("region", { name: "Inventado, Luis" }),
+    ).toBeInTheDocument();
+  });
+});
+
+describe("Elementos que cruzan días", () => {
+  it("un turno que cruza la medianoche se ve en los dos días con sus extremos reales", async () => {
+    conSesion();
+    const api = instalarApiFalsa();
+    cargar(api, {
+      turnos: [
+        turno({
+          inicio: "2026-11-10T23:30:00-03:00",
+          fin: "2026-11-11T00:30:00-03:00",
+        }),
+      ],
+    });
+
+    renderizarApp("/agenda?vista=semana&fecha=2026-11-09");
+
+    const martes = await screen.findByRole("region", { name: "Martes 10/11" });
+    const miercoles = screen.getByRole("region", { name: "Miércoles 11/11" });
+    for (const dia of [martes, miercoles]) {
+      expect(within(dia).getByText("10/11 23:30")).toBeInTheDocument();
+      expect(within(dia).getByText("11/11 00:30")).toBeInTheDocument();
+    }
+    expect(
+      within(screen.getByRole("region", { name: "Lunes 09/11" })).queryByText(
+        "Imaginaria, Carla",
+      ),
+    ).not.toBeInTheDocument();
+  });
+
+  it("un bloqueo de varios días ocupa el día de la vista e indica sus extremos reales", async () => {
+    conSesion();
+    const api = instalarApiFalsa();
+    cargar(api, {
+      bloqueos: [
+        bloqueo({
+          inicio: "2026-11-09T08:00:00-03:00",
+          fin: "2026-11-13T20:00:00-03:00",
+        }),
+      ],
+    });
+
+    renderizarApp("/agenda?fecha=2026-11-11");
+
+    const ana = await screen.findByRole("region", { name: "Ficticia, Ana" });
+    expect(within(ana).getByText("09/11 08:00")).toBeInTheDocument();
+    expect(within(ana).getByText("13/11 20:00")).toBeInTheDocument();
+  });
+
+  it("un bloqueo que no respeta la grilla muestra su hora real", async () => {
+    conSesion();
+    const api = instalarApiFalsa();
+    cargar(api, {
+      bloqueos: [
+        bloqueo({
+          inicio: "2026-11-09T10:03:00-03:00",
+          fin: "2026-11-09T10:07:00-03:00",
+        }),
+      ],
+    });
+
+    renderizarApp("/agenda?fecha=2026-11-09");
+
+    const ana = await screen.findByRole("region", { name: "Ficticia, Ana" });
+    expect(within(ana).getByText("10:03")).toBeInTheDocument();
+    expect(within(ana).getByText("10:07")).toBeInTheDocument();
+  });
+
+  it("un bloqueo que termina justo a la medianoche no aparece en el día siguiente", async () => {
+    conSesion();
+    const api = instalarApiFalsa();
+    cargar(api, {
+      bloqueos: [
+        bloqueo({
+          inicio: "2026-11-10T20:00:00-03:00",
+          fin: "2026-11-11T00:00:00-03:00",
+        }),
+      ],
+    });
+
+    renderizarApp("/agenda?vista=semana&fecha=2026-11-09");
+
+    const martes = await screen.findByRole("region", { name: "Martes 10/11" });
+    expect(within(martes).getByText("Bloqueo")).toBeInTheDocument();
+    expect(
+      within(
+        screen.getByRole("region", { name: "Miércoles 11/11" }),
+      ).queryByText("Bloqueo"),
+    ).not.toBeInTheDocument();
+  });
+});

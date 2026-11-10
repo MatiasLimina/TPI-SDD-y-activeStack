@@ -72,6 +72,16 @@ export function BarraAgenda({
         catalogos={catalogos}
         alCambiar={alCambiar}
       />
+      <label>
+        <input
+          type="checkbox"
+          checked={vista.cancelados}
+          onChange={(e) =>
+            alCambiar({ ...vista, cancelados: e.target.checked })
+          }
+        />
+        Mostrar cancelados
+      </label>
       <button type="button" onClick={alActualizar}>
         Actualizar
       </button>
