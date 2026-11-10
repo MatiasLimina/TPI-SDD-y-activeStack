@@ -105,6 +105,29 @@ function Item({
   );
 }
 
+const HORAS = Array.from({ length: 24 }, (_, h) => h);
+
+/** Eje de horas decorativo: cada elemento ya dice su hora, por eso se oculta a lectores de pantalla. */
+function EjeHoras() {
+  return (
+    <div className={estilos.eje} data-eje aria-hidden="true">
+      <div className={estilos.cabeceraEje} />
+      <div className={estilos.horas}>
+        {HORAS.map((h) => (
+          <span
+            key={h}
+            className={estilos.hora}
+            data-eje-hora
+            style={{ gridRow: `${h * 12 + 1} / span 12` }}
+          >
+            {String(h).padStart(2, "0")}:00
+          </span>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 /** Columnas de la agenda: `<section>` con nombre y elementos en orden cronológico (D17). */
 export function GrillaAgenda({
   columnas,
@@ -124,6 +147,7 @@ export function GrillaAgenda({
   }, [hayColumnas, vista.vista, vista.fecha]);
   return (
     <div ref={contenedor} className={estilos.contenedor}>
+      {hayColumnas && <EjeHoras />}
       {columnas.map((columna) => (
         <section
           key={columna.clave}

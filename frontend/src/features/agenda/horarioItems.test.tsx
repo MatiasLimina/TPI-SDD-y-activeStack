@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 
 import { ID_ANA, turno } from "../../test/fabricas";
 import { DetalleTurno } from "./DetalleTurno";
@@ -61,9 +61,11 @@ describe("Horario de un elemento que termina a las 00:00", () => {
       />,
     );
 
-    expect(screen.getByText("23:55")).toBeInTheDocument();
-    expect(screen.getByText("00:00")).toBeInTheDocument();
-    expect(screen.queryByText(/10\/11/)).not.toBeInTheDocument();
+    // El eje de horas también rotula 00:00: el fin del turno se busca dentro de su elemento
+    const item = screen.getByRole("listitem");
+    expect(within(item).getByText("23:55")).toBeInTheDocument();
+    expect(within(item).getByText("00:00")).toBeInTheDocument();
+    expect(within(item).queryByText(/10\/11/)).not.toBeInTheDocument();
   });
 
   it("la grilla sigue mostrando fechas si el turno pasa de la medianoche", () => {

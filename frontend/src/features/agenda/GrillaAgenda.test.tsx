@@ -1,4 +1,4 @@
-import { render } from "@testing-library/react";
+import { render, screen } from "@testing-library/react";
 
 import { ID_ANA } from "../../test/fabricas";
 import { GrillaAgenda } from "./GrillaAgenda";
@@ -104,5 +104,39 @@ describe("GrillaAgenda: desplazamiento inicial a las 08:00", () => {
     rerender(grilla(vista(), columnas()));
 
     expect(conContenido()).toBe(1);
+  });
+});
+
+describe("GrillaAgenda: eje de horas", () => {
+  it("muestra 24 etiquetas de 00:00 a 23:00, cada una en la fila donde empieza su hora", () => {
+    const { container } = render(grilla(vista(), columnas()));
+
+    const etiquetas = Array.from(
+      container.querySelectorAll<HTMLElement>("[data-eje-hora]"),
+    );
+    expect(etiquetas.map((e) => e.textContent)).toEqual(
+      Array.from({ length: 24 }, (_, h) => `${String(h).padStart(2, "0")}:00`),
+    );
+    expect(etiquetas.map((e) => e.style.gridRow)).toEqual(
+      Array.from({ length: 24 }, (_, h) => `${h * 12 + 1} / span 12`),
+    );
+  });
+
+  it("queda oculto para lectores de pantalla y no cuenta como columna", () => {
+    const { container } = render(grilla(vista(), columnas()));
+
+    const eje = container.querySelector("[data-eje]");
+    expect(eje).not.toBeNull();
+    expect(eje).toHaveAttribute("aria-hidden", "true");
+    expect(container.querySelectorAll("section")).toHaveLength(1);
+    expect(
+      screen.getAllByRole("region").map((r) => r.getAttribute("aria-label")),
+    ).toEqual(["Ficticia, Ana"]);
+  });
+
+  it("no aparece mientras no hay columnas", () => {
+    const { container } = render(grilla(vista(), []));
+
+    expect(container.querySelector("[data-eje]")).toBeNull();
   });
 });
