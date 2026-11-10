@@ -109,11 +109,15 @@ export function GrillaAgenda({
   alElegirTurno,
 }: PropsGrilla) {
   const contenedor = useRef<HTMLDivElement>(null);
-  // Desplazamiento inicial a las 08:00 (fila 96 de 6 px); no se puede probar en jsdom (tarea 10.2)
+  const hayColumnas = columnas.length > 0;
+  // Desplazamiento a las 08:00 (fila 96 de 6 px) cuando la grilla recibe contenido de un período
+  // o vista nuevos. Sin columnas el contenedor no tiene alto y el valor se recortaría a 0; por eso
+  // depende de `hayColumnas` y no solo del montaje. `Actualizar` conserva las columnas, así que
+  // no repite el efecto y mantiene la posición. La geometría real se verifica a mano (tarea 10.2)
   useEffect(() => {
-    if (contenedor.current !== null)
+    if (hayColumnas && contenedor.current !== null)
       contenedor.current.scrollTop = FILA_DE_LAS_OCHO * ALTO_FILA_PX;
-  }, []);
+  }, [hayColumnas, vista.vista, vista.fecha]);
   return (
     <div ref={contenedor} className={estilos.contenedor}>
       {columnas.map((columna) => (
