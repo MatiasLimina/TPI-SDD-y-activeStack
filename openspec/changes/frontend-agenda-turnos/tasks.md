@@ -50,7 +50,7 @@
 
 ## 7. Traducción de errores (D12)
 
-- [ ] 7.1 RED→GREEN: `src/features/turnos/erroresTurno.test.ts`, con `ErrorApi` reales — `solapamiento` con uno, dos y tres recursos en orden; cada código de la tabla de D12 con su destino, texto literal, `releerCatalogos` y `releerAgenda`; `referencia_invalida` por referencia y motivo, y con paciente o prestación al reprogramar; `validacion` con campo, `inicio` mapeado a hora, campo nulo y sin mostrar `msg`; `turno_ya_cancelado`, `turno_ya_iniciado` y `turno_inexistente` obsoletos; `rol_insuficiente`, código desconocido y `status` 0; verificar con `npm test -- erroresTurno`
+- [x] 7.1 RED→GREEN: `src/features/turnos/erroresTurno.test.ts`, con `ErrorApi` reales — `solapamiento` con uno, dos y tres recursos en orden; cada código de la tabla de D12 con su destino, texto literal, `releerCatalogos` y `releerAgenda`; `referencia_invalida` por referencia y motivo, y con paciente o prestación al reprogramar; `validacion` con campo, `inicio` mapeado a hora, campo nulo y sin mostrar `msg`; `turno_ya_cancelado`, `turno_ya_iniciado` y `turno_inexistente` obsoletos; `rol_insuficiente`, código desconocido y `status` 0; verificar con `npm test -- erroresTurno`
 
 ## 8. Selector de paciente (D8)
 
