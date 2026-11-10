@@ -43,7 +43,8 @@ export function hoyLocal(ahora: Date = new Date()): string {
 
 // Las fechas son texto `YYYY-MM-DD` y el calendario se resuelve con `Date.UTC` y getters UTC,
 // independientes de la zona de la máquina (D14)
-// Solo se usa con fechas ya validadas (años de 1000 a 9998): `Date.UTC` toma los años 0 a 99 como 19xx
+// Los años 0 a 99 los toma `Date.UTC` como 19xx: con fechas de `<input type="date">` sin validar
+// (años de 1 a 99) el resultado es incorrecto. Las fechas de la URL se validan antes (1000 a 9998)
 function aMsUtc(fecha: string): number {
   const [anio, mes, dia] = fecha.split("-").map(Number) as [
     number,

@@ -1,5 +1,5 @@
 import { crearClienteApi } from "../shared/api/cliente";
-import { instalarApiFalsa } from "./apiFalsa";
+import { instalarApiFalsa, verificarPedidosInesperados } from "./apiFalsa";
 
 function cliente() {
   return crearClienteApi({
@@ -35,9 +35,32 @@ describe("instalarApiFalsa", () => {
   });
 
   it("una ruta que nadie configuró falla en voz alta en vez de inventar datos", async () => {
-    instalarApiFalsa();
+    const api = instalarApiFalsa();
 
     await expect(cliente().pedir("GET", "/pacientes?q=ab")).rejects.toThrow();
+    api.reconocerInesperados();
+  });
+
+  it("registra el pedido a una ruta sin respuesta para que el test falle aunque la app lo trague", async () => {
+    const api = instalarApiFalsa();
+
+    await expect(cliente().pedir("GET", "/pacientes?q=ab")).rejects.toThrow();
+
+    expect(api.inesperados().map((p) => p.clave)).toEqual(["GET /pacientes"]);
+    expect(() => verificarPedidosInesperados()).toThrow(/GET \/pacientes/);
+    // Verificar vacía la lista: el afterEach de setup.ts no vuelve a fallar
+    expect(api.inesperados()).toEqual([]);
+  });
+
+  it("no cuenta como inesperado un pedido con respuesta configurada o por defecto", async () => {
+    const api = instalarApiFalsa();
+    api.responder("POST /turnos", { status: 201, cuerpo: {} });
+
+    await cliente().pedir("GET", "/sillones");
+    await cliente().pedir("POST", "/turnos", {});
+
+    expect(api.inesperados()).toEqual([]);
+    expect(() => verificarPedidosInesperados()).not.toThrow();
   });
 
   it("deja pedidos pendientes que el test resuelve en cualquier orden", async () => {

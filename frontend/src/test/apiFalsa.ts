@@ -35,6 +35,24 @@ export interface ApiFalsa {
   pendiente: (clave: string) => Pendiente;
   /** Pedidos hechos, en orden; con `clave`, solo los de esa clave. */
   pedidos: (clave?: string) => PedidoFalso[];
+  /** Pedidos a rutas sin respuesta configurada: hacen fallar el test al terminar. */
+  inesperados: () => PedidoFalso[];
+  /** Para el test que provoca una ruta sin respuesta a propósito: la da por esperada. */
+  reconocerInesperados: () => void;
+}
+
+// El cliente HTTP convierte la excepción del `fetch` falso en un error de red que la app puede
+// tragar: por eso los pedidos sin respuesta también se anotan aquí y `setup.ts` los verifica
+let pedidosInesperados: PedidoFalso[] = [];
+
+/** Falla si algún pedido llegó a una ruta sin respuesta, y vacía la lista. Lo llama `setup.ts`. */
+export function verificarPedidosInesperados(): void {
+  const rutas = pedidosInesperados.map((p) => p.clave);
+  pedidosInesperados = [];
+  if (rutas.length > 0)
+    throw new Error(
+      `La app hizo pedidos a rutas sin respuesta en la API falsa: ${rutas.join(", ")}`,
+    );
 }
 
 const POR_DEFECTO: Record<string, RespuestaFalsa> = {
@@ -67,6 +85,7 @@ export function instalarApiFalsa(): ApiFalsa {
   const fijas = new Map<string, Resolucion>(Object.entries(POR_DEFECTO));
   const reservados = new Map<string, Array<Promise<RespuestaFalsa>>>();
   const hechos: PedidoFalso[] = [];
+  pedidosInesperados = [];
 
   falso.mockImplementation(async (entrada, init) => {
     const url = new URL(String(entrada));
@@ -85,8 +104,10 @@ export function instalarApiFalsa(): ApiFalsa {
     const reservado = reservados.get(clave)?.shift();
     if (reservado !== undefined) return aRespuesta(await reservado);
     const resolucion = fijas.get(clave);
-    if (resolucion === undefined)
+    if (resolucion === undefined) {
+      pedidosInesperados.push(pedido);
       throw new Error(`La API falsa no tiene respuesta para ${clave}`);
+    }
     return aRespuesta(
       typeof resolucion === "function" ? resolucion(pedido) : resolucion,
     );
@@ -110,5 +131,9 @@ export function instalarApiFalsa(): ApiFalsa {
       clave === undefined
         ? [...hechos]
         : hechos.filter((p) => p.clave === clave),
+    inesperados: () => [...pedidosInesperados],
+    reconocerInesperados: () => {
+      pedidosInesperados = [];
+    },
   };
 }

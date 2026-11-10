@@ -18,7 +18,8 @@ export interface TurnoAgenda {
   fin: string;
   duracion_min: number;
   estado: EstadoTurno;
-  creado_por: string;
+  /** La API devuelve `null` si el turno no tiene autor (`UUID | None`). */
+  creado_por: string | null;
   motivo_cancelacion: string | null;
 }
 

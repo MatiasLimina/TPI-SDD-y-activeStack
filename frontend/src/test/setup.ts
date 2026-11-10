@@ -1,5 +1,7 @@
 import "@testing-library/jest-dom/vitest";
 
+import { verificarPedidosInesperados } from "./apiFalsa";
+
 /**
  * jsdom 31 no implementa `HTMLDialogElement.showModal` ni `close`. Los reemplazos son espías
  * (para afirmar que se abrió como modal y no solo con `open`) y reproducen lo observable:
@@ -24,4 +26,6 @@ beforeEach(() => {
 afterEach(() => {
   sessionStorage.clear();
   localStorage.clear();
+  // Un pedido a una ruta sin respuesta hace fallar el test, aunque la app trague el error
+  verificarPedidosInesperados();
 });
