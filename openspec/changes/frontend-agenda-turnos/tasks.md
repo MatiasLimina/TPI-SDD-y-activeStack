@@ -1,0 +1,88 @@
+# Tasks
+
+> Governance MEDIO: implementar por etapas y mostrar las decisiones no obvias. Estas tareas asumen las opciones recomendadas de `design.md`; si alguna **[A confirmar]** cambia, primero `/opsx:update` (specs, design y tareas) y recién después el Apply.
+>
+> TDD estricto: en cada tarea RED (test que falla, verificado ejecutándolo) → GREEN (mínimo código) → triangular → refactor con tests en verde. Solo datos ficticios (`Carla Imaginaria`, `Ana Ficticia`, documento `00000104`, UUIDs inventados).
+>
+> **Skills y documentación**: la skill `vitest` se lee **directamente de `.agents/skills/vitest/SKILL.md`**, porque algunos subagentes no pueden cargarla con la herramienta Skill; documenta Vitest 5.1.0-beta.1 y el proyecto fija la 5.1.0. También aplica `tdd`. React Router (`/remix-run/react-router`) y React Testing Library se consultan en **Context7** antes de usar una API que no esté ya en el código.
+>
+> **Sin migración y sin cambios de backend**: ninguna tarea toca `backend/`; la cabeza de Alembic sigue en `010`. Si durante el Apply aparece un cambio de backend inevitable, frenar y marcarlo [A confirmar].
+
+## 1. Preparación
+
+- [ ] 1.1 Safety net: correr en `frontend/` `npm run typecheck`, `npm run lint`, `npm run format:check` y `npm test`, y registrar el baseline en verde; si algo falla, frenar y reportarlo como falla preexistente
+- [ ] 1.2 Aprobación previa al Apply: el usuario confirma D1, D2, D3, D5, D6, D7, D8, D9, D10, D12 y D13 de `design.md`, marcadas [A confirmar]; verificar que la tabla de Decisions registre cada resultado y que no quede ninguna pendiente
+- [ ] 1.3 Correr `revisar-escenarios frontend-agenda-turnos` y resolver con `/opsx:update` todo hallazgo BLOQUEANTE o MAYOR; verificar que `openspec/changes/frontend-agenda-turnos/revision-escenarios.md` no deje ninguno abierto y que `openspec validate frontend-agenda-turnos --strict` pase
+
+## 2. Soporte de tests (D6, D15)
+
+- [ ] 2.1 RED→GREEN: `src/shared/tiempo/zonaDePrueba.test.ts`, test de control: la zona efectiva es `Asia/Tokyo` y `new Date("2026-11-09T22:30:00-03:00").getHours()` es `10`; agregar `test.env.TZ` en `vite.config.ts`; verificar con `npm test -- zonaDePrueba` y con la suite completa en verde
+- [ ] 2.2 RED→GREEN: `src/test/apiFalsa.test.ts` — `instalarApiFalsa` responde por `"METODO /ruta"` sin importar el orden de los pedidos, entrega catálogos y agenda vacíos por defecto, permite pedidos pendientes que el test resuelve en cualquier orden y lista los pedidos hechos; agregar `src/test/fabricas.ts` con turno, bloqueo, recursos y paciente ficticios; verificar con `npm test -- apiFalsa`
+- [ ] 2.3 Adaptar los tests de C-14 que renderizan `/agenda` y encolan respuestas (`sesion.test.tsx`, `guardas.test.tsx`, `Layout.test.tsx`, `PaginaLogin.test.tsx`): los que no prueban la agenda usan la API falsa; "Pantallas provisorias sin pedidos" queda solo con `/configuracion` (delta `frontend-sesion`); agregar a `src/test/setup.ts` el reemplazo de `showModal` y `close`, con un test que afirme que un `<dialog>` abierto es accesible por rol; verificar con `npm test`
+
+## 3. Presentación horaria (D14)
+
+- [ ] 3.1 RED→GREEN: `src/shared/tiempo/zonaConsultorio.test.ts` — instante a `{fecha, hora, minutosDelDia}` en Buenos Aires: `2026-11-09T22:30:00-03:00` da `22:30` del día 9; `00:00` y nunca `24:00`; un instante en `Z`; verificar con `npm test -- zonaConsultorio`
+- [ ] 3.2 RED→GREEN: mismo archivo — `hoyLocal`: 2026-11-10T02:00Z da `2026-11-09` y 2026-11-10T03:00Z da `2026-11-10`; calendario: `sumarDias` con cambio de mes y de año, `lunesDeLaSemana` con jueves, lunes y domingo, y nombres de días por tabla propia (requirements "Día actual del consultorio" y "Vistas diaria y semanal"); verificar con `npm test -- zonaConsultorio`
+- [ ] 3.3 RED→GREEN: mismo archivo — `aInstanteConDesfasaje("2026-11-12", "10:00")` da `2026-11-12T10:00:00-03:00`, con el desfasaje leído de la zona IANA y no fijo en el código (requirement "Inicio con zona horaria"); verificar con `npm test -- zonaConsultorio` y `grep` de que no hay `-03:00` literal fuera de los tests
+
+## 4. Modelo de la agenda (D1, D2, D4, D6)
+
+- [ ] 4.1 RED→GREEN: `src/features/agenda/vistaAgenda.test.ts` — parámetros de URL a vista y vista a rango: día por defecto, semana de lunes a domingo, `fecha` inválida (`2026-02-30`) y UUID mal formado ignorados, `cancelados=1` y `columnas=sillon`; para `odontologo` se ignoran `profesional` y `columnas` (requirements "La vista se conserva en la URL" y "Agenda del odontólogo"); verificar con `npm test -- vistaAgenda`
+- [ ] 4.2 RED→GREEN: `src/features/agenda/grilla.test.ts` — `segmentosPorDia`: turno dentro del día, turno que cruza la medianoche, bloqueo de varios días con día completo, bloqueo fuera de la grilla (10:03 a 10:07) redondeado solo para la fila (requirement "Elementos que cruzan días"); verificar con `npm test -- grilla`
+- [ ] 4.3 RED→GREEN: mismo archivo — `asignarCarriles`: contiguos en el mismo carril, tres superpuestos en tres carriles, cancelado junto a programado, bloqueos superpuestos, y el orden de entrada no cambia el resultado (requirement "Elementos superpuestos en una columna"); columnas por profesional (activos más desactivados con elementos) y por sillón (`Sin sillón`, `Bloqueos`) (requirement "Columnas de la vista diaria"); verificar con `npm test -- grilla`
+
+## 5. Carga de datos (D7, D13)
+
+- [ ] 5.1 RED→GREEN: `src/pages/PaginaAgenda.test.tsx`, con `renderizarApp`, API falsa y reloj fijo — `/agenda?fecha=2026-11-09` hace `GET /turnos` con el rango y los tres catálogos, indica la carga y muestra el mensaje de período vacío (requirement "Pantalla de agenda"); verificar con `npm test -- PaginaAgenda`
+- [ ] 5.2 RED→GREEN: mismo archivo — respuestas fuera de orden: la del día 11 gana a la del día 10 que llega después; el error de un pedido anterior no se muestra; al cambiar de período no se ven datos del anterior (requirement "Respuestas fuera de orden"); verificar con `npm test -- PaginaAgenda`
+- [ ] 5.3 RED→GREEN: mismo archivo — errores de carga: red, `500` de un catálogo y `403 profesional_ajeno` muestran el mensaje con `Reintentar` y sin cerrar la sesión; `Reintentar` recupera; `Actualizar` mantiene los datos a la vista y, si falla, los conserva con el error (requirements "Errores al cargar la agenda" y "Actualización manual"); verificar con `npm test -- PaginaAgenda`
+
+## 6. Pantalla de agenda (D1, D2, D3, D16, D17)
+
+- [ ] 6.1 RED→GREEN: `PaginaAgenda.test.tsx` — horarios en Buenos Aires con la suite en `Asia/Tokyo`, nombres de los catálogos incluidos los desactivados y texto genérico para un id desconocido, sin mostrarlo (requirements "Horarios en la zona del consultorio", "Datos visibles de cada turno" y "Nombres de los recursos"); verificar con `npm test -- PaginaAgenda`
+- [ ] 6.2 RED→GREEN: mismo archivo — vistas diaria y semanal, período anterior y siguiente, `Hoy`, volver atrás en el historial y recarga desde la URL (requirements "Vistas diaria y semanal", "Navegación entre períodos" y "La vista se conserva en la URL"); verificar con `npm test -- PaginaAgenda`
+- [ ] 6.3 RED→GREEN: mismo archivo — filtros por profesional y por sillón combinados y su opción `Todos`, recurso inactivo marcado en el filtro, bloqueo visible con filtro de sillón, agrupar por sillón (requirements "Filtros por profesional y por sillón", "Columnas de la vista diaria" y "Bloqueos en la agenda"); verificar con `npm test -- PaginaAgenda`
+- [ ] 6.4 RED→GREEN: mismo archivo — cancelados ocultos por defecto, `Mostrar cancelados` sin pedido nuevo, texto `Cancelado`, casilla desde la URL; turno que cruza días y bloqueo de varios días con sus extremos reales (requirements "Turnos cancelados" y "Elementos que cruzan días"); verificar con `npm test -- PaginaAgenda`
+- [ ] 6.5 RED→GREEN: mismo archivo — odontólogo: no envía `profesional_id` aunque esté en la URL, sin filtro de profesional ni agrupar, con filtro de sillón, sin pedidos a `/pacientes` y sin `Nuevo turno`, `Reprogramar` ni `Cancelar turno`; recepcionista: acciones según estado y reloj, con el borde `inicio` igual al reloj (requirements "Agenda del odontólogo", "Operaciones solo para la recepcionista" y "Operaciones según el estado del turno"); verificar con `npm test -- PaginaAgenda`
+- [ ] 6.6 RED→GREEN: mismo archivo — el detalle se abre con el teclado y muestra estado y motivo, columnas con nombre accesible, elementos en orden cronológico y filtros etiquetados, sin documento, teléfono ni email (requirement "Accesibilidad de la agenda"); verificar con `npm test -- PaginaAgenda` y `npm run lint`
+
+## 7. Traducción de errores (D12)
+
+- [ ] 7.1 RED→GREEN: `src/features/turnos/erroresTurno.test.ts`, con `ErrorApi` reales — `solapamiento` con uno y con tres recursos en orden; cada código de la tabla de D12 con su destino y texto literal; `referencia_invalida` por referencia y motivo, y con paciente o prestación al reprogramar; `validacion` con campo, `inicio` mapeado a hora, campo nulo y sin mostrar `msg`; `turno_ya_cancelado`, `turno_ya_iniciado` y `turno_inexistente` obsoletos; `rol_insuficiente`, código desconocido y `status` 0; verificar con `npm test -- erroresTurno`
+
+## 8. Selector de paciente (D8)
+
+- [ ] 8.1 RED→GREEN: `src/features/pacientes/SelectorPaciente.test.tsx`, con fake timers sin `shouldAdvanceTime` — sin pedido a los 299 ms y único pedido a los 300 ms con `q` y `limite=20`, menos de 2 caracteres sin pedido, `maxLength` 100, codificación de caracteres especiales (requirement "Búsqueda de pacientes"); verificar con `npm test -- SelectorPaciente`
+- [ ] 8.2 RED→GREEN: mismo archivo — elegir y cambiar paciente, inactivo no elegible, sin resultados, 20 resultados, búsquedas fuera de orden, error de red, elección con Tab y Enter (requirements "Resultados de la búsqueda de pacientes" y "Accesibilidad de los formularios"); verificar con `npm test -- SelectorPaciente`
+
+## 9. Formularios de turno (D9, D10, D11, D13)
+
+- [ ] 9.1 RED→GREEN: `src/features/turnos/FormularioNuevoTurno.test.tsx` — solo recursos activos, fecha por defecto, paciente faltante sin pedido, sillón según la prestación, duración por defecto y ajustada, `inicio` con desfasaje en `Asia/Tokyo`, `step` 300 (requirements "Formulario de nuevo turno", "Sillón según la prestación", "Duración por defecto y ajustable" e "Inicio con zona horaria"); verificar con `npm test -- FormularioNuevoTurno`
+- [ ] 9.2 RED→GREEN: `PaginaAgenda.test.tsx` — alta exitosa: un solo `POST`, cierre, relectura y confirmación con día y hora; doble envío bloqueado; `409 solapamiento` conserva todos los datos y relee la agenda; reenvío exitoso (requirements "Alta exitosa", "Conflicto por solapamiento" y "Conservación de los datos ante un error"); verificar con `npm test -- PaginaAgenda`
+- [ ] 9.3 RED→GREEN: `FormularioNuevoTurno.test.tsx` — `fuera_de_horario`, `turno_en_bloqueo`, `inicio_en_pasado`, `duracion_invalida`, `referencia_invalida` con relectura de catálogos, `validacion` y `403`, con errores asociados a su control y alerta general (requirements "Reglas de agenda rechazadas por la API", "Referencias inválidas", "Errores de validación por campo", "Falta de permiso y fallas de red" y "Accesibilidad de los formularios"); verificar con `npm test -- FormularioNuevoTurno`
+- [ ] 9.4 RED→GREEN: `src/features/turnos/FormularioReprogramar.test.tsx` — datos precargados en Buenos Aires, paciente y prestación como texto, recurso desactivado como opción, cuerpo exacto con solo lo que cambió, sin cambios no hay pedido, `sillon_id` nulo si la prestación dejó de requerirlo, campo obligatorio si pasó a requerirlo (requirements "Formulario de reprogramación" y "Reprogramación parcial"); verificar con `npm test -- FormularioReprogramar`
+- [ ] 9.5 RED→GREEN: mismo archivo — `turno_ya_cancelado`, `turno_ya_iniciado` y `turno_inexistente` deshabilitan el envío y releen la agenda; paciente inactivo indica que solo se puede cancelar; `401 no_autenticado` lleva a `/login` con aviso (requirements "Turno que cambió mientras se editaba", "Referencias inválidas" y "Falta de permiso y fallas de red"); verificar con `npm test -- FormularioReprogramar`
+- [ ] 9.6 RED→GREEN: `src/features/turnos/DialogoCancelar.test.tsx` — muestra paciente, día y hora; `Volver` sin pedido; motivo enviado; motivo en blanco sin cuerpo; `maxLength` 255; `turno_ya_iniciado` deshabilita; éxito relee y confirma (requirement "Cancelación con confirmación"); verificar con `npm test -- DialogoCancelar`
+
+## 10. Estilos y verificación visual (D1, D5, D17)
+
+- [ ] 10.1 Consultar en Context7 CSS Modules con Vite y Vitest; escribir `src/shared/estilos/base.css`, importarla en `main.tsx`, y los `*.module.css` de grilla, tarjetas, filtros y diálogos: filas de 5 minutos, carriles, scroll inicial a las 08:00, cancelado tachado y punteado, bloqueo rayado; verificar con `npm run typecheck`, `npm run build` y `npm test`
+- [ ] 10.2 Verificación manual en el navegador, con el stack levantado y datos ficticios del seed: foco atrapado y `Esc` en los diálogos, retorno del foco al cerrar, scroll inicial, turno cancelado junto a programado, semana con varios profesionales, y formulario completo solo con teclado; **las contraseñas ficticias están en `.env`, que el agente no lee: este paso lo hace el usuario**
+
+## 11. Documentación
+
+- [ ] 11.1 Registrar en `knowledge-base/09_decisiones_y_supuestos.md` la **DD-34** con las decisiones aprobadas en 1.2 (D1, D2, D3, D5 a D10, D12 y D13) y la limitación de última escritura gana; verificar con `grep` que DD-34 existe
+- [ ] 11.2 Actualizar la KB: `02` (`GET /disponibilidad` no implementado, en backlog), `07` Flujos 2 y 5 (no se consulta disponibilidad), `08` (`shared/tiempo`, `shared/ui`, `shared/estilos`) y `10` (preguntas resueltas de C-15, sin tocar la abierta de recordatorios); verificar con `grep` que `GET /disponibilidad` queda marcado como no implementado en `02` y `07`
+- [ ] 11.3 Actualizar la nota de "Antes de cada change" en `CLAUDE.md` y `AGENTS.md` por igual (DD-13..DD-34); verificar con `cmp CLAUDE.md AGENTS.md` que son byte-idénticos
+
+## 12. Verificación final
+
+- [ ] 12.1 Correr en `frontend/` `npm run typecheck`, `npm run lint`, `npm run format:check`, `npm test` y `npm run build`, todo en verde; verificar con `git diff --stat main -- backend/` que no hay cambios en el backend, con `git diff --stat main -- frontend/package.json frontend/package-lock.json` que no hay dependencias nuevas y con `grep` que no aparecen `dangerouslySetInnerHTML` ni `JWT_SECRET` en `frontend/src/`
+- [ ] 12.2 Confirmar que cada escenario de `frontend-agenda`, `frontend-turnos` y `frontend-sesion` tiene su test, recorriendo los specs contra los archivos de test
+
+## Workflow follow-up
+
+- Abrir el PR con revisión de Matías; `revisar-migraciones` no aplica porque no hay migración.
+- En la descripción del PR, avisar a Matías, responsable de C-16, qué piezas puede reutilizar: `shared/tiempo/zonaConsultorio`, `shared/ui/Dialogo`, `shared/estilos/base.css` y `SelectorPaciente`.
+- `/opsx:archive frontend-agenda-turnos` en la rama del change, antes del merge, y marcar `[x]` en `CHANGES.md`.
