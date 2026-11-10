@@ -137,3 +137,8 @@ export function aInstanteConDesfasaje(fecha: string, hora: string): string {
   const segunda = desfasajeEnSegundos(comoUtc - primera * 1000);
   return `${fecha}T${hora}:00${formatearDesfasaje(segunda)}`;
 }
+
+/** Días de calendario de `desde` a `hasta` (negativo si `hasta` es anterior). */
+export function diasEntre(desde: string, hasta: string): number {
+  return Math.round((aMsUtc(hasta) - aMsUtc(desde)) / MS_POR_DIA);
+}

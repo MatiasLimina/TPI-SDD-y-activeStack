@@ -1,5 +1,6 @@
 import {
   aInstanteConDesfasaje,
+  diasEntre,
   etiquetaDia,
   hoyLocal,
   instanteALocal,
@@ -121,5 +122,17 @@ describe("aInstanteConDesfasaje", () => {
       resultado = aInstanteConDesfasaje("1900-01-15", "10:00");
     }).not.toThrow();
     expect(resultado).toMatch(/^1900-01-15T10:00:00-\d{2}:\d{2}(:\d{2})?$/);
+  });
+});
+
+describe("diasEntre", () => {
+  it.each([
+    ["2026-11-09", "2026-11-09", 0],
+    ["2026-11-09", "2026-11-10", 1],
+    ["2026-11-10", "2026-11-09", -1],
+    ["2026-12-30", "2027-01-02", 3],
+    ["2026-11-09", "2026-11-13", 4],
+  ])("de %s a %s hay %i días", (desde, hasta, dias) => {
+    expect(diasEntre(desde, hasta)).toBe(dias);
   });
 });
