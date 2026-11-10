@@ -80,8 +80,8 @@
 
 ## 12. Verificación final
 
-- [ ] 12.1 Correr en `frontend/` `npm run typecheck`, `npm run lint`, `npm run format:check`, `npm test` y `npm run build`, todo en verde; verificar con `git diff --stat main -- backend/` que no hay cambios en el backend, con `git diff --stat main -- frontend/package.json frontend/package-lock.json` que no hay dependencias nuevas y con `grep` que no aparecen `dangerouslySetInnerHTML` ni `JWT_SECRET` en `frontend/src/`
-- [ ] 12.2 Confirmar que cada escenario de `frontend-agenda`, `frontend-turnos` y `frontend-sesion` tiene su test, recorriendo los specs contra los archivos de test
+- [x] 12.1 Correr en `frontend/` `npm run typecheck`, `npm run lint`, `npm run format:check`, `npm test` y `npm run build`, todo en verde; verificar con `git diff --stat main -- backend/` que no hay cambios en el backend, con `git diff --stat main -- frontend/package.json frontend/package-lock.json` que no hay dependencias nuevas y con `grep` que no aparecen `dangerouslySetInnerHTML` ni `JWT_SECRET` en `frontend/src/`
+- [x] 12.2 Confirmar que cada escenario de `frontend-agenda`, `frontend-turnos` y `frontend-sesion` tiene su test, recorriendo los specs contra los archivos de test
 
 ## Workflow follow-up
 
