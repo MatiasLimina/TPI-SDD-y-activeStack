@@ -9,6 +9,8 @@ Producto: sistema de gestión de turnos y agenda de pacientes para consultorios 
 - `desarrollo-active-stack.pdf` — consigna del trabajo.
 - `openspec/` — especificaciones y changes (OpenSpec).
 - `knowledge-base/` — base de conocimiento del dominio (fuente de verdad).
+- `backend/` — API FastAPI, migraciones y tests (pytest).
+- `frontend/` — SPA React + TypeScript + Vite, con sus tests (Vitest).
 - `CHANGES.md` — roadmap de changes.
 - `.agents/skills/` — skills del proyecto, instaladas a nivel proyecto (no globales).
 - `skills-lock.json` — origen y hash de cada skill instalada.
@@ -160,3 +162,45 @@ suite de contrato de la cola la usa y borra solo sus claves de prueba.
 
 Si el puerto 5432 ya está ocupado (por ejemplo por un PostgreSQL local en Windows), cambiá
 `POSTGRES_PORT` en `.env` (p. ej. `5433`) y ajustá el puerto en `DATABASE_URL` y `TEST_DATABASE_URL`.
+
+## Cómo correr el frontend
+
+Requisitos: Node 24 (`^24.15.0`, declarado en `frontend/package.json`) y la API corriendo (ver arriba).
+Ejecutá los comandos desde `frontend/`.
+
+```bash
+npm ci                 # instala exactamente lo que fija package-lock.json
+npm run dev            # servidor de desarrollo en http://localhost:5173
+
+npm test               # tests (Vitest + React Testing Library, sin tocar la red real)
+npm run typecheck && npm run lint && npm run format:check && npm test   # verificación completa
+npm run build          # compilación de producción en dist/
+```
+
+- **URL de la API**: la SPA llama a `VITE_API_URL` (por defecto `http://localhost:8000`). Es una variable
+  pública: la lee el navegador, por eso no puede ser `http://api:8000` ni contener ningún secreto.
+- **Abrí `http://localhost:5173`, no `http://127.0.0.1:5173`**: la API solo acepta pedidos de los orígenes
+  de `CORS_ORIGINS` (por defecto `http://localhost:5173`, coincidencia exacta). Con `127.0.0.1` el
+  navegador bloquea las respuestas por CORS. `CORS_ORIGINS` es una lista separada por comas; vacía no
+  permite ningún origen y `*` es inválido (la API no arranca).
+- **Todo el stack**: `docker compose up --build` levanta `db`, `redis`, `api`, `worker` y `frontend`
+  (puerto 5173), pero la imagen de la API no corre las migraciones ni el seed: sin tablas ni usuarios no
+  se puede iniciar sesión. Hacelo en este orden (el entorno virtual y `pip install -e ".[dev]"` de la
+  sección anterior ya tienen que estar hechos):
+
+  ```bash
+  docker compose up -d db redis          # 1. solo la base y Redis
+  cd backend && alembic upgrade head     # 2. migraciones, desde el host
+  python -m app.infrastructure.db.seed   # 3. usuarios y catálogo ficticios (desde backend/)
+  cd .. && docker compose up --build     # 4. todo el stack
+  ```
+
+  El seed lee `SEED_RECEPCIONISTA_PASSWORD`, `SEED_ODONTOLOGO_1_PASSWORD` y `SEED_ODONTOLOGO_2_PASSWORD`
+  del `.env` de la raíz (las trae el `.env` copiado de `.env.example`). Si una está sin definir o vacía,
+  el seed omite a ese usuario **sin avisar**.
+  **Síntoma de saltear la migración**: `POST /auth/login` responde `500`, y como esa respuesta no lleva
+  encabezados CORS, el navegador muestra "No se pudo conectar con el servidor.", que parece un problema
+  de CORS pero no lo es.
+- El servicio `frontend` de Compose corre el servidor de desarrollo de Vite sin montar el código: los
+  cambios se ven con `--build`, y el trabajo diario va con `npm run dev` en el host. **No es apto para
+  producción.**

@@ -32,7 +32,7 @@ services:
       NOTIFICATION_ADAPTER: ${NOTIFICATION_ADAPTER:-mock}
       REMINDER_LEAD_HOURS: ${REMINDER_LEAD_HOURS:-24}
       CONSULTORIO_NOMBRE: "${CONSULTORIO_NOMBRE:-Consultorio odontológico}"
-      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:5173}
+      CORS_ORIGINS: ${CORS_ORIGINS-http://localhost:5173}
     ports:
       - "8000:8000"
     depends_on:
@@ -57,6 +57,17 @@ services:
       redis:
         condition: service_started
     restart: unless-stopped
+
+  frontend:
+    build: ./frontend
+    environment:
+      # La usa el navegador, no el contenedor: debe ser alcanzable desde el host (no http://api:8000)
+      VITE_API_URL: ${VITE_API_URL:-http://localhost:8000}
+    ports:
+      - "5173:5173"
+    depends_on:
+      api:
+        condition: service_started
 
 volumes:
   pgdata:

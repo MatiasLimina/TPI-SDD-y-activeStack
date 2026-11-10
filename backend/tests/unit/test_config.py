@@ -1,7 +1,7 @@
 import pytest
 from pydantic import ValidationError
 
-from app.config import ConfiguracionWorker, Settings, get_settings
+from app.config import ConfiguracionCors, ConfiguracionWorker, Settings, get_settings
 
 ENV_VARS = [
     "DATABASE_URL",
@@ -225,3 +225,61 @@ def test_worker_config_requires_database_url() -> None:
 def test_settings_extends_worker_config() -> None:
     assert issubclass(Settings, ConfiguracionWorker)
     assert set(ConfiguracionWorker.model_fields) <= set(Settings.model_fields)
+
+
+def test_cors_default_is_the_vite_dev_origin() -> None:
+    config = ConfiguracionCors(_env_file=None)
+
+    assert config.origenes_permitidos == ["http://localhost:5173"]
+
+
+@pytest.mark.parametrize(
+    ("valor", "esperado"),
+    [
+        (
+            "http://localhost:5173, http://consultorio.example.com",
+            ["http://localhost:5173", "http://consultorio.example.com"],
+        ),
+        (
+            "http://a.example.com,http://b.example.com",
+            ["http://a.example.com", "http://b.example.com"],
+        ),
+        ("  http://localhost:5173  ,, ", ["http://localhost:5173"]),
+        ("", []),
+        (" , ", []),
+    ],
+)
+def test_cors_origins_are_split_by_commas_trimmed_and_without_blanks(
+    monkeypatch: pytest.MonkeyPatch, valor: str, esperado: list[str]
+) -> None:
+    monkeypatch.setenv("CORS_ORIGINS", valor)
+
+    assert ConfiguracionCors(_env_file=None).origenes_permitidos == esperado
+
+
+@pytest.mark.parametrize("valor", ["*", "http://localhost:5173, *", "*,http://a.example.com"])
+def test_cors_origins_wildcard_is_invalid_and_names_variable(
+    monkeypatch: pytest.MonkeyPatch, valor: str
+) -> None:
+    monkeypatch.setenv("CORS_ORIGINS", valor)
+
+    with pytest.raises(ValidationError, match="CORS_ORIGINS"):
+        ConfiguracionCors(_env_file=None)
+
+
+def test_cors_config_loads_without_jwt_secret_nor_database_url() -> None:
+    config = ConfiguracionCors(_env_file=None)
+
+    assert not hasattr(config, "JWT_SECRET")
+    assert not hasattr(config, "DATABASE_URL")
+
+
+def test_settings_keeps_cors_field_and_rejects_wildcard(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("DATABASE_URL", DB_URL)
+    monkeypatch.setenv("JWT_SECRET", "test-secret")
+
+    assert load().origenes_permitidos == ["http://localhost:5173"]
+
+    monkeypatch.setenv("CORS_ORIGINS", "*")
+    with pytest.raises(ValidationError, match="CORS_ORIGINS"):
+        load()

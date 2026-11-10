@@ -351,7 +351,7 @@ C-01 a C-07 los hizo Matías (C-07 entró a `main` con el PR #3). Para avanzar l
 > El backend MVP completo debe estar estable antes de empezar. No es requisito de la consigna.
 
 ### [C-14] `frontend-base-login`
-- **Estado**: `[ ]` pendiente
+- **Estado**: `[x]` completado
 - **Responsable**: Nico · revisa Matías
 - **Scope**:
   - Scaffolding Vite + React + TypeScript en `frontend/` (features/, shared/, pages/), cliente HTTP con JWT, `CORS_ORIGINS`

@@ -43,3 +43,18 @@ Para el TP de skills y MCP se agregaron, **sin re-ejecutar** las etapas de la fu
 El registry (`.atl/skill-registry.md`) se actualizó a mano (fila y compact rules de
 `revisar-escenarios` y de `revisar-migraciones`), sin regenerarlo con `/active-orchestrator:registry`, para no reescribir las reglas
 compactas existentes. Investigación y comparación: [docs/skills-mcp/investigacion.md](../skills-mcp/investigacion.md).
+
+## Reevaluación para el frontend (2026-11-09)
+
+Al llegar a C-14 (base del frontend y login) se reevaluaron las skills del Frontend, que hasta entonces no tenía ninguna instalada. Se instaló a nivel proyecto (`npx skills add antfu/skills --skill vitest`, sin `-g`), fijada en `skills-lock.json`.
+
+| Skill | Fuente | Instalada | Justificación |
+|---|---|---|---|
+| `vitest` | antfu/skills | Sí | desde C-14 se trabaja con TDD estricto y se consulta en cada test (jsdom, mocks, fake timers, hooks). Documenta Vitest 5.1.0-beta.1 (pre-release): verificar la versión instalada antes de usar comportamiento propio de v5. No cubre React Testing Library. |
+| `vite` | antfu/skills | No | su documentación ya la cubre Context7 y la configuración es chica y se escribe una sola vez. Las tareas deben exigir consultar Context7 antes de escribir `vite.config.ts`. |
+| Skills de React y TypeScript | varias | No | los candidatos encontrados apuntan a Next.js o tienen poco respaldo; el modo `strict` de TypeScript ya hace cumplir los tipos. |
+| `vercel-react-best-practices` | vercel-labs/agent-skills | No (por ahora) | es una guía de rendimiento, en parte exclusiva de Next.js, y no cubre login, guards de rutas ni formularios. Se reevalúa en C-15, donde la agenda semanal hace que los re-renders importen. |
+
+La documentación de React Router y de React Testing Library sale de Context7 (ver [docs/skills-mcp/mcp.md](../skills-mcp/mcp.md)). El registry (`.atl/skill-registry.md`) se actualizó agregando solo la fila y las reglas compactas de `vitest`, sin reescribir el resto.
+
+> **Gotcha de instalación**: `npx skills add` con `--agent claude-code` copia la skill en `.claude/skills/` en lugar de `.agents/skills/`. La convención del proyecto exige `.agents/skills/` (versionado), así que el comando se ejecuta sin esa bandera. `.claude/skills/vitest` es solo un enlace local no versionado hacia `.agents/skills/vitest`.

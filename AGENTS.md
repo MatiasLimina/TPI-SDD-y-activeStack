@@ -18,9 +18,9 @@ Sistema de agenda para consultorios odontológicos chicos de Argentina (1 a 5 pr
 | Autenticación | JWT | 2 roles: recepcionista, odontólogo |
 | Frontend | React + TypeScript + Vite | Agenda diaria/semanal (changes C-14..C-16, al final) |
 | Infra | Docker / Docker Compose | api, db, redis, worker, frontend |
-| Tests | pytest | TDD estricto (ver `~/.claude/CLAUDE.md`) |
+| Tests | pytest (backend); Vitest + React Testing Library (frontend) | TDD estricto (ver `~/.claude/CLAUDE.md`) |
 
-Versiones mínimas (DD-17): Python ≥ 3.13, PostgreSQL 16, Node 22 LTS (a confirmar en C-14). Detalle completo: [knowledge-base/02_descripcion_general.md](knowledge-base/02_descripcion_general.md)
+Versiones mínimas (DD-17): Python ≥ 3.13, PostgreSQL 16, Node 24 LTS (DD-33 i). Detalle completo: [knowledge-base/02_descripcion_general.md](knowledge-base/02_descripcion_general.md)
 
 ---
 
@@ -51,7 +51,7 @@ La fuente de verdad del dominio vive en `knowledge-base/`. **Leé el archivo rel
 |--------|-----|------------------|
 | **Backend Core** | Dominio de agenda, API FastAPI, modelos y migraciones | `fastapi-python`, `supabase-postgres-best-practices`, `tdd`, `python-testing-patterns` |
 | **Backend Seguridad** | JWT, roles, auditoría (C-06, C-07) | `auth-implementation-patterns`, `python-testing-patterns` |
-| **Frontend** | React + TypeScript + Vite (C-14..C-16) | Ninguna instalada todavía; reevaluar con `find-skill` al llegar a esos changes |
+| **Frontend** | React + TypeScript + Vite (C-14..C-16) | `vitest`; Context7 cubre Vite, React Router y React Testing Library; `vercel-react-best-practices` se reevalúa en C-15 |
 | **Orquestación** | Fundación y ciclo OPSX | `active-orchestrator`, `kb-creator`, `roadmap-generator`, `skill-registry`, `agent-instruction`, skills `openspec-*` |
 | **Revisión de specs** | Control de escenarios entre Propose y Apply | `revisar-escenarios` (skill propia), `skill-creator` (para mantenerla) |
 | **Integración de ramas** | Numeración de migraciones de Alembic antes de mergear | `revisar-migraciones` (skill propia) |

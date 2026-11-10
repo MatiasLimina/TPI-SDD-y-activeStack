@@ -32,6 +32,7 @@ def test_env_example_declares_every_settings_field(field: str) -> None:
         "POSTGRES_PASSWORD",
         "POSTGRES_DB",
         "POSTGRES_PORT",
+        "VITE_API_URL",
     ],
 )
 def test_env_example_declares_infrastructure_variables(field: str) -> None:

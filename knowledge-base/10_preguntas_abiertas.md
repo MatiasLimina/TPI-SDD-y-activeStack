@@ -60,7 +60,7 @@ Al 2026-11-04 queda una pregunta abierta, surgida al proponer C-12 (`recordatori
 | ¿**Anticipación mínima para cancelar** y tratamiento de la cancelación tardía? | Resuelta: sin política de cancelación tardía; se cancela hasta el inicio del turno, iniciado o pasado -> 409 (DD-14, RN-AG-13) |
 | ¿Duración mínima/máxima o múltiplos (granularidad de la grilla)? | Resuelta: múltiplo de 5 min, máximo 480 min, inicio alineado a 5 min; violación -> 422 (DD-15, RN-AG-04) |
 | ¿Quién crea/da de baja usuarios (seed/CLI vs UI)? (SU-06) | Resuelta: seed más comando CLI de alta y desactivación; sin UI ni endpoint; baja = `activo = false` (DD-16) |
-| Versiones mínimas del stack y política de migraciones | Resuelta: Python ≥ 3.13, PostgreSQL 16, Node 22 LTS; migraciones Alembic lineales con `downgrade` (DD-17) |
+| Versiones mínimas del stack y política de migraciones | Resuelta: Python ≥ 3.13, PostgreSQL 16, Node 22 LTS, que pasó a Node 24 LTS en C-14 (DD-33 i); migraciones Alembic lineales con `downgrade` (DD-17) |
 | ¿Cómo se realizan los tests de concurrencia en CI? | Resuelta: siempre contra PostgreSQL real en contenedor; si hay CI, service `postgres:16` (DD-18) |
 | ¿Cuáles son los datos mínimos del paciente? | Resuelta con lo ya modelado: nombre, apellido, documento único, teléfono obligatorio, email opcional (ver 04, entidad Paciente); no requirió DD |
 | ¿Reintentos y política de fallo del adaptador de notificación? | Resuelta: 3 intentos con backoff exponencial; agotados, `fallido`; sin reintento manual (DD-19, RN-NO-05) |
@@ -122,3 +122,9 @@ Al 2026-11-04 queda una pregunta abierta, surgida al proponer C-12 (`recordatori
 | ¿En qué zona se devuelven los instantes de la agenda: UTC (Flujo 7 y `CHANGES.md`) u hora local (RN-CU-04)? | Resuelta: hora local con desfasaje (`-03:00`), como el resto de la API; se corrigieron el Flujo 7 y `CHANGES.md` (DD-32 g) |
 | ¿Qué datos del paciente lleva cada turno de la agenda y se incluyen los cancelados? | Resuelta: `paciente: {id, nombre, apellido}` y los cancelados con su `estado` (DD-32 f, j; cierra la nota pendiente de DD-31) |
 | ¿Qué ve un odontólogo que pide la agenda de otro profesional? | Resuelta: `403 profesional_ajeno`, exista o no, antes que la validez del rango (DD-32 i) |
+| **Frontend (C-14)** — ¿cómo conoce el rol la SPA si el login no lo informa? | Resuelta: lee los claims del JWT sin verificar la firma, solo para la interfaz; la API sigue siendo la autoridad (DD-33 a) |
+| ¿Dónde se guarda el token y qué pasa cuando vence? | Resuelta: `sessionStorage`; al llegar el `exp` o ante un `401 no_autenticado` del token vigente se cierra la sesión con aviso, sin renovación (DD-33 c, d) |
+| ¿Qué CORS tiene la API? | Resuelta: `CORS_ORIGINS` en lista separada por comas, vacía sin orígenes y `*` inválido; la SPA llama a `VITE_API_URL` (DD-33 b) |
+| ¿Qué ve quien no tiene permiso para una ruta, y adónde entra cada rol? | Resuelta: pantalla de falta de permiso en el lugar, sin cerrar la sesión; ambos roles entran a `/agenda` y `/configuracion` es solo de la recepcionista (DD-33 e, g) |
+| ¿Cómo se muestra un `422` que no es de un campo, o una ruta inexistente? | Resuelta: error general del formulario con `campo` nulo, y pantalla de página no encontrada (DD-33 l, m) |
+| ¿Qué versión de Node, que DD-17 dejaba por confirmar para C-14? | Resuelta: Node 24 LTS (DD-33 i) |

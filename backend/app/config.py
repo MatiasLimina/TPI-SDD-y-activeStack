@@ -47,10 +47,35 @@ class ConfiguracionWorker(BaseSettings):
         return value
 
 
-class Settings(ConfiguracionWorker):
+class ConfiguracionCors(BaseSettings):
+    """Solo `CORS_ORIGINS`: la lee `create_app()`, que corre al importar sin exigir secretos."""
+
+    model_config = SettingsConfigDict(
+        env_file=REPO_ROOT / ".env",
+        env_file_encoding="utf-8",
+        case_sensitive=True,
+        extra="ignore",
+    )
+
+    CORS_ORIGINS: str = "http://localhost:5173"
+
+    @field_validator("CORS_ORIGINS")
+    @classmethod
+    def _validate_cors_origins(cls, value: str) -> str:
+        if "*" in value:
+            raise ValueError(f"CORS_ORIGINS no admite '*': {value!r}")
+        return value
+
+    @property
+    def origenes_permitidos(self) -> list[str]:
+        """Lista separada por comas: se recortan espacios y se descartan vacíos."""
+        origenes = (origen.strip() for origen in self.CORS_ORIGINS.split(","))
+        return [origen for origen in origenes if origen]
+
+
+class Settings(ConfiguracionWorker, ConfiguracionCors):
     JWT_SECRET: str
     JWT_EXPIRE_MINUTES: int = Field(default=60, gt=0)
-    CORS_ORIGINS: str = "http://localhost:5173"
 
 
 @lru_cache
