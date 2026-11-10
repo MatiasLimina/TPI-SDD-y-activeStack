@@ -142,3 +142,14 @@ export function aInstanteConDesfasaje(fecha: string, hora: string): string {
 export function diasEntre(desde: string, hasta: string): number {
   return Math.round((aMsUtc(hasta) - aMsUtc(desde)) / MS_POR_DIA);
 }
+
+/**
+ * `true` si el elemento abarca más de un día local. Con `[)` (RN-AG-03), un fin exacto a las
+ * 00:00 del día siguiente no cuenta: el elemento ocupa solo el día de su inicio.
+ */
+export function cruzaDias(inicio: string, fin: string): boolean {
+  const desde = instanteALocal(inicio);
+  const hasta = instanteALocal(fin);
+  const dias = diasEntre(desde.fecha, hasta.fecha);
+  return dias > 1 || (dias === 1 && hasta.minutosDelDia !== 0);
+}

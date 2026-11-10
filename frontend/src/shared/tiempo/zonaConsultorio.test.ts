@@ -1,5 +1,6 @@
 import {
   aInstanteConDesfasaje,
+  cruzaDias,
   diasEntre,
   etiquetaDia,
   hoyLocal,
@@ -134,5 +135,38 @@ describe("diasEntre", () => {
     ["2026-11-09", "2026-11-13", 4],
   ])("de %s a %s hay %i días", (desde, hasta, dias) => {
     expect(diasEntre(desde, hasta)).toBe(dias);
+  });
+});
+
+describe("cruzaDias", () => {
+  it("no cruza si empieza y termina el mismo día local", () => {
+    expect(
+      cruzaDias("2026-11-09T10:00:00-03:00", "2026-11-09T10:45:00-03:00"),
+    ).toBe(false);
+  });
+
+  it("no cruza si termina exactamente a las 00:00 del día siguiente, por el [)", () => {
+    expect(
+      cruzaDias("2026-11-09T23:55:00-03:00", "2026-11-10T00:00:00-03:00"),
+    ).toBe(false);
+  });
+
+  it("cruza si termina un minuto después de la medianoche", () => {
+    expect(
+      cruzaDias("2026-11-09T23:55:00-03:00", "2026-11-10T00:05:00-03:00"),
+    ).toBe(true);
+  });
+
+  it("cruza si termina a las 00:00 pero de dos días después", () => {
+    expect(
+      cruzaDias("2026-11-09T22:00:00-03:00", "2026-11-11T00:00:00-03:00"),
+    ).toBe(true);
+  });
+
+  it("toma los días en la zona del consultorio, no en UTC", () => {
+    // 22:00 y 23:30 locales caen en el mismo día local pero en días UTC distintos
+    expect(
+      cruzaDias("2026-11-09T22:00:00-03:00", "2026-11-09T23:30:00-03:00"),
+    ).toBe(false);
   });
 });

@@ -1,5 +1,9 @@
 import { Dialogo } from "../../shared/ui/Dialogo";
-import { diaYMes, instanteALocal } from "../../shared/tiempo/zonaConsultorio";
+import {
+  cruzaDias,
+  diaYMes,
+  instanteALocal,
+} from "../../shared/tiempo/zonaConsultorio";
 import type { Nombres } from "./nombres";
 import type { TurnoAgenda } from "./tipos";
 
@@ -25,12 +29,13 @@ function admiteOperaciones(turno: TurnoAgenda): boolean {
   );
 }
 
-/** `DD/MM HH:MM – HH:MM`, y con la fecha también en el fin si el turno cruza la medianoche. */
+/** `DD/MM HH:MM – HH:MM`, y con la fecha también en el fin si el turno pasa de la medianoche. */
 function textoHorario(turno: TurnoAgenda): string {
   const inicio = instanteALocal(turno.inicio);
   const fin = instanteALocal(turno.fin);
-  const finTexto =
-    fin.fecha === inicio.fecha ? fin.hora : `${diaYMes(fin.fecha)} ${fin.hora}`;
+  const finTexto = cruzaDias(turno.inicio, turno.fin)
+    ? `${diaYMes(fin.fecha)} ${fin.hora}`
+    : fin.hora;
   return `${diaYMes(inicio.fecha)} ${inicio.hora} – ${finTexto}`;
 }
 

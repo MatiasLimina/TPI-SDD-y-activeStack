@@ -1,6 +1,10 @@
 import { useEffect, useRef } from "react";
 
-import { diaYMes, instanteALocal } from "../../shared/tiempo/zonaConsultorio";
+import {
+  cruzaDias,
+  diaYMes,
+  instanteALocal,
+} from "../../shared/tiempo/zonaConsultorio";
 import estilos from "./GrillaAgenda.module.css";
 import type { Columna, ItemColumna } from "./grilla";
 import type { Nombres } from "./nombres";
@@ -22,11 +26,11 @@ function extremo(instante: string, conFecha: boolean): string {
 
 function Horario({ inicio, fin }: { inicio: string; fin: string }) {
   // La API entrega el elemento completo: si cruza días, se indican fechas y horas reales
-  const cruzaDias = instanteALocal(inicio).fecha !== instanteALocal(fin).fecha;
+  const conFecha = cruzaDias(inicio, fin);
   return (
     <span>
-      <span>{extremo(inicio, cruzaDias)}</span> –{" "}
-      <span>{extremo(fin, cruzaDias)}</span>
+      <span>{extremo(inicio, conFecha)}</span> –{" "}
+      <span>{extremo(fin, conFecha)}</span>
     </span>
   );
 }
