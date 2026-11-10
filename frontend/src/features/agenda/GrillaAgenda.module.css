@@ -1,0 +1,76 @@
+.contenedor {
+  display: flex;
+  gap: var(--espacio);
+  overflow: auto;
+  /* Ocho horas visibles aproximadas: el scroll inicial lleva a las 08:00 */
+  max-height: 70vh;
+  background: var(--color-superficie);
+  border: 1px solid var(--color-borde);
+}
+
+.columna {
+  flex: 1 0 auto;
+  min-width: 0;
+}
+
+.columna h2 {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  margin: 0;
+  padding: var(--espacio);
+  font-size: 0.95rem;
+  background: var(--color-superficie);
+  border-bottom: 1px solid var(--color-borde);
+}
+
+/* 288 filas de 5 minutos por día (D1) */
+.lista {
+  display: grid;
+  grid-template-rows: repeat(288, var(--alto-fila));
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.item {
+  min-width: 90px;
+  overflow: hidden;
+  font-size: 0.8rem;
+}
+
+.turno {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  width: 100%;
+  height: 100%;
+  padding: 2px 4px;
+  text-align: left;
+  background: var(--color-turno);
+  border: 1px solid var(--color-primario);
+  border-radius: var(--radio);
+}
+
+/* El cancelado se distingue por texto, tachado y borde punteado, no solo por color */
+.cancelado {
+  text-decoration: line-through;
+  border-style: dotted;
+  background: var(--color-cancelado);
+}
+
+.bloqueo {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  padding: 2px 4px;
+  background: repeating-linear-gradient(
+    45deg,
+    var(--color-bloqueo),
+    var(--color-bloqueo) 6px,
+    var(--color-superficie) 6px,
+    var(--color-superficie) 12px
+  );
+  border: 1px solid var(--color-error);
+  border-radius: var(--radio);
+}

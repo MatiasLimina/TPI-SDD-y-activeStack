@@ -1,0 +1,9 @@
+.dialogo form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--espacio);
+}
+
+.dialogo h2 {
+  margin-top: 0;
+}

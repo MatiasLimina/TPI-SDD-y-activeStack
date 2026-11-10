@@ -1,4 +1,5 @@
 import { sumarDias } from "../../shared/tiempo/zonaConsultorio";
+import estilos from "./BarraAgenda.module.css";
 import type { Rol } from "../sesion/claims";
 import {
   nombreProfesional,
@@ -32,7 +33,7 @@ export function BarraAgenda({
   const salto = vista.vista === "dia" ? 1 : 7;
   const irA = (fecha: string) => alCambiar({ ...vista, fecha });
   return (
-    <div>
+    <div className={estilos.barra}>
       <div role="group" aria-label="Vista">
         <button
           type="button"

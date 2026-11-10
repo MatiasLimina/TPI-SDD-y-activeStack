@@ -1,5 +1,7 @@
 import { useEffect, useId, useRef, type ReactNode } from "react";
 
+import estilos from "./Dialogo.module.css";
+
 interface PropsDialogo {
   abierto: boolean;
   titulo: string;
@@ -25,7 +27,12 @@ export function Dialogo({ abierto, titulo, onCerrar, children }: PropsDialogo) {
   }, [abierto]);
 
   return (
-    <dialog ref={referencia} aria-labelledby={idTitulo} onClose={onCerrar}>
+    <dialog
+      ref={referencia}
+      className={estilos.dialogo}
+      aria-labelledby={idTitulo}
+      onClose={onCerrar}
+    >
       <h2 id={idTitulo}>{titulo}</h2>
       {children}
     </dialog>

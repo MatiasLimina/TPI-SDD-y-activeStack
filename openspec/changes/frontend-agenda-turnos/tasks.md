@@ -69,7 +69,7 @@
 
 ## 10. Estilos y verificación visual (D1, D5, D17)
 
-- [ ] 10.1 Consultar en Context7 CSS Modules con Vite y Vitest; escribir `src/shared/estilos/base.css`, importarla en `main.tsx`, y los `*.module.css` de grilla, tarjetas, filtros y diálogos: filas de 5 minutos, carriles, scroll inicial a las 08:00, cancelado tachado y punteado, bloqueo rayado; verificar con `npm run typecheck`, `npm run build` y `npm test`
+- [x] 10.1 Consultar en Context7 CSS Modules con Vite y Vitest; escribir `src/shared/estilos/base.css`, importarla en `main.tsx`, y los `*.module.css` de grilla, tarjetas, filtros y diálogos: filas de 5 minutos, carriles, scroll inicial a las 08:00, cancelado tachado y punteado, bloqueo rayado; verificar con `npm run typecheck`, `npm run build` y `npm test`
 - [ ] 10.2 Verificación manual en el navegador, con el stack levantado y datos ficticios del seed: foco atrapado y `Esc` en los diálogos, retorno del foco al cerrar, scroll inicial a las 08:00, geometría y ancho de los carriles, turno cancelado junto a programado, semana con varios profesionales, y formulario completo solo con teclado; **las contraseñas ficticias están en `.env`, que el agente no lee: este paso lo hace el usuario**
 
 ## 11. Documentación

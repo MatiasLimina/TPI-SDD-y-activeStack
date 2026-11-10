@@ -1,4 +1,7 @@
+import { useEffect, useRef } from "react";
+
 import { diaYMes, instanteALocal } from "../../shared/tiempo/zonaConsultorio";
+import estilos from "./GrillaAgenda.module.css";
 import type { Columna, ItemColumna } from "./grilla";
 import type { Nombres } from "./nombres";
 import type { TurnoAgenda } from "./tipos";
@@ -28,6 +31,9 @@ function Horario({ inicio, fin }: { inicio: string; fin: string }) {
   );
 }
 
+const ALTO_FILA_PX = 6;
+const FILA_DE_LAS_OCHO = 96;
+
 function posicion(item: ItemColumna) {
   return {
     gridRow: `${item.segmento.fila + 1} / span ${item.segmento.filas}`,
@@ -53,8 +59,8 @@ function Item({
   if (item.tipo === "bloqueo") {
     const { bloqueo } = item;
     return (
-      <li style={posicion(item)} data-tipo="bloqueo">
-        <div>
+      <li className={estilos.item} style={posicion(item)} data-tipo="bloqueo">
+        <div className={estilos.bloqueo}>
           <strong>Bloqueo</strong>
           <Horario inicio={bloqueo.inicio} fin={bloqueo.fin} />
           {bloqueo.motivo !== null && <span>{bloqueo.motivo}</span>}
@@ -67,8 +73,17 @@ function Item({
   }
   const { turno } = item;
   return (
-    <li style={posicion(item)} data-tipo="turno" data-estado={turno.estado}>
-      <button type="button" onClick={() => alElegirTurno(turno)}>
+    <li
+      className={estilos.item}
+      style={posicion(item)}
+      data-tipo="turno"
+      data-estado={turno.estado}
+    >
+      <button
+        type="button"
+        className={`${estilos.turno} ${turno.estado === "cancelado" ? estilos.cancelado : ""}`}
+        onClick={() => alElegirTurno(turno)}
+      >
         {turno.estado === "cancelado" && <strong>Cancelado</strong>}
         <Horario inicio={turno.inicio} fin={turno.fin} />
         <span>
@@ -93,15 +108,24 @@ export function GrillaAgenda({
   nombres,
   alElegirTurno,
 }: PropsGrilla) {
+  const contenedor = useRef<HTMLDivElement>(null);
+  // Desplazamiento inicial a las 08:00 (fila 96 de 6 px); no se puede probar en jsdom (tarea 10.2)
+  useEffect(() => {
+    if (contenedor.current !== null)
+      contenedor.current.scrollTop = FILA_DE_LAS_OCHO * ALTO_FILA_PX;
+  }, []);
   return (
-    <div>
+    <div ref={contenedor} className={estilos.contenedor}>
       {columnas.map((columna) => (
-        <section key={columna.clave} aria-label={columna.nombre}>
+        <section
+          key={columna.clave}
+          className={estilos.columna}
+          aria-label={columna.nombre}
+        >
           <h2>{columna.nombre}</h2>
           <ol
+            className={estilos.lista}
             style={{
-              display: "grid",
-              gridTemplateRows: "repeat(288, 6px)",
               gridTemplateColumns: `repeat(${Math.max(columna.carriles, 1)}, minmax(90px, 1fr))`,
             }}
           >

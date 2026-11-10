@@ -1,0 +1,67 @@
+:root {
+  --color-fondo: #f6f7f9;
+  --color-superficie: #ffffff;
+  --color-texto: #1d2733;
+  --color-texto-suave: #5b6b7b;
+  --color-borde: #c9d1da;
+  --color-primario: #1f5fbf;
+  --color-turno: #dbe8fb;
+  --color-cancelado: #eceff2;
+  --color-bloqueo: #f4d9d9;
+  --color-error: #a61b1b;
+  --espacio: 0.5rem;
+  --radio: 4px;
+  --alto-fila: 6px;
+  font-family:
+    system-ui,
+    -apple-system,
+    "Segoe UI",
+    sans-serif;
+  color: var(--color-texto);
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: var(--color-fondo);
+}
+
+button,
+input,
+select {
+  font: inherit;
+}
+
+button {
+  cursor: pointer;
+}
+
+button:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+:focus-visible {
+  outline: 2px solid var(--color-primario);
+  outline-offset: 2px;
+}
+
+dialog {
+  border: 1px solid var(--color-borde);
+  border-radius: var(--radio);
+  padding: 1rem 1.25rem;
+  max-width: min(32rem, 95vw);
+}
+
+dialog::backdrop {
+  background: rgb(0 0 0 / 0.4);
+}
+
+[role="alert"] {
+  color: var(--color-error);
+}
