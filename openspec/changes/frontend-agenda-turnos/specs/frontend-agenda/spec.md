@@ -284,7 +284,7 @@ Los turnos `cancelado` MUST ocultarse por defecto y mostrarse al activar `Mostra
 - **THEN** entonces la casilla `Mostrar cancelados` está activa
 
 ### Requirement: Ubicación en la grilla
-Cada día MUST presentarse con un eje de 24 horas de 288 filas de 5 minutos (D1, DD-34). La ubicación MUST calcularse con funciones puras sobre la hora local: inicio redondeado hacia abajo, fin hacia arriba y recorte a cada día. El texto MUST seguir mostrando la hora real. El desplazamiento inicial a las 08:00, la geometría y el ancho de los carriles son de verificación manual (tarea 10.2).
+Cada día MUST presentarse con un eje de 24 horas de 288 filas de 5 minutos (D1, DD-34). La ubicación MUST calcularse con funciones puras sobre la hora local: inicio redondeado hacia abajo, fin hacia arriba y recorte a cada día. Todo elemento MUST ocupar al menos 3 filas (15 minutos); al final del día se corre hacia arriba, sin pasar de la fila 288. El texto MUST mostrar la hora real. El scroll inicial a las 08:00, la geometría y el ancho de los carriles son manuales (tarea 10.2).
 
 #### Scenario: Fila de un turno
 - **GIVEN** dado un turno de 10:00 a 10:45 hora local
@@ -296,10 +296,15 @@ Cada día MUST presentarse con un eje de 24 horas de 288 filas de 5 minutos (D1,
 - **WHEN** cuando se calcula su ubicación
 - **THEN** entonces ocupa 6 filas desde la fila 0
 
+#### Scenario: Turno de 5 minutos
+- **GIVEN** dado un turno de 10:00 a 10:05 hora local
+- **WHEN** cuando se calcula su ubicación
+- **THEN** entonces ocupa 3 filas desde la fila 120, y su texto indica `10:00` y `10:05`
+
 #### Scenario: Último tramo del día
 - **GIVEN** dado un turno de 23:55 a 00:00 hora local
 - **WHEN** cuando se calcula su ubicación
-- **THEN** entonces ocupa una sola fila, la 287, que es la última
+- **THEN** entonces ocupa 3 filas desde la fila 285, de modo que termina en la última fila del día, la 287, y no la pasa; su texto sigue indicando `23:55` y `00:00`
 
 #### Scenario: Recorte por día
 - **GIVEN** dado un turno del 2026-11-10 23:30 al 2026-11-11 00:30 hora local
@@ -312,7 +317,7 @@ Cada día MUST presentarse con un eje de 24 horas de 288 filas de 5 minutos (D1,
 - **THEN** entonces usan los carriles 0, 1 y 0
 
 ### Requirement: Elementos superpuestos en una columna
-Los elementos que se superponen dentro de una columna MUST ubicarse en carriles paralelos, para que ninguno tape a otro. La superposición MUST evaluarse sobre las filas de 5 minutos ya redondeadas (D4, DD-34). Dos elementos cuyas filas son contiguas (`[inicio, fin)`, RN-AG-03) MUST NOT considerarse superpuestos.
+Los elementos que se superponen dentro de una columna MUST ubicarse en carriles paralelos, para que ninguno tape a otro. La superposición MUST evaluarse sobre el tramo visible de cada elemento, de al menos 3 filas (D4, DD-34), y no sobre su duración real: dos turnos cortos y consecutivos van uno al lado del otro. Dos elementos cuyos tramos visibles son contiguos (`[inicio, fin)`, RN-AG-03) MUST NOT considerarse superpuestos.
 
 #### Scenario: Varios profesionales en un mismo día de la semana
 - **GIVEN** dada la vista semanal sin filtro y tres turnos de profesionales distintos de 10:00 a 11:00 el mismo día
@@ -332,7 +337,22 @@ Los elementos que se superponen dentro de una columna MUST ubicarse en carriles 
 #### Scenario: Contiguos que comparten una fila redondeada
 - **GIVEN** dados dos bloqueos de 10:00 a 10:03 y de 10:03 a 10:05 hora local (DD-30 f)
 - **WHEN** cuando se asignan los carriles
-- **THEN** entonces ocupan carriles distintos, porque ambos usan la fila 120
+- **THEN** entonces ocupan carriles distintos, porque ambos usan la fila 120 y sus tramos visibles, de 3 filas desde la 120, coinciden
+
+#### Scenario: Turnos cortos consecutivos
+- **GIVEN** dados dos turnos del mismo profesional de 5 minutos, de 10:00 a 10:05 y de 10:05 a 10:10 hora local
+- **WHEN** cuando se asignan los carriles
+- **THEN** entonces ocupan carriles distintos, porque el tramo visible del primero ocupa las filas 120 a 122 y el del segundo, las 121 a 123; no se tapan
+
+#### Scenario: Turnos cortos separados por 15 minutos
+- **GIVEN** dados dos turnos del mismo profesional de 5 minutos, de 10:00 a 10:05 y de 10:15 a 10:20 hora local
+- **WHEN** cuando se asignan los carriles
+- **THEN** entonces comparten el carril 0, porque el tramo visible del primero ocupa las filas 120 a 122 y el del segundo, las 123 a 125, que son contiguas
+
+#### Scenario: Turno corto al final del día junto a otro
+- **GIVEN** dados dos turnos del mismo profesional de 5 minutos, de 23:50 a 23:55 y de 23:55 a 00:00 hora local
+- **WHEN** cuando se asignan los carriles
+- **THEN** entonces ocupan carriles distintos, porque ambos tramos visibles se corren hacia arriba y ocupan las filas 285 a 287, sin salir del día
 
 ### Requirement: Elementos que cruzan días
 Un turno o bloqueo MUST verse en cada día local visible que abarca, recortado a ese día e indicando su `inicio` y `fin` reales con fecha, porque la API los entrega completos (DD-32 e).
@@ -350,7 +370,7 @@ Un turno o bloqueo MUST verse en cada día local visible que abarca, recortado a
 #### Scenario: Bloqueo que no respeta la grilla
 - **GIVEN** dado un bloqueo de 10:03 a 10:07 hora local (DD-30 f)
 - **WHEN** cuando se muestra la agenda
-- **THEN** entonces se ve con el texto `10:03` y `10:07`, y su ubicación ocupa 2 filas desde la fila 120
+- **THEN** entonces se ve con el texto `10:03` y `10:07`, y su ubicación ocupa 3 filas desde la fila 120 (2 por el redondeo y una más hasta el mínimo)
 
 #### Scenario: Bloqueo que termina justo a la medianoche
 - **GIVEN** dado un bloqueo del 2026-11-10 20:00 al 2026-11-11 00:00 hora local (RN-AG-03)
