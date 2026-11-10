@@ -74,9 +74,9 @@
 
 ## 11. Documentación
 
-- [ ] 11.1 Registrar en `knowledge-base/09_decisiones_y_supuestos.md` la **DD-34** con las decisiones aprobadas en 1.2 (D1, D2, D3, D5 a D10, D12 y D13), las respuestas P1 a P15 y la limitación de última escritura gana, incluida la mezcla que puede dejar el envío parcial; verificar con `grep` que DD-34 existe
-- [ ] 11.2 Actualizar la KB: `02` (`GET /disponibilidad` no implementado, en backlog), `07` Flujos 2 y 5 (no se consulta disponibilidad), `08` (`shared/tiempo`, `shared/ui`, `shared/estilos`) y `10` (preguntas resueltas de C-15, sin tocar la abierta de recordatorios); verificar con `grep` que `GET /disponibilidad` queda marcado como no implementado en `02` y `07`
-- [ ] 11.3 Actualizar la nota de "Antes de cada change" en `CLAUDE.md` y `AGENTS.md` por igual (DD-13..DD-34); verificar con `cmp CLAUDE.md AGENTS.md` que son byte-idénticos
+- [x] 11.1 Registrar en `knowledge-base/09_decisiones_y_supuestos.md` la **DD-34** con las decisiones aprobadas en 1.2 (D1, D2, D3, D5 a D10, D12 y D13), las respuestas P1 a P15 y la limitación de última escritura gana, incluida la mezcla que puede dejar el envío parcial; verificar con `grep` que DD-34 existe
+- [x] 11.2 Actualizar la KB: `02` (`GET /disponibilidad` no implementado, en backlog), `07` Flujos 2 y 5 (no se consulta disponibilidad), `08` (`shared/tiempo`, `shared/ui`, `shared/estilos`) y `10` (preguntas resueltas de C-15, sin tocar la abierta de recordatorios); verificar con `grep` que `GET /disponibilidad` queda marcado como no implementado en `02` y `07`
+- [x] 11.3 Actualizar la nota de "Antes de cada change" en `CLAUDE.md` y `AGENTS.md` por igual (DD-13..DD-34); verificar con `cmp CLAUDE.md AGENTS.md` que son byte-idénticos
 
 ## 12. Verificación final
 

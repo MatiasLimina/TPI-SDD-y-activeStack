@@ -13,7 +13,7 @@
 ## Flujo 2: Crear turno
 **Disparador**: la recepcionista agenda a un paciente. **Actor**: recepcionista.
 
-1. Selecciona paciente, prestación, profesional, sillón y hora de inicio (opcionalmente consulta `GET /disponibilidad`).
+1. Selecciona paciente, prestación, profesional, sillón y hora de inicio (`GET /disponibilidad` no está implementado, está en el backlog: la interfaz no consulta disponibilidad y los conflictos se informan en la respuesta, DD-34).
 2. API calcula `fin = inicio + duración` (por defecto `Prestacion.duracion_min`, o la ajustada; RN-AG-04).
 3. API valida que las referencias existan y estén activas, duración y grilla de 5 min (RN-AG-04), coherencia del sillón con la prestación (RN-AG-10), horario de atención del profesional (RN-AG-05) y ausencia de bloqueo (RN-AG-06); hace un pre-chequeo de solape por profesional, sillón y paciente (RN-AG-01/02/14) que reúne todos los recursos en conflicto.
 4. API abre una transacción e inserta `Turno`; PostgreSQL verifica las restricciones de exclusión por profesional, por sillón y por paciente (RN-AG-01/02/03/09/14).
@@ -52,7 +52,7 @@ Recepcionista -> Frontend -> API -> PostgreSQL (INSERT + EXCLUDE)
 
 1. `POST /bloqueos` con `[inicio, fin)` y motivo. El odontólogo puede omitir `profesional_id` (se usa el suyo) y uno distinto da `403 profesional_ajeno`; la recepcionista debe informarlo (`422 profesional_requerido` si falta). Ver DD-30 (a).
 2. Validación contra turnos activos existentes: si hay alguno en `[inicio, fin)`, se rechaza con `409` y la lista de turnos afectados (RN-HB-03).
-3. El bloqueo se refleja en la agenda y en la disponibilidad.
+3. El bloqueo se refleja en la agenda (la disponibilidad, `GET /disponibilidad`, no está implementada: backlog, DD-34).
 
 ## Flujo 6: Envío de recordatorio (asincrónico)
 **Disparador**: llega `programado_para`. **Actor**: worker.

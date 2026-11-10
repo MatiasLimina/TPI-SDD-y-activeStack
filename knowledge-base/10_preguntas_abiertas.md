@@ -128,3 +128,7 @@ Al 2026-11-04 queda una pregunta abierta, surgida al proponer C-12 (`recordatori
 | ¿Qué ve quien no tiene permiso para una ruta, y adónde entra cada rol? | Resuelta: pantalla de falta de permiso en el lugar, sin cerrar la sesión; ambos roles entran a `/agenda` y `/configuracion` es solo de la recepcionista (DD-33 e, g) |
 | ¿Cómo se muestra un `422` que no es de un campo, o una ruta inexistente? | Resuelta: error general del formulario con `campo` nulo, y pantalla de página no encontrada (DD-33 l, m) |
 | ¿Qué versión de Node, que DD-17 dejaba por confirmar para C-14? | Resuelta: Node 24 LTS (DD-33 i) |
+| **Frontend (C-15)** — ¿qué forma tiene la grilla, qué semana usa y qué pasa con los turnos cancelados? | Resuelta: eje de 24 h con filas de 5 minutos, semana de lunes a domingo, vista diaria de hoy por defecto y cancelados ocultos con casilla (DD-34 a, b, c) |
+| ¿Cómo se identifican los formularios y la vista de la agenda sin `GET /turnos/{id}`? | Resuelta: la vista vive en parámetros de URL de `/agenda` y los formularios son diálogos, sin rutas nuevas (DD-34 e) |
+| ¿Cómo se buscan pacientes al agendar y cómo se reprograma? | Resuelta: búsqueda con espera de 300 ms, mínimo de 2 caracteres y `limite=20`; el `PATCH` lleva solo lo que cambió (DD-34 g, i) |
+| ¿Qué pasa si otro usuario modifica un turno mientras se edita? | Resuelta como limitación: última escritura gana, sin versión del turno; se registra en DD-34 y queda en el backlog |
