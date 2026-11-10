@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import type { ErrorApi } from "../../shared/api/errorApi";
 import { useClienteApi } from "../sesion/ProveedorSesion";
@@ -23,6 +23,7 @@ export function useCatalogos(): {
   /**
    * Vuelve a pedir los tres catálogos tras un error que revela uno desactualizado (D7). Si falla,
    * conserva los anteriores y devuelve el error, para que lo muestre el formulario abierto.
+   * Si una carga más nueva la reemplazó, descarta su resultado y devuelve `null`.
    */
   recargar: () => Promise<ErrorApi | null>;
 } {
@@ -31,39 +32,51 @@ export function useCatalogos(): {
   const [error, setError] = useState<ErrorApi | null>(null);
   const [version, setVersion] = useState(0);
 
-  const recargar = useCallback(async (): Promise<ErrorApi | null> => {
-    try {
-      const [profesionales, sillones, prestaciones] = await Promise.all([
+  // Cada carga (inicial, reintento o recarga) toma un número; solo escribe la última pedida,
+  // así una respuesta tardía nunca pisa a una más nueva
+  const ultimaCarga = useRef(0);
+
+  const pedirTodos = useCallback(
+    () =>
+      Promise.all([
         cliente.pedir<Profesional[]>("GET", "/profesionales"),
         cliente.pedir<Sillon[]>("GET", "/sillones"),
         cliente.pedir<Prestacion[]>("GET", "/prestaciones"),
-      ]);
-      setCatalogos({ profesionales, sillones, prestaciones });
+      ]),
+    [cliente],
+  );
+
+  const recargar = useCallback(async (): Promise<ErrorApi | null> => {
+    ultimaCarga.current += 1;
+    const mia = ultimaCarga.current;
+    try {
+      const [profesionales, sillones, prestaciones] = await pedirTodos();
+      if (mia === ultimaCarga.current)
+        setCatalogos({ profesionales, sillones, prestaciones });
       return null;
     } catch (causa) {
-      return comoErrorApi(causa);
+      return mia === ultimaCarga.current ? comoErrorApi(causa) : null;
     }
-  }, [cliente]);
+  }, [pedirTodos]);
 
   useEffect(() => {
     let vigente = true;
-    Promise.all([
-      cliente.pedir<Profesional[]>("GET", "/profesionales"),
-      cliente.pedir<Sillon[]>("GET", "/sillones"),
-      cliente.pedir<Prestacion[]>("GET", "/prestaciones"),
-    ])
+    ultimaCarga.current += 1;
+    const mia = ultimaCarga.current;
+    pedirTodos()
       .then(([profesionales, sillones, prestaciones]) => {
-        if (!vigente) return;
+        if (!vigente || mia !== ultimaCarga.current) return;
         setCatalogos({ profesionales, sillones, prestaciones });
         setError(null);
       })
       .catch((causa: unknown) => {
-        if (vigente) setError(comoErrorApi(causa));
+        if (vigente && mia === ultimaCarga.current)
+          setError(comoErrorApi(causa));
       });
     return () => {
       vigente = false;
     };
-  }, [cliente, version]);
+  }, [pedirTodos, version]);
 
   return {
     catalogos,

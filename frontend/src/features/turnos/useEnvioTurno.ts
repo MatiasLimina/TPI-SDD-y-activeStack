@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 
 import type { ErrorApi } from "../../shared/api/errorApi";
 import { comoErrorApi } from "../agenda/errores";
@@ -31,6 +31,8 @@ export function useEnvioTurno(
   const [errores, setErrores] = useState<ErroresPorCampo>({});
   const [generales, setGenerales] = useState<string[]>([]);
   const [enviando, setEnviando] = useState(false);
+  // Número del último envío: la relectura de uno anterior no toca los errores del vigente
+  const ultimoEnvio = useRef(0);
   const [turnoObsoleto, setTurnoObsoleto] = useState(false);
   // El sillón se muestra aunque el catálogo no lo pida, si la API dijo que hace falta
   const [sillonForzado, setSillonForzado] = useState(false);
@@ -60,6 +62,8 @@ export function useEnvioTurno(
     escribir: () => Promise<unknown>,
     elegidos: Record<CampoDeRecurso, string>,
   ): Promise<boolean> {
+    ultimoEnvio.current += 1;
+    const mio = ultimoEnvio.current;
     setEnviando(true);
     try {
       await escribir();
@@ -84,7 +88,7 @@ export function useEnvioTurno(
       if (interpretado.releerCatalogos) {
         const falla = await alReleerCatalogos();
         // El formulario sigue abierto: la falla se suma como error general (D7, P14)
-        if (falla !== null)
+        if (falla !== null && mio === ultimoEnvio.current)
           setGenerales((anteriores) => [...anteriores, falla.mensaje]);
       }
       return false;

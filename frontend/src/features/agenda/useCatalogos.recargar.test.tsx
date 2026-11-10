@@ -1,4 +1,4 @@
-import { act, render, screen } from "@testing-library/react";
+import { act, render, screen, waitFor } from "@testing-library/react";
 import { useEffect } from "react";
 
 import { instalarApiFalsa } from "../../test/apiFalsa";
@@ -77,5 +77,83 @@ describe("useCatalogos: recargar", () => {
 
     expect(resultado).toMatchObject({ status: 0 });
     expect(screen.getByTestId("sillones")).toHaveTextContent("Sillón 1");
+  });
+});
+
+describe("useCatalogos: orden de las cargas", () => {
+  it("una carga inicial lenta no pisa el resultado de una recarga posterior", async () => {
+    const api = instalarApiFalsa();
+    const inicial = api.pendiente("GET /sillones");
+    montar();
+    api.responder("GET /sillones", {
+      status: 200,
+      cuerpo: [sillon({ nombre: "Sillón 9" })],
+    });
+
+    await act(async () => {
+      await recargarActual();
+    });
+    expect(screen.getByTestId("sillones")).toHaveTextContent("Sillón 9");
+
+    await act(async () => {
+      inicial.resolver({ status: 200, cuerpo: [sillon()] });
+      await Promise.resolve();
+    });
+
+    await waitFor(() =>
+      expect(screen.getByTestId("sillones")).toHaveTextContent("Sillón 9"),
+    );
+    expect(screen.getByTestId("sillones")).not.toHaveTextContent("Sillón 1");
+  });
+
+  it("una recarga vieja que termina tarde no pisa a la nueva y no informa su resultado", async () => {
+    const api = instalarApiFalsa();
+    montar();
+    await waitFor(() =>
+      expect(screen.getByTestId("sillones")).not.toHaveTextContent("sin datos"),
+    );
+    const vieja = api.pendiente("GET /sillones");
+    let resultadoViejo: ErrorApi | null | undefined;
+    const recargaVieja = recargarActual().then((r) => {
+      resultadoViejo = r;
+    });
+    api.responder("GET /sillones", {
+      status: 200,
+      cuerpo: [sillon({ nombre: "Sillón 9" })],
+    });
+    await act(async () => {
+      await recargarActual();
+    });
+
+    await act(async () => {
+      vieja.resolver({ status: 200, cuerpo: [sillon()] });
+      await recargaVieja;
+    });
+
+    expect(resultadoViejo).toBeNull();
+    expect(screen.getByTestId("sillones")).toHaveTextContent("Sillón 9");
+  });
+
+  it("la falla de una recarga vieja no se informa si ya hay una más nueva", async () => {
+    const api = instalarApiFalsa();
+    montar();
+    await waitFor(() =>
+      expect(screen.getByTestId("sillones")).not.toHaveTextContent("sin datos"),
+    );
+    const vieja = api.pendiente("GET /sillones");
+    let resultadoViejo: ErrorApi | null | undefined;
+    const recargaVieja = recargarActual().then((r) => {
+      resultadoViejo = r;
+    });
+    await act(async () => {
+      await recargarActual();
+    });
+
+    await act(async () => {
+      vieja.fallarPorRed();
+      await recargaVieja;
+    });
+
+    expect(resultadoViejo).toBeNull();
   });
 });
