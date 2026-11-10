@@ -2190,3 +2190,18 @@ describe("Reprogramar y cancelar desde la agenda", () => {
     ).not.toBeInTheDocument();
   });
 });
+
+describe("Ubicación del botón Nuevo turno", () => {
+  it("aparece antes de la grilla, a la vista sin desplazarse", async () => {
+    conSesion();
+    cargar(instalarApiFalsa(), { turnos: [turno()] });
+
+    renderizarApp("/agenda?fecha=2026-11-09");
+
+    const ana = await screen.findByRole("region", { name: "Ficticia, Ana" });
+    const boton = screen.getByRole("button", { name: "Nuevo turno" });
+    expect(
+      boton.compareDocumentPosition(ana) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+  });
+});

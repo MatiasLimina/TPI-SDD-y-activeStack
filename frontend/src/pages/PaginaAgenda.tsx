@@ -95,6 +95,12 @@ export default function PaginaAgenda() {
         alCambiar={cambiarVista}
         alActualizar={agenda.recargar}
       />
+      {esRecepcionista && (
+        <button type="button" onClick={() => setNuevoAbierto(true)}>
+          Nuevo turno
+        </button>
+      )}
+      {aviso !== null && <p role="status">{aviso}</p>}
       {error !== null && (
         <div role="alert">
           <p>{error.mensaje}</p>
@@ -118,12 +124,6 @@ export default function PaginaAgenda() {
           nombres={nombres}
           alElegirTurno={(turno) => setDetalleId(turno.id)}
         />
-      )}
-      {aviso !== null && <p role="status">{aviso}</p>}
-      {esRecepcionista && (
-        <button type="button" onClick={() => setNuevoAbierto(true)}>
-          Nuevo turno
-        </button>
       )}
       {esRecepcionista && catalogos !== null && (
         <FormularioNuevoTurno
