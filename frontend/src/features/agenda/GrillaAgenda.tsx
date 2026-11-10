@@ -1,12 +1,14 @@
 import { diaYMes, instanteALocal } from "../../shared/tiempo/zonaConsultorio";
 import type { Columna, ItemColumna } from "./grilla";
 import type { Nombres } from "./nombres";
+import type { TurnoAgenda } from "./tipos";
 import type { VistaAgenda } from "./vistaAgenda";
 
 interface PropsGrilla {
   columnas: Columna[];
   vista: VistaAgenda;
   nombres: Nombres;
+  alElegirTurno: (turno: TurnoAgenda) => void;
 }
 
 /** Hora de un extremo: `HH:MM`, o `DD/MM HH:MM` si el elemento abarca más de un día. */
@@ -37,10 +39,12 @@ function Item({
   item,
   vista,
   nombres,
+  alElegirTurno,
 }: {
   item: ItemColumna;
   vista: VistaAgenda;
   nombres: Nombres;
+  alElegirTurno: (turno: TurnoAgenda) => void;
 }) {
   // La columna ya dice el profesional (por profesional) o el sillón (por sillón)
   const porProfesional =
@@ -64,7 +68,7 @@ function Item({
   const { turno } = item;
   return (
     <li style={posicion(item)} data-tipo="turno" data-estado={turno.estado}>
-      <button type="button">
+      <button type="button" onClick={() => alElegirTurno(turno)}>
         {turno.estado === "cancelado" && <strong>Cancelado</strong>}
         <Horario inicio={turno.inicio} fin={turno.fin} />
         <span>
@@ -83,7 +87,12 @@ function Item({
 }
 
 /** Columnas de la agenda: `<section>` con nombre y elementos en orden cronológico (D17). */
-export function GrillaAgenda({ columnas, vista, nombres }: PropsGrilla) {
+export function GrillaAgenda({
+  columnas,
+  vista,
+  nombres,
+  alElegirTurno,
+}: PropsGrilla) {
   return (
     <div>
       {columnas.map((columna) => (
@@ -108,6 +117,7 @@ export function GrillaAgenda({ columnas, vista, nombres }: PropsGrilla) {
                   item={item}
                   vista={vista}
                   nombres={nombres}
+                  alElegirTurno={alElegirTurno}
                 />
               ))}
           </ol>

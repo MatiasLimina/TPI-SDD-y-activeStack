@@ -1329,3 +1329,199 @@ describe("Elementos que cruzan días", () => {
     ).not.toBeInTheDocument();
   });
 });
+
+describe("Agenda del odontólogo", () => {
+  it("no envía profesional_id aunque esté en la URL y no ofrece filtro de profesional ni agrupar", async () => {
+    conSesion("odontologo");
+    const api = instalarApiFalsa();
+    cargar(api);
+
+    renderizarApp("/agenda?fecha=2026-11-09&profesional=" + ID_LUIS);
+
+    await esperarCarga();
+    expect(
+      api.pedidos("GET /turnos")[0]?.parametros.has("profesional_id"),
+    ).toBe(false);
+    expect(screen.queryByLabelText("Profesional")).not.toBeInTheDocument();
+    expect(screen.queryByLabelText("Agrupar por")).not.toBeInTheDocument();
+  });
+
+  it("puede filtrar por sillón: envía sillon_id y no profesional_id", async () => {
+    conSesion("odontologo");
+    const api = instalarApiFalsa();
+    cargar(api, {
+      sillones: [sillon(), sillon({ id: ID_SILLON_2, nombre: "Sillón 2" })],
+    });
+    const { user } = renderizarApp("/agenda?fecha=2026-11-09");
+    await esperarCarga();
+
+    await user.selectOptions(screen.getByLabelText("Sillón"), "Sillón 2");
+
+    await waitFor(() => {
+      const ultimo = ultimoTurnos(api);
+      expect(ultimo.parametros.get("sillon_id")).toBe(ID_SILLON_2);
+      expect(ultimo.parametros.has("profesional_id")).toBe(false);
+    });
+  });
+
+  it("tiene una sola columna, la de su profesional, aunque esté vacía", async () => {
+    conSesion("odontologo");
+    const api = instalarApiFalsa();
+    cargar(api, {
+      profesionales: [
+        profesional(),
+        profesional({ id: ID_LUIS, nombre: "Luis", apellido: "Inventado" }),
+      ],
+    });
+
+    renderizarApp("/agenda?fecha=2026-11-09");
+
+    expect(await screen.findByText(VACIO)).toBeInTheDocument();
+    expect(screen.getAllByRole("region")).toHaveLength(1);
+    expect(columna("Ficticia, Ana")).toBeInTheDocument();
+  });
+
+  it("también si su profesional está desactivado", async () => {
+    conSesion("odontologo");
+    const api = instalarApiFalsa();
+    cargar(api, { profesionales: [profesional({ activo: false })] });
+
+    renderizarApp("/agenda?fecha=2026-11-09");
+
+    expect(await screen.findByText(VACIO)).toBeInTheDocument();
+    expect(screen.getAllByRole("region")).toHaveLength(1);
+    expect(columna("Ficticia, Ana")).toBeInTheDocument();
+  });
+
+  it("agrupar por sillón en la URL se ignora", async () => {
+    conSesion("odontologo");
+    cargar(instalarApiFalsa());
+
+    renderizarApp("/agenda?fecha=2026-11-09&columnas=sillon");
+
+    await screen.findByRole("region", { name: "Ficticia, Ana" });
+    expect(screen.getAllByRole("region")).toHaveLength(1);
+  });
+
+  it("no pide pacientes y ve el nombre del paciente en la agenda", async () => {
+    conSesion("odontologo");
+    const api = instalarApiFalsa();
+    cargar(api, { turnos: [turno()] });
+
+    renderizarApp("/agenda?fecha=2026-11-09");
+
+    expect(await screen.findByText("Imaginaria, Carla")).toBeInTheDocument();
+    expect(
+      api.pedidos().filter((p) => p.ruta.startsWith("/pacientes")),
+    ).toHaveLength(0);
+  });
+
+  it("no ve Nuevo turno ni, en el detalle, Reprogramar ni Cancelar turno", async () => {
+    conSesion("odontologo");
+    const api = instalarApiFalsa();
+    cargar(api, {
+      turnos: [
+        turno({
+          inicio: "2026-11-09T15:00:00-03:00",
+          fin: "2026-11-09T15:45:00-03:00",
+        }),
+      ],
+    });
+    const { user } = renderizarApp("/agenda?fecha=2026-11-09");
+
+    await user.click(
+      await screen.findByRole("button", { name: /Imaginaria, Carla/ }),
+    );
+
+    expect(await screen.findByRole("dialog")).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Nuevo turno" }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Reprogramar" }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Cancelar turno" }),
+    ).not.toBeInTheDocument();
+  });
+});
+
+describe("Operaciones solo para la recepcionista", () => {
+  const FUTURO = {
+    inicio: "2026-11-09T15:00:00-03:00",
+    fin: "2026-11-09T15:45:00-03:00",
+  };
+
+  async function abrirDetalle(datos: Datos) {
+    conSesion();
+    cargar(instalarApiFalsa(), datos);
+    const vista = renderizarApp("/agenda?fecha=2026-11-09&cancelados=1");
+    await vista.user.click(
+      await screen.findByRole("button", { name: /Imaginaria, Carla/ }),
+    );
+    await screen.findByRole("dialog");
+    return vista;
+  }
+
+  it("ve Nuevo turno y, en el detalle de un programado futuro, Reprogramar y Cancelar turno", async () => {
+    await abrirDetalle({ turnos: [turno(FUTURO)] });
+
+    expect(
+      screen.getByRole("button", { name: "Nuevo turno" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Reprogramar" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Cancelar turno" }),
+    ).toBeInTheDocument();
+  });
+
+  it("un turno cancelado futuro no ofrece Reprogramar ni Cancelar turno", async () => {
+    await abrirDetalle({ turnos: [turno({ ...FUTURO, estado: "cancelado" })] });
+
+    expect(
+      screen.queryByRole("button", { name: "Reprogramar" }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Cancelar turno" }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("un turno cuyo inicio es igual al reloj ya inició: no ofrece las operaciones", async () => {
+    // El reloj fijo es 2026-11-09 09:00 hora local
+    await abrirDetalle({
+      turnos: [
+        turno({
+          inicio: "2026-11-09T09:00:00-03:00",
+          fin: "2026-11-09T09:45:00-03:00",
+        }),
+      ],
+    });
+
+    expect(
+      screen.queryByRole("button", { name: "Reprogramar" }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Cancelar turno" }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("un turno que empieza cinco minutos después del reloj sí las ofrece", async () => {
+    await abrirDetalle({
+      turnos: [
+        turno({
+          inicio: "2026-11-09T09:05:00-03:00",
+          fin: "2026-11-09T09:50:00-03:00",
+        }),
+      ],
+    });
+
+    expect(
+      screen.getByRole("button", { name: "Reprogramar" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Cancelar turno" }),
+    ).toBeInTheDocument();
+  });
+});

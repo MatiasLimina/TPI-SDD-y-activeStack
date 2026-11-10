@@ -1,7 +1,9 @@
+import { useState } from "react";
 import { useSearchParams } from "react-router";
 
 import { BarraAgenda } from "../features/agenda/BarraAgenda";
 
+import { DetalleTurno } from "../features/agenda/DetalleTurno";
 import { GrillaAgenda } from "../features/agenda/GrillaAgenda";
 import { armarColumnas, contarElementos } from "../features/agenda/grilla";
 import { crearNombres } from "../features/agenda/nombres";
@@ -40,6 +42,9 @@ export default function PaginaAgenda() {
   const error = errorCatalogos ?? agenda.error;
   const sinDatos = datos === null || catalogos === null;
   const conteo = datos === null ? null : contarElementos(datos, vista);
+  const [detalleId, setDetalleId] = useState<string | null>(null);
+  const turnoDetalle = datos?.turnos.find((t) => t.id === detalleId) ?? null;
+  const esRecepcionista = rol === "recepcionista";
   const cambiarVista = (nueva: VistaAgenda) =>
     setParametros(aParametros(nueva));
   const reintentarTodo = () => {
@@ -89,8 +94,17 @@ export default function PaginaAgenda() {
           columnas={columnas}
           vista={vista}
           nombres={crearNombres(catalogos)}
+          alElegirTurno={(turno) => setDetalleId(turno.id)}
         />
       )}
+      {esRecepcionista && <button type="button">Nuevo turno</button>}
+      <DetalleTurno
+        turno={turnoDetalle}
+        puedeOperar={esRecepcionista}
+        alCerrar={() => setDetalleId(null)}
+        alReprogramar={() => setDetalleId(null)}
+        alCancelar={() => setDetalleId(null)}
+      />
     </main>
   );
 }
