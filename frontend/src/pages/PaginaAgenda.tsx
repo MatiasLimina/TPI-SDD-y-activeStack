@@ -3,10 +3,13 @@ import { useSearchParams } from "react-router";
 
 import { BarraAgenda } from "../features/agenda/BarraAgenda";
 
+import { DialogoCancelar } from "../features/turnos/DialogoCancelar";
+import { FormularioReprogramar } from "../features/turnos/FormularioReprogramar";
 import { FormularioNuevoTurno } from "../features/turnos/FormularioNuevoTurno";
 import { DetalleTurno } from "../features/agenda/DetalleTurno";
 import { GrillaAgenda } from "../features/agenda/GrillaAgenda";
 import { armarColumnas, contarElementos } from "../features/agenda/grilla";
+import type { TurnoAgenda } from "../features/agenda/tipos";
 import { crearNombres } from "../features/agenda/nombres";
 import { useAgenda } from "../features/agenda/useAgenda";
 import { useCatalogos } from "../features/agenda/useCatalogos";
@@ -54,6 +57,10 @@ export default function PaginaAgenda() {
   const conteo = datos === null ? null : contarElementos(datos, vista);
   const [nuevoAbierto, setNuevoAbierto] = useState(false);
   const [aviso, setAviso] = useState<string | null>(null);
+  // Sin diálogos apilados: el detalle se cierra al abrir una operación (P15). Se guarda el
+  // turno entero, para que una relectura no cierre el formulario si el turno desaparece
+  const [reprogramando, setReprogramando] = useState<TurnoAgenda | null>(null);
+  const [cancelando, setCancelando] = useState<TurnoAgenda | null>(null);
   const [detalleId, setDetalleId] = useState<string | null>(null);
   const turnoDetalle = datos?.turnos.find((t) => t.id === detalleId) ?? null;
   const esRecepcionista = rol === "recepcionista";
@@ -142,9 +149,42 @@ export default function PaginaAgenda() {
         nombres={nombres}
         puedeOperar={esRecepcionista}
         alCerrar={() => setDetalleId(null)}
-        alReprogramar={() => setDetalleId(null)}
-        alCancelar={() => setDetalleId(null)}
+        alReprogramar={(t) => {
+          setDetalleId(null);
+          setReprogramando(t);
+        }}
+        alCancelar={(t) => {
+          setDetalleId(null);
+          setCancelando(t);
+        }}
       />
+      {esRecepcionista && catalogos !== null && (
+        <FormularioReprogramar
+          turno={reprogramando}
+          catalogos={catalogos}
+          nombres={nombres}
+          alReprogramado={() => {
+            setReprogramando(null);
+            setAviso("Turno reprogramado.");
+            agenda.recargar();
+          }}
+          alCerrar={() => setReprogramando(null)}
+          alReleerCatalogos={recargarCatalogos}
+          alReleerAgenda={agenda.recargar}
+        />
+      )}
+      {esRecepcionista && (
+        <DialogoCancelar
+          turno={cancelando}
+          alCancelado={() => {
+            setCancelando(null);
+            setAviso("Turno cancelado.");
+            agenda.recargar();
+          }}
+          alCerrar={() => setCancelando(null)}
+          alReleerAgenda={agenda.recargar}
+        />
+      )}
     </main>
   );
 }

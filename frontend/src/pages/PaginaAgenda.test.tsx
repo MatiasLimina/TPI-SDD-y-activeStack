@@ -2054,3 +2054,139 @@ describe("Alta: sesión y permisos", () => {
     ).toBeInTheDocument();
   });
 });
+
+describe("Reprogramar y cancelar desde la agenda", () => {
+  const FUTURO = {
+    id: "00000000-0000-4000-8000-0000000000f1",
+    inicio: "2026-11-09T15:00:00-03:00",
+    fin: "2026-11-09T15:45:00-03:00",
+  };
+  const RUTA_PATCH =
+    "PATCH /turnos/00000000-0000-4000-8000-0000000000f1/reprogramar";
+  const RUTA_CANCELAR =
+    "POST /turnos/00000000-0000-4000-8000-0000000000f1/cancelar";
+
+  async function abrirOperacion(nombre: "Reprogramar" | "Cancelar turno") {
+    conSesion();
+    const api = instalarApiFalsa();
+    cargar(api, { turnos: [turno(FUTURO)] });
+    const vista = renderizarApp("/agenda?fecha=2026-11-09");
+    await vista.user.click(
+      await screen.findByRole("button", { name: /Imaginaria, Carla/ }),
+    );
+    await screen.findByRole("dialog", { name: "Detalle del turno" });
+    await vista.user.click(screen.getByRole("button", { name: nombre }));
+    return { api, ...vista };
+  }
+
+  it("al elegir Reprogramar el detalle se cierra y queda un solo diálogo", async () => {
+    await abrirOperacion("Reprogramar");
+
+    expect(
+      await screen.findByRole("dialog", { name: "Reprogramar turno" }),
+    ).toBeInTheDocument();
+    expect(screen.getAllByRole("dialog")).toHaveLength(1);
+  });
+
+  it("al elegir Cancelar turno el detalle se cierra y queda un solo diálogo", async () => {
+    await abrirOperacion("Cancelar turno");
+
+    expect(
+      await screen.findByRole("dialog", { name: "Cancelar turno" }),
+    ).toBeInTheDocument();
+    expect(screen.getAllByRole("dialog")).toHaveLength(1);
+  });
+
+  it("una reprogramación exitosa deja la agenda sin diálogos, relee y confirma", async () => {
+    const { api, user } = await abrirOperacion("Reprogramar");
+    api.responder(RUTA_PATCH, { status: 200, cuerpo: {} });
+    const dialogo = await screen.findByRole("dialog", {
+      name: "Reprogramar turno",
+    });
+    fireEvent.change(within(dialogo).getByLabelText("Hora"), {
+      target: { value: "16:00" },
+    });
+    const lecturasAntes = api.pedidos("GET /turnos").length;
+
+    await user.click(
+      within(dialogo).getByRole("button", { name: "Reprogramar" }),
+    );
+
+    expect(await screen.findByText("Turno reprogramado.")).toBeInTheDocument();
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    expect(api.pedidos("GET /turnos")).toHaveLength(lecturasAntes + 1);
+    expect(api.pedidos(RUTA_PATCH)[0]?.cuerpo).toEqual({
+      inicio: "2026-11-09T16:00:00-03:00",
+    });
+  });
+
+  it("una cancelación exitosa deja la agenda sin diálogos, relee y confirma", async () => {
+    const { api, user } = await abrirOperacion("Cancelar turno");
+    api.responder(RUTA_CANCELAR, { status: 200, cuerpo: {} });
+    const dialogo = await screen.findByRole("dialog", {
+      name: "Cancelar turno",
+    });
+    fireEvent.change(within(dialogo).getByLabelText("Motivo"), {
+      target: { value: "Viaje" },
+    });
+    const lecturasAntes = api.pedidos("GET /turnos").length;
+
+    await user.click(
+      within(dialogo).getByRole("button", { name: "Confirmar cancelación" }),
+    );
+
+    expect(await screen.findByText("Turno cancelado.")).toBeInTheDocument();
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    expect(api.pedidos("GET /turnos")).toHaveLength(lecturasAntes + 1);
+    expect(api.pedidos(RUTA_CANCELAR)[0]?.cuerpo).toEqual({ motivo: "Viaje" });
+  });
+
+  it("Volver deja la agenda sin diálogos y sin pedidos, no el detalle", async () => {
+    const { api, user } = await abrirOperacion("Cancelar turno");
+    const dialogo = await screen.findByRole("dialog", {
+      name: "Cancelar turno",
+    });
+    const pedidosAntes = api.pedidos().length;
+
+    await user.click(within(dialogo).getByRole("button", { name: "Volver" }));
+
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    expect(api.pedidos()).toHaveLength(pedidosAntes);
+  });
+
+  it("si falla la relectura de catálogos con el formulario abierto, sigue abierto con error general y sin Reintentar", async () => {
+    const { api, user } = await abrirOperacion("Reprogramar");
+    api.responder(RUTA_PATCH, {
+      status: 422,
+      cuerpo: {
+        detail: {
+          codigo: "referencia_invalida",
+          referencia: "sillon",
+          motivo: "inactiva",
+        },
+      },
+    });
+    api.responder("GET /sillones", { red: true });
+    const dialogo = await screen.findByRole("dialog", {
+      name: "Reprogramar turno",
+    });
+    fireEvent.change(within(dialogo).getByLabelText("Hora"), {
+      target: { value: "16:00" },
+    });
+
+    await user.click(
+      within(dialogo).getByRole("button", { name: "Reprogramar" }),
+    );
+
+    expect(await within(dialogo).findByRole("alert")).toHaveTextContent(
+      "No se pudo conectar con el servidor.",
+    );
+    expect(
+      screen.getByRole("dialog", { name: "Reprogramar turno" }),
+    ).toBeInTheDocument();
+    expect(within(dialogo).getByLabelText("Hora")).toHaveValue("16:00");
+    expect(
+      screen.queryByRole("button", { name: "Reintentar" }),
+    ).not.toBeInTheDocument();
+  });
+});
