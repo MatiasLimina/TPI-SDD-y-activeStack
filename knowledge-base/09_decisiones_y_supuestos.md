@@ -144,7 +144,7 @@
 **Supuesto**: monotenant, sin multisede (fuera de alcance).
 
 ### SU-08 — Argentina sin horario de verano
-**Supuesto**: UTC-3 constante simplifica conversiones. **Validar**: usar zona IANA igualmente (`zoneinfo`) para no depender del supuesto.
+**Supuesto**: UTC-3 constante simplifica conversiones. **Validar**: usar zona IANA igualmente (`zoneinfo`) para no depender del supuesto. **Resultado (C-15, 2026-11-10)**: el supuesto vale para las fechas actuales, pero no para las históricas: la zona IANA da `-02:00` en el verano de 2008. Backend y frontend convierten con la zona IANA (DD-34), así que esos desfasajes se resuelven sin depender del supuesto.
 
 ### SU-09 — Stack complementario
 **Supuesto**: Alembic para migraciones, psycopg como driver, pytest para tests. **Origen**: práctica estándar; no está en las fuentes.
