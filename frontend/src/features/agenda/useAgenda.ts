@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
 
+import type { ErrorApi } from "../../shared/api/errorApi";
 import { useClienteApi } from "../sesion/ProveedorSesion";
+import { comoErrorApi } from "./errores";
 import type { RespuestaAgenda } from "./tipos";
 
 export interface ConsultaAgenda {
@@ -22,20 +24,45 @@ function rutaDeAgenda(consulta: ConsultaAgenda): string {
   return `/turnos?${parametros.toString()}`;
 }
 
-/** Turnos y bloqueos del período, con `GET /turnos` (DD-32). */
+/**
+ * Turnos y bloqueos del período, con `GET /turnos` (DD-32). Solo escribe el estado el pedido
+ * vigente: el efecto marca el suyo como no vigente al limpiarse (D13). Los datos y el error se
+ * guardan con su clave (la ruta pedida) y solo se muestran si coincide con la actual, así que
+ * nunca se ven datos de otro período y `cargando` se deriva sin escribir estado.
+ */
 export function useAgenda(consulta: ConsultaAgenda): {
   datos: RespuestaAgenda | null;
+  error: ErrorApi | null;
   cargando: boolean;
 } {
   const cliente = useClienteApi();
-  const ruta = rutaDeAgenda(consulta);
-  const [datos, setDatos] = useState<RespuestaAgenda | null>(null);
+  const clave = rutaDeAgenda(consulta);
+  const [recibido, setRecibido] = useState<{
+    clave: string;
+    datos: RespuestaAgenda;
+  } | null>(null);
+  const [fallo, setFallo] = useState<{ clave: string; error: ErrorApi } | null>(
+    null,
+  );
 
   useEffect(() => {
-    void cliente
-      .pedir<RespuestaAgenda>("GET", ruta)
-      .then((respuesta) => setDatos(respuesta));
-  }, [cliente, ruta]);
+    let vigente = true;
+    cliente
+      .pedir<RespuestaAgenda>("GET", clave)
+      .then((datos) => {
+        if (!vigente) return;
+        setRecibido({ clave, datos });
+        setFallo(null);
+      })
+      .catch((causa: unknown) => {
+        if (vigente) setFallo({ clave, error: comoErrorApi(causa) });
+      });
+    return () => {
+      vigente = false;
+    };
+  }, [cliente, clave]);
 
-  return { datos, cargando: datos === null };
+  const datos = recibido?.clave === clave ? recibido.datos : null;
+  const error = fallo?.clave === clave ? fallo.error : null;
+  return { datos, error, cargando: datos === null && error === null };
 }

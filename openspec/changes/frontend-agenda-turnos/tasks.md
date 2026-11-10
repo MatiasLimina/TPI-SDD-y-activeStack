@@ -36,7 +36,7 @@
 ## 5. Carga de datos (D7, D13)
 
 - [x] 5.1 RED→GREEN: `src/pages/PaginaAgenda.test.tsx`, con `renderizarApp`, API falsa y reloj fijo — `/agenda?fecha=2026-11-09` hace `GET /turnos` con el rango y los tres catálogos, indica la carga y muestra el mensaje de período vacío, o el texto propio si solo hay cancelados ocultos (requirement "Pantalla de agenda"); verificar con `npm test -- PaginaAgenda`
-- [ ] 5.2 RED→GREEN: mismo archivo — respuestas fuera de orden: la del día 11 gana a la del día 10 que llega después; el error de un pedido anterior no se muestra; al cambiar de período no se ven datos del anterior (requirement "Respuestas fuera de orden"); verificar con `npm test -- PaginaAgenda`
+- [x] 5.2 RED→GREEN: mismo archivo — respuestas fuera de orden: la del día 11 gana a la del día 10 que llega después; el error de un pedido anterior no se muestra; al cambiar de período no se ven datos del anterior (requirement "Respuestas fuera de orden"); verificar con `npm test -- PaginaAgenda`
 - [ ] 5.3 RED→GREEN: mismo archivo — errores de carga: red, `500` de un catálogo y `403 profesional_ajeno` muestran el mensaje con `Reintentar` y sin cerrar la sesión; `Reintentar` recupera; `Actualizar` mantiene los datos a la vista y, si falla, los conserva con el error; un turno cancelado por otro usuario desaparece tras `Actualizar` (requirements "Errores al cargar la agenda" y "Actualización manual"); verificar con `npm test -- PaginaAgenda`
 
 ## 6. Pantalla de agenda (D1, D2, D3, D16, D17)

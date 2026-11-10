@@ -120,3 +120,82 @@ describe("Carga de la agenda", () => {
     expect(screen.queryByText(SOLO_CANCELADOS)).not.toBeInTheDocument();
   });
 });
+
+const SIN_ELEMENTOS = { status: 200, cuerpo: { turnos: [], bloqueos: [] } };
+// Un turno del 11/11: si la respuesta del día 10 pisara a la del 11, el período dejaría de verse vacío
+const CON_UN_TURNO = {
+  status: 200,
+  cuerpo: {
+    turnos: [
+      turno({
+        inicio: "2026-11-11T10:00:00-03:00",
+        fin: "2026-11-11T10:45:00-03:00",
+      }),
+    ],
+    bloqueos: [],
+  },
+};
+
+describe("Respuestas fuera de orden", () => {
+  it("la respuesta del último pedido gana aunque la del anterior llegue después", async () => {
+    conSesion();
+    const api = instalarApiFalsa();
+    const { navegarA } = renderizarApp("/agenda?fecha=2026-11-09");
+    await screen.findByText(VACIO);
+    const dia10 = api.pendiente("GET /turnos");
+    const dia11 = api.pendiente("GET /turnos");
+
+    await navegarA("/agenda?fecha=2026-11-10");
+    await navegarA("/agenda?fecha=2026-11-11");
+    await act(async () => {
+      dia11.resolver(SIN_ELEMENTOS);
+    });
+    await screen.findByText(VACIO);
+    await act(async () => {
+      dia10.resolver(CON_UN_TURNO);
+    });
+
+    // Si el día 10 hubiera pisado al 11, ya no se vería el período vacío
+    expect(screen.getByText(VACIO)).toBeInTheDocument();
+    expect(
+      api.pedidos("GET /turnos").map((p) => p.parametros.get("desde")),
+    ).toEqual(["2026-11-09", "2026-11-10", "2026-11-11"]);
+  });
+
+  it("el error de un pedido anterior no se muestra", async () => {
+    conSesion();
+    const api = instalarApiFalsa();
+    const { navegarA } = renderizarApp("/agenda?fecha=2026-11-09");
+    await screen.findByText(VACIO);
+    const dia10 = api.pendiente("GET /turnos");
+    const dia11 = api.pendiente("GET /turnos");
+    await navegarA("/agenda?fecha=2026-11-10");
+    await navegarA("/agenda?fecha=2026-11-11");
+    await act(async () => {
+      dia11.resolver(SIN_ELEMENTOS);
+    });
+    await screen.findByText(VACIO);
+
+    await act(async () => {
+      dia10.fallarPorRed();
+    });
+
+    expect(
+      screen.queryByText("No se pudo conectar con el servidor."),
+    ).not.toBeInTheDocument();
+    expect(screen.getByText(VACIO)).toBeInTheDocument();
+  });
+
+  it("al cambiar de período no se ven datos del anterior mientras llegan los nuevos", async () => {
+    conSesion();
+    const api = instalarApiFalsa();
+    const { navegarA } = renderizarApp("/agenda?fecha=2026-11-09");
+    await screen.findByText(VACIO);
+    api.pendiente("GET /turnos");
+
+    await navegarA("/agenda?fecha=2026-11-10");
+
+    expect(await screen.findByText("Cargando agenda…")).toBeInTheDocument();
+    expect(screen.queryByText(VACIO)).not.toBeInTheDocument();
+  });
+});
