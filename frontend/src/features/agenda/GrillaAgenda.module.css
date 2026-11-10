@@ -46,8 +46,9 @@
 }
 
 .columna {
-  flex: 1 0 auto;
-  min-width: 0;
+  /* Todas las columnas del mismo ancho, sin crecer por el texto de sus turnos */
+  flex: 1 1 0;
+  min-width: 7rem;
 }
 
 .columna h2 {
@@ -74,7 +75,7 @@
 }
 
 .item {
-  min-width: 90px;
+  min-width: 0;
   overflow: hidden;
   font-size: 0.8rem;
 }

@@ -187,7 +187,7 @@ export function GrillaAgenda({
           <ol
             className={estilos.lista}
             style={{
-              gridTemplateColumns: `repeat(${Math.max(columna.carriles, 1)}, minmax(90px, 1fr))`,
+              gridTemplateColumns: `repeat(${Math.max(columna.carriles, 1)}, minmax(0, 1fr))`,
             }}
           >
             {[...columna.items]
