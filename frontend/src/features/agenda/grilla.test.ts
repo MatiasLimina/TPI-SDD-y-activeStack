@@ -354,6 +354,44 @@ describe("asignarCarriles", () => {
     expect(carrilesDe([a, b, c, d])).toEqual(carrilesDe([c, a, d, b]));
   });
 
+  it("un elemento aislado ocupa un grupo de un carril, aunque otros se superpongan en la columna", () => {
+    const grupos = Object.fromEntries(
+      asignarCarriles([
+        colocable("antes", "09:00", "09:30"),
+        colocable("a", "10:00", "10:30"),
+        colocable("b", "10:05", "10:35"),
+        colocable("despues", "12:00", "12:30"),
+      ]).items.map((i) => [i.clave, i.carrilesGrupo]),
+    );
+
+    expect(grupos).toEqual({ antes: 1, a: 2, b: 2, despues: 1 });
+  });
+
+  it("en una cadena A-B-C donde A y C no se superponen, los tres son del mismo grupo de dos carriles", () => {
+    const resultado = asignarCarriles([
+      colocable("a", "10:00", "10:30"),
+      colocable("b", "10:15", "10:45"),
+      colocable("c", "10:30", "11:00"),
+    ]);
+
+    expect(resultado.items.map((i) => i.carrilesGrupo)).toEqual([2, 2, 2]);
+  });
+
+  it("tres elementos simultáneos forman un grupo de tres carriles; dos tramos contiguos son grupos separados", () => {
+    const tres = asignarCarriles([
+      colocable("a", "10:00", "11:00"),
+      colocable("b", "10:00", "11:00"),
+      colocable("c", "10:00", "11:00"),
+    ]);
+    const contiguos = asignarCarriles([
+      colocable("a", "10:00", "10:30"),
+      colocable("b", "10:30", "11:00"),
+    ]);
+
+    expect(tres.items.map((i) => i.carrilesGrupo)).toEqual([3, 3, 3]);
+    expect(contiguos.items.map((i) => i.carrilesGrupo)).toEqual([1, 1]);
+  });
+
   it("sin elementos no hay carriles, y con uno hay uno", () => {
     expect(asignarCarriles([])).toEqual({ items: [], carriles: 0 });
     expect(asignarCarriles([colocable("a", "09:00", "09:30")]).carriles).toBe(

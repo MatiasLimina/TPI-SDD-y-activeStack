@@ -55,20 +55,38 @@ function Linea({ partes }: { partes: ReactNode[] }) {
 const ALTO_FILA_PX = 6;
 const FILA_DE_LAS_OCHO = 96;
 
-function posicion(item: ItemColumna) {
+function mcd(a: number, b: number): number {
+  return b === 0 ? a : mcd(b, a % b);
+}
+
+/**
+ * Divisiones de la rejilla de una columna: el mínimo común múltiplo de los carriles de cada grupo,
+ * para que todo grupo reparta su ancho en partes enteras (2 y 3 carriles dan 6 divisiones).
+ */
+function divisiones(items: ItemColumna[]): number {
+  return items.reduce(
+    (m, i) => (m / mcd(m, i.carrilesGrupo)) * i.carrilesGrupo,
+    1,
+  );
+}
+
+function posicion(item: ItemColumna, total: number) {
+  const ancho = total / item.carrilesGrupo;
   return {
     gridRow: `${item.segmento.fila + 1} / span ${item.segmento.filas}`,
-    gridColumn: item.carril + 1,
+    gridColumn: `${item.carril * ancho + 1} / span ${ancho}`,
   };
 }
 
 function Item({
   item,
+  total,
   vista,
   nombres,
   alElegirTurno,
 }: {
   item: ItemColumna;
+  total: number;
   vista: VistaAgenda;
   nombres: Nombres;
   alElegirTurno: (turno: TurnoAgenda) => void;
@@ -80,7 +98,11 @@ function Item({
   if (item.tipo === "bloqueo") {
     const { bloqueo } = item;
     return (
-      <li className={estilos.item} style={posicion(item)} data-tipo="bloqueo">
+      <li
+        className={estilos.item}
+        style={posicion(item, total)}
+        data-tipo="bloqueo"
+      >
         <div className={estilos.bloqueo}>
           <Linea
             partes={[
@@ -102,7 +124,7 @@ function Item({
   return (
     <li
       className={estilos.item}
-      style={posicion(item)}
+      style={posicion(item, total)}
       data-tipo="turno"
       data-estado={turno.estado}
     >
@@ -187,7 +209,7 @@ export function GrillaAgenda({
           <ol
             className={estilos.lista}
             style={{
-              gridTemplateColumns: `repeat(${Math.max(columna.carriles, 1)}, minmax(0, 1fr))`,
+              gridTemplateColumns: `repeat(${divisiones(columna.items)}, minmax(0, 1fr))`,
             }}
           >
             {[...columna.items]
@@ -200,6 +222,7 @@ export function GrillaAgenda({
                 <Item
                   key={item.clave}
                   item={item}
+                  total={divisiones(columna.items)}
                   vista={vista}
                   nombres={nombres}
                   alElegirTurno={alElegirTurno}

@@ -93,10 +93,16 @@ export interface Colocable {
 /**
  * Carriles paralelos dentro de una columna: por orden de inicio, cada segmento toma el primer
  * carril libre, con criterio `[)` (RN-AG-03) sobre el tramo visible, de al menos 3 filas (D4, P6).
+ * Cada elemento sabe además cuántos carriles tiene su grupo de superposición (`carrilesGrupo`):
+ * los elementos encadenados por tramos que se pisan, aunque sea de forma transitiva. Un elemento
+ * sin superposiciones es un grupo de un carril y ocupa todo el ancho de la columna.
  */
 export function asignarCarriles<T extends Colocable>(
   items: T[],
-): { items: Array<T & { carril: number }>; carriles: number } {
+): {
+  items: Array<T & { carril: number; carrilesGrupo: number }>;
+  carriles: number;
+} {
   const ordenados = [...items].sort(
     (a, b) =>
       a.segmento.fila - b.segmento.fila ||
@@ -105,14 +111,39 @@ export function asignarCarriles<T extends Colocable>(
   );
   /** Primera fila libre de cada carril. */
   const libreDesde: number[] = [];
-  const colocados = ordenados.map((item) => {
+  const colocados: Array<T & { carril: number; carrilesGrupo: number }> = [];
+  let grupoDesde = 0;
+  let finDelGrupo = 0;
+  let maxCarriles = 0;
+
+  const cerrarGrupo = (hasta: number) => {
+    for (let i = grupoDesde; i < hasta; i++)
+      colocados[i] = { ...colocados[i]!, carrilesGrupo: maxCarriles };
+  };
+
+  ordenados.forEach((item, indice) => {
     const { fila, filas } = item.segmento;
+    // Un tramo que empieza cuando todo lo anterior terminó abre un grupo nuevo
+    if (indice > 0 && fila >= finDelGrupo) {
+      cerrarGrupo(indice);
+      grupoDesde = indice;
+      libreDesde.length = 0;
+      maxCarriles = 0;
+    }
     let carril = libreDesde.findIndex((libre) => libre <= fila);
     if (carril === -1) carril = libreDesde.length;
     libreDesde[carril] = fila + filas;
-    return { ...item, carril };
+    finDelGrupo =
+      indice === grupoDesde
+        ? fila + filas
+        : Math.max(finDelGrupo, fila + filas);
+    maxCarriles = Math.max(maxCarriles, libreDesde.length);
+    colocados.push({ ...item, carril, carrilesGrupo: 0 });
   });
-  return { items: colocados, carriles: libreDesde.length };
+  cerrarGrupo(colocados.length);
+
+  const carriles = colocados.reduce((m, i) => Math.max(m, i.carrilesGrupo), 0);
+  return { items: colocados, carriles };
 }
 
 export const PROFESIONAL_NO_DISPONIBLE = "Profesional no disponible";
@@ -126,6 +157,8 @@ export function nombreProfesional(p: Profesional): string {
 
 export type ItemColumna = Colocable & {
   carril: number;
+  /** Carriles del grupo de superposición del elemento: 1 si está solo. */
+  carrilesGrupo: number;
 } & (
     | { tipo: "turno"; turno: TurnoAgenda }
     | { tipo: "bloqueo"; bloqueo: Bloqueo }

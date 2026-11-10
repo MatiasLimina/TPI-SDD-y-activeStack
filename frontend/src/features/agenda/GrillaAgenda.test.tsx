@@ -183,7 +183,16 @@ describe("GrillaAgenda: contenido de cada elemento en una sola línea", () => {
       fin: "2026-11-09T09:25:00-03:00",
     });
     const { container } = conItems(
-      [{ tipo: "turno", turno: t, clave: t.id, carril: 0, segmento }],
+      [
+        {
+          tipo: "turno",
+          turno: t,
+          clave: t.id,
+          carril: 0,
+          carrilesGrupo: 1,
+          segmento,
+        },
+      ],
       vista({ vista: "semana" }),
     );
 
@@ -204,7 +213,16 @@ describe("GrillaAgenda: contenido de cada elemento en una sola línea", () => {
       fin: "2026-11-09T09:25:00-03:00",
     });
     const { container } = conItems(
-      [{ tipo: "turno", turno: t, clave: t.id, carril: 0, segmento }],
+      [
+        {
+          tipo: "turno",
+          turno: t,
+          clave: t.id,
+          carril: 0,
+          carrilesGrupo: 1,
+          segmento,
+        },
+      ],
       vista(),
     );
 
@@ -221,7 +239,16 @@ describe("GrillaAgenda: contenido de cada elemento en una sola línea", () => {
       fin: "2026-11-09T09:25:00-03:00",
     });
     const { container } = conItems(
-      [{ tipo: "bloqueo", bloqueo: b, clave: b.id, carril: 0, segmento }],
+      [
+        {
+          tipo: "bloqueo",
+          bloqueo: b,
+          clave: b.id,
+          carril: 0,
+          carrilesGrupo: 1,
+          segmento,
+        },
+      ],
       vista({ vista: "semana" }),
     );
 
@@ -235,7 +262,16 @@ describe("GrillaAgenda: contenido de cada elemento en una sola línea", () => {
   it("un bloqueo sin motivo no deja separadores vacíos", () => {
     const b = bloqueo({ motivo: null });
     const { container } = conItems(
-      [{ tipo: "bloqueo", bloqueo: b, clave: b.id, carril: 0, segmento }],
+      [
+        {
+          tipo: "bloqueo",
+          bloqueo: b,
+          clave: b.id,
+          carril: 0,
+          carrilesGrupo: 1,
+          segmento,
+        },
+      ],
       vista(),
     );
 
@@ -281,7 +317,7 @@ describe("GrillaAgenda: tramo visible mínimo de 3 filas", () => {
           fin: "2026-11-09T10:05:00-03:00",
         }),
       ]),
-    ).toEqual([{ gridRow: "121 / span 3", gridColumn: "1" }]);
+    ).toEqual([{ gridRow: "121 / span 3", gridColumn: "1 / span 1" }]);
   });
 
   it("dos turnos de 5 minutos consecutivos van uno al lado del otro y no se superponen", () => {
@@ -299,8 +335,8 @@ describe("GrillaAgenda: tramo visible mínimo de 3 filas", () => {
         }),
       ]),
     ).toEqual([
-      { gridRow: "121 / span 3", gridColumn: "1" },
-      { gridRow: "122 / span 3", gridColumn: "2" },
+      { gridRow: "121 / span 3", gridColumn: "1 / span 1" },
+      { gridRow: "122 / span 3", gridColumn: "2 / span 1" },
     ]);
   });
 
@@ -312,6 +348,114 @@ describe("GrillaAgenda: tramo visible mínimo de 3 filas", () => {
           fin: "2026-11-10T00:00:00-03:00",
         }),
       ]),
-    ).toEqual([{ gridRow: "286 / span 3", gridColumn: "1" }]);
+    ).toEqual([{ gridRow: "286 / span 3", gridColumn: "1 / span 1" }]);
+  });
+});
+
+describe("GrillaAgenda: ancho por grupo de superposición", () => {
+  function seg(fila: number, filas: number) {
+    return {
+      fecha: "2026-11-09",
+      desdeMin: fila * 5,
+      hastaMin: (fila + filas) * 5,
+      fila,
+      filas,
+      continuaAntes: false,
+      continuaDespues: false,
+    };
+  }
+
+  it("el elemento aislado ocupa todo el ancho y los superpuestos se reparten el suyo", () => {
+    const solo = turno({ id: "solo" });
+    const a = turno({ id: "a" });
+    const b = turno({ id: "b" });
+    const columna: Columna = {
+      clave: ID_ANA,
+      nombre: "Ficticia, Ana",
+      carriles: 2,
+      items: [
+        {
+          tipo: "turno",
+          turno: solo,
+          clave: "solo",
+          carril: 0,
+          carrilesGrupo: 1,
+          segmento: seg(108, 6),
+        },
+        {
+          tipo: "turno",
+          turno: a,
+          clave: "a",
+          carril: 0,
+          carrilesGrupo: 2,
+          segmento: seg(120, 6),
+        },
+        {
+          tipo: "turno",
+          turno: b,
+          clave: "b",
+          carril: 1,
+          carrilesGrupo: 2,
+          segmento: seg(121, 6),
+        },
+      ],
+    };
+
+    const { container } = render(
+      <GrillaAgenda
+        columnas={[columna]}
+        vista={vista()}
+        nombres={nombres}
+        alElegirTurno={() => undefined}
+      />,
+    );
+
+    const columnaDe = (i: number) =>
+      (container.querySelectorAll("li")[i] as HTMLElement).style.gridColumn;
+    expect(columnaDe(0)).toBe("1 / span 2");
+    expect(columnaDe(1)).toBe("1 / span 1");
+    expect(columnaDe(2)).toBe("2 / span 1");
+  });
+
+  it("con grupos de dos y tres carriles, la rejilla se divide en seis y cada uno ocupa su parte", () => {
+    const items = [
+      ["d1", 0, 2, 100],
+      ["d2", 1, 2, 100],
+      ["t1", 0, 3, 120],
+      ["t2", 1, 3, 120],
+      ["t3", 2, 3, 120],
+    ].map(([id, carril, n, fila]) => ({
+      tipo: "turno" as const,
+      turno: turno({ id: id as string }),
+      clave: id as string,
+      carril: carril as number,
+      carrilesGrupo: n as number,
+      segmento: seg(fila as number, 6),
+    }));
+
+    const { container } = render(
+      <GrillaAgenda
+        columnas={[
+          { clave: ID_ANA, nombre: "Ficticia, Ana", items, carriles: 3 },
+        ]}
+        vista={vista()}
+        nombres={nombres}
+        alElegirTurno={() => undefined}
+      />,
+    );
+
+    expect(container.querySelector("ol")!.style.gridTemplateColumns).toBe(
+      "repeat(6, minmax(0px, 1fr))",
+    );
+    const lugares = [...container.querySelectorAll("li")].map(
+      (li) => li.style.gridColumn,
+    );
+    expect(lugares).toEqual([
+      "1 / span 3",
+      "4 / span 3",
+      "1 / span 2",
+      "3 / span 2",
+      "5 / span 2",
+    ]);
   });
 });

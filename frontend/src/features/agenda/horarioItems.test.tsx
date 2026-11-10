@@ -34,6 +34,7 @@ function columnaCon(inicio: string, fin: string): Columna {
         turno: t,
         clave: t.id,
         carril: 0,
+        carrilesGrupo: 1,
         segmento: {
           fecha: "2026-11-09",
           desdeMin: 23 * 60 + 55,
