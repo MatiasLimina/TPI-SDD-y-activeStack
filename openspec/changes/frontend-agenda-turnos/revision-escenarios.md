@@ -553,3 +553,57 @@ Numeración continua. Ninguno frena el Apply; corregir solo si se vuelve a tocar
 - Los requirements fuera de la lista, salvo para contrastar los del alcance.
 - Casos de borde nuevos, por decisión del usuario.
 - No hay código del change: nada se ejecutó.
+
+## Revisión 4 — 2026-11-10
+
+- Fecha: 2026-11-10, sobre `a188731` (después del `/opsx:update` que agrega el tramo visible mínimo).
+- **Pasada acotada por decisión del usuario**: solo el requirement "Ubicación en la grilla" (6 escenarios, antes 5), los escenarios que fijan la regla de carriles en "Elementos superpuestos en una columna" (7, antes 4) y el escenario "Bloqueo que no respeta la grilla" de "Elementos que cruzan días". No se reabrió ninguna decisión ni se buscaron bordes fuera de esta regla.
+- Regla revisada: el usuario aprobó el 2026-11-10 que todo elemento ocupe al menos 3 filas (15 minutos) en pantalla, que los carriles se calculen sobre ese tramo visible y que se acepte que uno más corto se dibuje más largo que su duración. Va a la **DD-34 (l)**, ya agregada en `09`, y amplía **P6**; la KB no la tenía antes.
+- Totales en la rama, contados con `grep`: `frontend-agenda` 21 requirements y 94 escenarios, `frontend-turnos` 20 y 92, `frontend-sesion` 1 y 4; 42 requirements y 190 escenarios.
+- El cuerpo del requirement "Ubicación en la grilla" mide 484 caracteres (límite de 500).
+- `openspec validate frontend-agenda-turnos --strict`: válido.
+- Veredicto: **LISTO PARA APPLY**
+- Conteo: 0 BLOQUEANTE, 0 MAYOR, 1 MENOR, 1 SUGERENCIA.
+
+### Aritmética de los escenarios
+
+Filas contando desde 0, con `[inicio, fin)`, 12 filas por hora y mínimo de 3.
+
+| Escenario | Filas reales | Tramo visible | Resultado esperado |
+|-----------|--------------|---------------|--------------------|
+| Turno de 5 minutos, 10:00 a 10:05 | 120, 1 fila | 120 a 122 | 3 filas desde la 120: correcto |
+| Último tramo, 23:55 a 00:00 | 287, 1 fila | 285 a 287 (se corre, 287 + 3 > 288) | 3 filas desde la 285: correcto |
+| Bloqueo 10:03 a 10:07 | 120, 2 filas | 120 a 122 | 3 filas desde la 120: correcto |
+| Bloqueos 10:00 a 10:03 y 10:03 a 10:05 | 120, 1 fila ambos | 120 a 122 ambos | Carriles distintos: correcto |
+| Turnos 10:00 a 10:05 y 10:05 a 10:10 | 120 y 121 | 120 a 122 y 121 a 123 | Se pisan en las filas 121 y 122: carriles distintos, correcto |
+| Turnos 10:00 a 10:05 y 10:15 a 10:20 | 120 y 123 | 120 a 122 y 123 a 125 | Contiguos (el primero termina antes de la 123): mismo carril 0, correcto |
+| Turnos 23:50 a 23:55 y 23:55 a 00:00 | 286 y 287 | 285 a 287 ambos | Carriles distintos: correcto |
+
+Los escenarios que no cambian siguen valiendo con la regla nueva: 10:00 a 10:45 (9 filas), 00:00 a 00:30 (6), el recorte de 23:30 a 00:30 (6 y 6, ninguno por debajo de 3) y los carriles 0, 1 y 0 de 10:00 a 10:30, 10:15 a 10:45 y 10:30 a 11:00 (todos de 6 filas o más).
+
+### Controles sobre el alcance
+
+- **Contradicciones entre requirements y escenarios**: ninguna. "Ubicación en la grilla" fija el mínimo y el corrimiento; "Elementos superpuestos" fija que los carriles usan ese tramo; los dos escenarios que hablaban de filas redondeadas (`Contiguos que comparten una fila redondeada` y `Bloqueo que no respeta la grilla`) se actualizaron y siguen siendo correctos.
+- **Reglas fuera de la KB y de las decisiones aprobadas**: ninguna. El mínimo de 3 filas, los carriles sobre el tramo visible y el costo aceptado son la decisión del usuario del 2026-11-10; solo el corrimiento hacia arriba al final del día lo eligió el agente (ver S1).
+- **Alcance de otros changes**: nada de lo agregado pertenece a otro change; no toca el backend, el horario ni los bloqueos de C-10 y C-11.
+- **Trazabilidad**: cada escenario nuevo o cambiado figura en las tareas 4.2, 4.3 y 4.4. D1, D4 y P6 de `design.md` y DD-34 de `09` dicen lo mismo que el spec.
+
+### Hallazgos
+
+#### H42 — La tarea 4.4 no nombraba los carriles del final del día · MENOR
+- **Dónde**: `tasks.md`, tarea 4.4, escenario "Turno corto al final del día junto a otro".
+- **Problema**: la tarea decía que 23:50 a 23:55 y 23:55 a 00:00 ocupan las filas 285 a 287, pero no que quedan en carriles distintos, que es lo que afirma el escenario.
+- **Fuente**: requirement "Elementos superpuestos en una columna"; control de trazabilidad escenario a tarea.
+- **Resolución**: corregido en la misma revisión (una frase en `tasks.md`); no cambia el spec.
+
+#### S1 — Corrimiento hacia arriba en el final del día · SUGERENCIA
+- **Dónde**: requirement "Ubicación en la grilla", escenario "Último tramo del día".
+- **Problema**: el usuario pidió que el tramo visible no pase de la fila 288 y dijo que se indicara cómo se resuelve. Se eligió correrlo hacia arriba y no recortarlo, porque recortado quedaría de 1 o 2 filas y se rompería el mínimo. Costo: un turno de 23:55 se dibuja desde las 23:45, aunque su texto y el detalle dicen 23:55. No está en la KB.
+- **Fuente**: decisión del usuario del 2026-11-10 (mínimo de 3 filas y no pasar de la fila 288); la forma de resolverlo es del agente.
+- **Pregunta para el usuario**: confirmar el corrimiento. La alternativa es recortar al final del día y aceptar que esos dos casos (inicios a las 23:50 y 23:55 con menos de 15 minutos) queden con menos de 3 filas.
+
+### Fuera de esta revisión
+
+- Los demás requirements y escenarios de los tres specs.
+- La geometría real, la altura de las filas y la lectura del texto en un tramo de 3 filas: se verifican a mano (tarea 10.2).
+- No hay código del cambio de esta decisión todavía: nada se ejecutó.
