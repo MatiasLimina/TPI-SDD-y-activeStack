@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { Fragment, useEffect, useRef, type ReactNode } from "react";
 
 import {
   cruzaDias,
@@ -35,6 +35,23 @@ function Horario({ inicio, fin }: { inicio: string; fin: string }) {
   );
 }
 
+/**
+ * Datos de un elemento en una sola línea, separados por ` · `. Un turno de 25 minutos mide 30 px:
+ * con una línea que se recorta con puntos suspensivos nunca queda texto cortado a la mitad.
+ */
+function Linea({ partes }: { partes: ReactNode[] }) {
+  return (
+    <span className={estilos.linea} data-linea>
+      {partes.map((parte, i) => (
+        <Fragment key={i}>
+          {i > 0 && " · "}
+          {parte}
+        </Fragment>
+      ))}
+    </span>
+  );
+}
+
 const ALTO_FILA_PX = 6;
 const FILA_DE_LAS_OCHO = 96;
 
@@ -65,12 +82,18 @@ function Item({
     return (
       <li className={estilos.item} style={posicion(item)} data-tipo="bloqueo">
         <div className={estilos.bloqueo}>
-          <strong>Bloqueo</strong>
-          <Horario inicio={bloqueo.inicio} fin={bloqueo.fin} />
-          {bloqueo.motivo !== null && <span>{bloqueo.motivo}</span>}
-          {!porProfesional && (
-            <span>{nombres.profesional(bloqueo.profesional_id)}</span>
-          )}
+          <Linea
+            partes={[
+              <strong>Bloqueo</strong>,
+              <Horario inicio={bloqueo.inicio} fin={bloqueo.fin} />,
+              ...(bloqueo.motivo !== null
+                ? [<span>{bloqueo.motivo}</span>]
+                : []),
+              ...(!porProfesional
+                ? [<span>{nombres.profesional(bloqueo.profesional_id)}</span>]
+                : []),
+            ]}
+          />
         </div>
       </li>
     );
@@ -88,18 +111,24 @@ function Item({
         className={`${estilos.turno} ${turno.estado === "cancelado" ? estilos.cancelado : ""}`}
         onClick={() => alElegirTurno(turno)}
       >
-        {turno.estado === "cancelado" && <strong>Cancelado</strong>}
-        <Horario inicio={turno.inicio} fin={turno.fin} />
-        <span>
-          {turno.paciente.apellido}, {turno.paciente.nombre}
-        </span>
-        <span>{nombres.prestacion(turno.prestacion_id)}</span>
-        {!porProfesional && (
-          <span>{nombres.profesional(turno.profesional_id)}</span>
-        )}
-        {!porSillon && turno.sillon_id !== null && (
-          <span>{nombres.sillon(turno.sillon_id)}</span>
-        )}
+        <Linea
+          partes={[
+            ...(turno.estado === "cancelado"
+              ? [<strong>Cancelado</strong>]
+              : []),
+            <Horario inicio={turno.inicio} fin={turno.fin} />,
+            <span>
+              {turno.paciente.apellido}, {turno.paciente.nombre}
+            </span>,
+            <span>{nombres.prestacion(turno.prestacion_id)}</span>,
+            ...(!porProfesional
+              ? [<span>{nombres.profesional(turno.profesional_id)}</span>]
+              : []),
+            ...(!porSillon && turno.sillon_id !== null
+              ? [<span>{nombres.sillon(turno.sillon_id)}</span>]
+              : []),
+          ]}
+        />
       </button>
     </li>
   );

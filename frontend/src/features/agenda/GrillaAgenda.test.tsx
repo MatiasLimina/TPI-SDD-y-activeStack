@@ -1,6 +1,13 @@
 import { render, screen } from "@testing-library/react";
 
-import { ID_ANA } from "../../test/fabricas";
+import {
+  ID_ANA,
+  bloqueo,
+  profesional,
+  prestacion,
+  sillon,
+  turno,
+} from "../../test/fabricas";
 import { GrillaAgenda } from "./GrillaAgenda";
 import type { Columna } from "./grilla";
 import { crearNombres } from "./nombres";
@@ -138,5 +145,102 @@ describe("GrillaAgenda: eje de horas", () => {
     const { container } = render(grilla(vista(), []));
 
     expect(container.querySelector("[data-eje]")).toBeNull();
+  });
+});
+
+describe("GrillaAgenda: contenido de cada elemento en una sola línea", () => {
+  const nombresCompletos = crearNombres({
+    profesionales: [profesional()],
+    sillones: [sillon()],
+    prestaciones: [prestacion()],
+  });
+  const segmento = {
+    fecha: "2026-11-09",
+    desdeMin: 9 * 60,
+    hastaMin: 9 * 60 + 25,
+    fila: 108,
+    filas: 5,
+    continuaAntes: false,
+    continuaDespues: false,
+  };
+
+  function conItems(items: Columna["items"], v: VistaAgenda) {
+    return render(
+      <GrillaAgenda
+        columnas={[
+          { clave: ID_ANA, nombre: "Ficticia, Ana", items, carriles: 1 },
+        ]}
+        vista={v}
+        nombres={nombresCompletos}
+        alElegirTurno={() => undefined}
+      />,
+    );
+  }
+
+  it("un turno muestra horario, paciente, prestación, profesional y sillón en un solo elemento, separados por ·", () => {
+    const t = turno({
+      inicio: "2026-11-09T09:00:00-03:00",
+      fin: "2026-11-09T09:25:00-03:00",
+    });
+    const { container } = conItems(
+      [{ tipo: "turno", turno: t, clave: t.id, carril: 0, segmento }],
+      vista({ vista: "semana" }),
+    );
+
+    const lineas = container.querySelectorAll("li [data-linea]");
+    expect(lineas).toHaveLength(1);
+    expect(lineas[0]?.textContent).toBe(
+      "09:00 – 09:25 · Imaginaria, Carla · Limpieza · Ficticia, Ana · Sillón 1",
+    );
+    expect(screen.getByRole("button")).toHaveAccessibleName(
+      "09:00 – 09:25 · Imaginaria, Carla · Limpieza · Ficticia, Ana · Sillón 1",
+    );
+  });
+
+  it("un turno cancelado antepone Cancelado en la misma línea y omite lo que la columna ya dice", () => {
+    const t = turno({
+      estado: "cancelado",
+      inicio: "2026-11-09T09:00:00-03:00",
+      fin: "2026-11-09T09:25:00-03:00",
+    });
+    const { container } = conItems(
+      [{ tipo: "turno", turno: t, clave: t.id, carril: 0, segmento }],
+      vista(),
+    );
+
+    const lineas = container.querySelectorAll("li [data-linea]");
+    expect(lineas).toHaveLength(1);
+    expect(lineas[0]?.textContent).toBe(
+      "Cancelado · 09:00 – 09:25 · Imaginaria, Carla · Limpieza · Sillón 1",
+    );
+  });
+
+  it("un bloqueo muestra Bloqueo, horario, motivo y profesional en un solo elemento, separados por ·", () => {
+    const b = bloqueo({
+      inicio: "2026-11-09T09:00:00-03:00",
+      fin: "2026-11-09T09:25:00-03:00",
+    });
+    const { container } = conItems(
+      [{ tipo: "bloqueo", bloqueo: b, clave: b.id, carril: 0, segmento }],
+      vista({ vista: "semana" }),
+    );
+
+    const lineas = container.querySelectorAll("li [data-linea]");
+    expect(lineas).toHaveLength(1);
+    expect(lineas[0]?.textContent).toBe(
+      "Bloqueo · 09:00 – 09:25 · Congreso · Ficticia, Ana",
+    );
+  });
+
+  it("un bloqueo sin motivo no deja separadores vacíos", () => {
+    const b = bloqueo({ motivo: null });
+    const { container } = conItems(
+      [{ tipo: "bloqueo", bloqueo: b, clave: b.id, carril: 0, segmento }],
+      vista(),
+    );
+
+    expect(container.querySelector("li [data-linea]")?.textContent).toBe(
+      "Bloqueo · 15:00 – 16:00",
+    );
   });
 });
