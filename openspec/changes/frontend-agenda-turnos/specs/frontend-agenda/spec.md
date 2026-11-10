@@ -1,7 +1,7 @@
 ## ADDED Requirements
 
 ### Requirement: Pantalla de agenda
-`/agenda` SHALL mostrar a ambos roles la agenda de un período, cargando con `GET /turnos` los turnos y bloqueos y con `GET /profesionales`, `GET /sillones` y `GET /prestaciones` los nombres de los catálogos (US-008, DD-32). Mientras carga MUST indicarlo. Un período sin turnos ni bloqueos MUST informarlo con un mensaje.
+`/agenda` SHALL mostrar a ambos roles la agenda de un período, cargando con `GET /turnos` los turnos y bloqueos y con `GET /profesionales`, `GET /sillones` y `GET /prestaciones` los nombres de los catálogos (US-008, DD-32). Mientras carga MUST indicarlo. Un período sin elementos visibles MUST informarlo con un mensaje; si solo hay cancelados ocultos, con un texto propio que invite a mostrarlos (D3, DD-34).
 
 #### Scenario: Agenda de la recepcionista
 - **GIVEN** dada una sesión de `recepcionista` y un turno `programado` del profesional "Ana Ficticia" el 2026-11-09 de 10:00 a 10:45 hora local, con la paciente "Carla Imaginaria" y la prestación "Limpieza"
@@ -18,8 +18,13 @@
 - **WHEN** cuando se muestra la agenda
 - **THEN** entonces se ve el mensaje `No hay turnos ni bloqueos en este período.`
 
+#### Scenario: Solo hay turnos cancelados ocultos
+- **GIVEN** dada una respuesta con un único turno `cancelado` y la casilla `Mostrar cancelados` apagada
+- **WHEN** cuando se muestra la agenda
+- **THEN** entonces se ve `Solo hay turnos cancelados en este período. Activá Mostrar cancelados para verlos.` y no se ve `No hay turnos ni bloqueos en este período.`
+
 ### Requirement: Horarios en la zona del consultorio
-Toda fecha y hora de la agenda MUST mostrarse en `America/Argentina/Buenos_Aires`, sin importar la zona configurada en el navegador (RN-CU-04, DD-06). Un turno MUST ubicarse en el día local de su `inicio` en esa zona.
+Toda fecha y hora de la agenda MUST mostrarse en `America/Argentina/Buenos_Aires`, sin importar la zona configurada en el navegador (RN-CU-04, DD-06). En este spec, "hora local" significa esa zona. Un turno MUST ubicarse en el o los días locales que abarca, calculados en esa zona y nunca en la del navegador.
 
 #### Scenario: Navegador en otra zona horaria
 - **GIVEN** dado un navegador configurado en `Asia/Tokyo` y un turno con `inicio` `2026-11-09T22:30:00-03:00`, que en esa zona es el 2026-11-10 a las 10:30
@@ -50,7 +55,7 @@ La agenda SHALL ofrecer una vista diaria y una semanal (US-008). La semanal MUST
 #### Scenario: Semana de lunes a domingo
 - **GIVEN** dada una sesión activa
 - **WHEN** cuando se navega a `/agenda?vista=semana&fecha=2026-11-12`, un jueves
-- **THEN** entonces se hace `GET /turnos?desde=2026-11-09&hasta=2026-11-15` y se ven siete columnas, de lunes 9/11 a domingo 15/11
+- **THEN** entonces se hace `GET /turnos?desde=2026-11-09&hasta=2026-11-15` y se ven siete columnas, de `Lunes 09/11` a `Domingo 15/11`
 
 #### Scenario: Fecha que ya es lunes
 - **WHEN** cuando se navega a `/agenda?vista=semana&fecha=2026-11-09`
@@ -64,6 +69,11 @@ La agenda SHALL ofrecer una vista diaria y una semanal (US-008). La semanal MUST
 - **GIVEN** dada la vista diaria del 2026-11-12
 - **WHEN** cuando se elige la vista semanal
 - **THEN** entonces se muestra la semana del 2026-11-09 al 2026-11-15
+
+#### Scenario: De semana a día
+- **GIVEN** dada la vista semanal con fecha 2026-11-12
+- **WHEN** cuando se elige la vista diaria
+- **THEN** entonces se hace `GET /turnos?desde=2026-11-12&hasta=2026-11-12`
 
 ### Requirement: Navegación entre períodos
 La agenda SHALL permitir ir al período anterior, al siguiente y al día actual. El período es un día en la vista diaria y una semana en la semanal.
@@ -83,8 +93,18 @@ La agenda SHALL permitir ir al período anterior, al siguiente y al día actual.
 - **WHEN** cuando se elige ir a hoy
 - **THEN** entonces se hace `GET /turnos?desde=2026-11-09&hasta=2026-11-09`
 
+#### Scenario: Hoy en la vista semanal
+- **GIVEN** dado el reloj en el 2026-11-09 hora local y la vista semanal del 2026-12-14 al 2026-12-20
+- **WHEN** cuando se elige ir a hoy
+- **THEN** entonces se hace `GET /turnos?desde=2026-11-09&hasta=2026-11-15`
+
+#### Scenario: Semana que cruza el año
+- **GIVEN** dada la vista semanal del 2026-12-21 al 2026-12-27
+- **WHEN** cuando se elige el período siguiente
+- **THEN** entonces se hace `GET /turnos?desde=2026-12-28&hasta=2027-01-03`
+
 ### Requirement: La vista se conserva en la URL
-La vista, la fecha, los filtros, el modo de columnas y la casilla de cancelados MUST reflejarse en la URL de `/agenda`, de modo que recargar conserve la vista y volver atrás recupere la anterior. Un parámetro inválido MUST ignorarse y usar su valor por defecto. La URL MUST NOT contener datos de pacientes.
+La vista, la fecha, los filtros, el modo de columnas y la casilla de cancelados MUST reflejarse en la URL de `/agenda`, de modo que recargar conserve la vista y volver atrás recupere la anterior. Un parámetro inválido MUST ignorarse y usar su valor por defecto; una `fecha` con año fuera de 1000 a 9998 es inválida (D6, DD-34). La URL MUST NOT contener datos de pacientes.
 
 #### Scenario: Recargar conserva la vista
 - **WHEN** cuando se abre `/agenda?vista=semana&fecha=2026-11-12&sillon=00000000-0000-4000-8000-0000000000c1`
@@ -103,6 +123,20 @@ La vista, la fecha, los filtros, el modo de columnas y la casilla de cancelados 
 #### Scenario: Filtro mal formado
 - **WHEN** cuando se abre `/agenda?fecha=2026-11-09&profesional=no-es-un-id`
 - **THEN** entonces el pedido no incluye `profesional_id` y la agenda se muestra sin filtro
+
+#### Scenario: Año posterior al admitido
+- **GIVEN** dado el reloj en el 2026-11-09 hora local
+- **WHEN** cuando se abre `/agenda?fecha=9999-12-31`
+- **THEN** entonces se hace `GET /turnos?desde=2026-11-09&hasta=2026-11-09`
+
+#### Scenario: Año anterior al admitido
+- **GIVEN** dado el reloj en el 2026-11-09 hora local
+- **WHEN** cuando se abre `/agenda?fecha=0050-01-15`
+- **THEN** entonces se hace `GET /turnos?desde=2026-11-09&hasta=2026-11-09`
+
+#### Scenario: Año en el borde admitido
+- **WHEN** cuando se abre `/agenda?fecha=9998-12-31`
+- **THEN** entonces se hace `GET /turnos?desde=9998-12-31&hasta=9998-12-31`
 
 ### Requirement: Filtros por profesional y por sillón
 La agenda SHALL filtrarse por profesional y por sillón con los parámetros `profesional_id` y `sillon_id` de la API, combinables (US-008). Los selectores MUST incluir los recursos desactivados, identificados como inactivos, porque conservan su agenda (DD-32 l). Filtrar por sillón MUST seguir mostrando los bloqueos del profesional (DD-32 h).
@@ -132,8 +166,18 @@ La agenda SHALL filtrarse por profesional y por sillón con los parámetros `pro
 - **WHEN** cuando se muestra la agenda
 - **THEN** entonces se ve el bloqueo
 
+#### Scenario: Filtro por un profesional desactivado sin elementos
+- **GIVEN** dado un profesional desactivado sin elementos visibles en el día
+- **WHEN** cuando la recepcionista filtra por él
+- **THEN** entonces no se ve ninguna columna y se ve `No hay turnos ni bloqueos en este período.`
+
+#### Scenario: Filtro con un id que no existe
+- **GIVEN** dado un id bien formado que no figura en el catálogo y una respuesta `200` vacía (DD-32 l)
+- **WHEN** cuando se abre `/agenda?fecha=2026-11-09&profesional=00000000-0000-4000-8000-0000000000a9`
+- **THEN** entonces el pedido incluye `profesional_id`, el filtro muestra `Profesional no disponible` y se ve `No hay turnos ni bloqueos en este período.`
+
 ### Requirement: Columnas de la vista diaria
-La vista diaria de la recepcionista SHALL mostrar una columna por profesional o, si elige agrupar por sillón, una por sillón. Un recurso desactivado MUST tener columna solo si tiene elementos en el período. Agrupando por sillón, los turnos sin sillón MUST ir en una columna `Sin sillón` y los bloqueos en una columna `Bloqueos`, porque no pertenecen a un sillón (DD-30 d).
+La vista diaria de la recepcionista SHALL mostrar una columna por profesional o, si elige agrupar por sillón, una por sillón. Un recurso desactivado MUST tener columna solo si tiene elementos visibles. Agrupando por sillón, los turnos sin sillón MUST ir en `Sin sillón` y los bloqueos en `Bloqueos` (DD-30 d), columnas que MUST aparecer solo si tienen elementos visibles. `columnas=sillon` MUST ignorarse en la vista semanal y con rol `odontologo`.
 
 #### Scenario: Una columna por profesional activo
 - **GIVEN** dados dos profesionales activos y uno desactivado sin turnos en el día
@@ -145,10 +189,24 @@ La vista diaria de la recepcionista SHALL mostrar una columna por profesional o,
 - **WHEN** cuando la recepcionista ve la agenda diaria
 - **THEN** entonces ese profesional tiene su columna
 
+#### Scenario: Profesional desactivado con solo cancelados ocultos
+- **GIVEN** dado un profesional desactivado cuyo único turno del día está `cancelado` y la casilla `Mostrar cancelados` apagada
+- **WHEN** cuando la recepcionista ve la agenda diaria
+- **THEN** entonces ese profesional no tiene columna
+
 #### Scenario: Agrupar por sillón
 - **GIVEN** dado un turno en el sillón "Sillón 1", un turno sin sillón y un bloqueo el 2026-11-09
 - **WHEN** cuando la recepcionista agrupa la vista diaria por sillón
 - **THEN** entonces cada turno se ve en la columna `Sillón 1` y en `Sin sillón`, y el bloqueo en `Bloqueos` con el nombre de su profesional
+
+#### Scenario: Sin columnas especiales vacías
+- **GIVEN** dados solo turnos con sillón el 2026-11-09
+- **WHEN** cuando la recepcionista agrupa la vista diaria por sillón
+- **THEN** entonces no se ven las columnas `Sin sillón` ni `Bloqueos`
+
+#### Scenario: Agrupar por sillón no aplica a la semana
+- **WHEN** cuando se abre `/agenda?vista=semana&fecha=2026-11-12&columnas=sillon`
+- **THEN** entonces se ven siete columnas, una por día
 
 ### Requirement: Datos visibles de cada turno
 Cada turno de la agenda MUST mostrar su horario, paciente (`apellido, nombre`) y prestación. MUST mostrar el profesional y el sillón cuando las columnas no lo indican. Al elegirlo, MUST abrirse un detalle con horario, paciente, prestación, profesional, sillón, estado y motivo de cancelación si existe. MUST NOT mostrar documento, teléfono ni email del paciente (DD-32 j).
@@ -182,7 +240,7 @@ Los ids de profesional, sillón y prestación MUST presentarse con su nombre, in
 - **THEN** entonces el turno se ve con el texto `Prestación no disponible` y no se ve el id
 
 ### Requirement: Turnos cancelados
-Los turnos `cancelado` MUST ocultarse por defecto y mostrarse al activar `Mostrar cancelados`, sin un pedido nuevo (DD-32 f). Visibles, MUST distinguirse con el texto `Cancelado` y no solo por color, y un cancelado y un programado del mismo horario MUST verse los dos, sin taparse.
+Los turnos `cancelado` MUST ocultarse por defecto y mostrarse al activar `Mostrar cancelados` (D3, DD-34), sin un pedido nuevo, porque la API siempre los trae (DD-32 f). Visibles, MUST distinguirse con el texto `Cancelado` y no solo por color, y un cancelado y un programado del mismo horario MUST verse los dos, sin taparse.
 
 #### Scenario: Oculto por defecto
 - **GIVEN** dada una respuesta con un turno `programado` y uno `cancelado` el mismo día
@@ -198,8 +256,36 @@ Los turnos `cancelado` MUST ocultarse por defecto y mostrarse al activar `Mostra
 - **WHEN** cuando se abre `/agenda?fecha=2026-11-09&cancelados=1`
 - **THEN** entonces la casilla `Mostrar cancelados` está activa
 
+### Requirement: Ubicación en la grilla
+Cada día MUST presentarse con un eje de 24 horas de 288 filas de 5 minutos (D1, DD-34). La ubicación MUST calcularse con funciones puras sobre la hora local: inicio redondeado hacia abajo, fin hacia arriba y recorte a cada día. El texto MUST seguir mostrando la hora real. El desplazamiento inicial a las 08:00, la geometría y el ancho de los carriles son de verificación manual (tarea 10.2).
+
+#### Scenario: Fila de un turno
+- **GIVEN** dado un turno de 10:00 a 10:45 hora local
+- **WHEN** cuando se calcula su ubicación
+- **THEN** entonces ocupa 9 filas desde la fila 120, contando desde 0
+
+#### Scenario: Primer tramo del día
+- **GIVEN** dado un turno de 00:00 a 00:30 hora local
+- **WHEN** cuando se calcula su ubicación
+- **THEN** entonces ocupa 6 filas desde la fila 0
+
+#### Scenario: Último tramo del día
+- **GIVEN** dado un turno de 23:55 a 00:00 hora local
+- **WHEN** cuando se calcula su ubicación
+- **THEN** entonces ocupa una sola fila, la 287, que es la última
+
+#### Scenario: Recorte por día
+- **GIVEN** dado un turno del 2026-11-10 23:30 al 2026-11-11 00:30 hora local
+- **WHEN** cuando se calculan sus segmentos por día
+- **THEN** entonces el del día 10 ocupa 6 filas desde la fila 282 y el del día 11 ocupa 6 filas desde la fila 0
+
+#### Scenario: Carriles según las filas ocupadas
+- **GIVEN** dados en una columna segmentos de 10:00 a 10:30, de 10:15 a 10:45 y de 10:30 a 11:00
+- **WHEN** cuando se asignan los carriles
+- **THEN** entonces usan los carriles 0, 1 y 0
+
 ### Requirement: Elementos superpuestos en una columna
-Los elementos que se superponen dentro de una columna MUST ubicarse en carriles paralelos, para que ninguno tape a otro. Dos elementos contiguos (`[inicio, fin)`, RN-AG-03) MUST NOT considerarse superpuestos.
+Los elementos que se superponen dentro de una columna MUST ubicarse en carriles paralelos, para que ninguno tape a otro. La superposición MUST evaluarse sobre las filas de 5 minutos ya redondeadas (D4, DD-34). Dos elementos cuyas filas son contiguas (`[inicio, fin)`, RN-AG-03) MUST NOT considerarse superpuestos.
 
 #### Scenario: Varios profesionales en un mismo día de la semana
 - **GIVEN** dada la vista semanal sin filtro y tres turnos de profesionales distintos de 10:00 a 11:00 el mismo día
@@ -215,6 +301,11 @@ Los elementos que se superponen dentro de una columna MUST ubicarse en carriles 
 - **GIVEN** dados dos bloqueos superpuestos del mismo profesional (DD-30 b)
 - **WHEN** cuando se ubican en la columna
 - **THEN** entonces se ven los dos, en carriles distintos y sin fusionarse
+
+#### Scenario: Contiguos que comparten una fila redondeada
+- **GIVEN** dados dos bloqueos de 10:00 a 10:03 y de 10:03 a 10:05 hora local (DD-30 f)
+- **WHEN** cuando se asignan los carriles
+- **THEN** entonces ocupan carriles distintos, porque ambos usan la fila 120
 
 ### Requirement: Elementos que cruzan días
 Un turno o bloqueo MUST verse en cada día local visible que abarca, recortado a ese día e indicando su `inicio` y `fin` reales con fecha, porque la API los entrega completos (DD-32 e).
@@ -232,18 +323,33 @@ Un turno o bloqueo MUST verse en cada día local visible que abarca, recortado a
 #### Scenario: Bloqueo que no respeta la grilla
 - **GIVEN** dado un bloqueo de 10:03 a 10:07 hora local (DD-30 f)
 - **WHEN** cuando se muestra la agenda
-- **THEN** entonces se ve con el texto `10:03` y `10:07` y ocupa al menos una fila de 5 minutos
+- **THEN** entonces se ve con el texto `10:03` y `10:07`, y su ubicación ocupa 2 filas desde la fila 120
+
+#### Scenario: Bloqueo que termina justo a la medianoche
+- **GIVEN** dado un bloqueo del 2026-11-10 20:00 al 2026-11-11 00:00 hora local (RN-AG-03)
+- **WHEN** cuando se calculan sus segmentos en la semana del 2026-11-09 al 2026-11-15
+- **THEN** entonces hay un solo segmento, en el día 10, hasta el final del día
+
+#### Scenario: Bloqueo que cruza el fin de la semana visible
+- **GIVEN** dado un bloqueo del domingo 2026-11-15 22:00 al lunes 2026-11-16 02:00 hora local
+- **WHEN** cuando se calculan sus segmentos en la semana del 2026-11-09 al 2026-11-15 y en la del 2026-11-16 al 2026-11-22
+- **THEN** entonces en la primera hay un segmento solo en el domingo y en la segunda uno solo en el lunes, indicando en ambas `15/11 22:00` y `16/11 02:00`
 
 ### Requirement: Bloqueos en la agenda
-Los bloqueos del período MUST mostrarse con su horario, su motivo y una identificación visible de que son bloqueos, distinta de un turno. La agenda MUST NOT ofrecer crearlos ni borrarlos.
+Los bloqueos del período MUST mostrarse con su horario, su motivo y una identificación visible de que son bloqueos, distinta de un turno, y con su profesional cuando las columnas no lo indican. La agenda MUST NOT ofrecer crearlos ni borrarlos.
 
 #### Scenario: Bloqueo visible
 - **GIVEN** dado un bloqueo del profesional A de 15:00 a 16:00 con motivo "Congreso"
 - **WHEN** cuando se muestra la agenda
 - **THEN** entonces se ve en la columna de A con el texto `Bloqueo`, `15:00`, `16:00` y `Congreso`, sin acciones para modificarlo
 
+#### Scenario: Bloqueo en la semana sin filtro
+- **GIVEN** dada la vista semanal sin filtro de profesional y un bloqueo de "Ana Ficticia"
+- **WHEN** cuando se muestra la agenda
+- **THEN** entonces el bloqueo muestra `Ficticia, Ana`
+
 ### Requirement: Agenda del odontólogo
-Con rol `odontologo`, la agenda SHALL ser de solo lectura y mostrar únicamente la agenda de su profesional (RN-AU-02). El pedido MUST omitir `profesional_id`, aunque la URL lo traiga, y la pantalla MUST NOT ofrecer filtro de profesional ni agrupar por sillón. MUST NOT pedir `GET /pacientes` (DD-31 b).
+Con rol `odontologo`, la agenda SHALL ser de solo lectura y mostrar únicamente la agenda de su profesional (RN-AU-02). El pedido MUST omitir `profesional_id`, aunque la URL lo traiga, y la pantalla MUST NOT ofrecer filtro de profesional ni agrupar por sillón. La vista diaria MUST tener una sola columna, la de su profesional, aunque esté vacía (D16, DD-34). MUST NOT pedir `GET /pacientes` (DD-31 b).
 
 #### Scenario: Odontólogo sin filtro de profesional
 - **GIVEN** dada una sesión de `odontologo`
@@ -264,6 +370,16 @@ Con rol `odontologo`, la agenda SHALL ser de solo lectura y mostrar únicamente 
 - **GIVEN** dada una sesión de `odontologo` y una agenda con turnos
 - **WHEN** cuando se muestra la agenda y se abre el detalle de un turno
 - **THEN** entonces no se hizo ningún pedido a `/pacientes` y se ve el nombre del paciente
+
+#### Scenario: Una sola columna aunque esté vacía
+- **GIVEN** dada una sesión de `odontologo` vinculada al profesional A, dos profesionales activos y una respuesta sin elementos
+- **WHEN** cuando ve la agenda diaria
+- **THEN** entonces hay una sola columna, la de A, y se ve `No hay turnos ni bloqueos en este período.`
+
+#### Scenario: Agrupar por sillón ignorado
+- **GIVEN** dada una sesión de `odontologo` vinculada al profesional A
+- **WHEN** cuando abre `/agenda?fecha=2026-11-09&columnas=sillon`
+- **THEN** entonces hay una sola columna, la de A
 
 ### Requirement: Errores al cargar la agenda
 Si falla la carga de la agenda o de los catálogos, la pantalla MUST mostrar el mensaje del error, conservar la vista y ofrecer `Reintentar`. Un `403` MUST mostrarse sin cerrar la sesión (DD-33 e). Una recarga fallida del mismo período MUST conservar visibles los datos anteriores.
@@ -311,6 +427,11 @@ La agenda MUST mostrar solo la respuesta del último pedido hecho. Una respuesta
 - **WHEN** cuando se pide el día siguiente y la respuesta aún no llegó
 - **THEN** entonces no se ve el turno del día 9 y se ve `Cargando agenda…`
 
+#### Scenario: Lectura vieja después de un alta
+- **GIVEN** dado un `GET /turnos` del período sin responder y un alta exitosa cuya relectura ya respondió con el turno creado
+- **WHEN** cuando llega la respuesta de la lectura anterior, sin ese turno
+- **THEN** entonces se sigue viendo el turno creado
+
 ### Requirement: Actualización manual
 La agenda SHALL ofrecer una acción `Actualizar` que vuelve a pedir el período en curso, manteniendo a la vista los datos actuales hasta recibir la respuesta.
 
@@ -322,7 +443,7 @@ La agenda SHALL ofrecer una acción `Actualizar` que vuelve a pedir el período 
 #### Scenario: Cambio hecho por otro usuario
 - **GIVEN** dada una agenda con un turno en pantalla que otro usuario canceló
 - **WHEN** cuando se elige `Actualizar`
-- **THEN** entonces el turno deja de verse como programado
+- **THEN** entonces el turno no se ve en la agenda, porque los cancelados están ocultos
 
 ### Requirement: Accesibilidad de la agenda
 Cada columna MUST tener un nombre accesible con su día o recurso y sus elementos MUST estar en orden cronológico en el documento. Los turnos MUST poder elegirse con el teclado. Los controles de vista, filtros y navegación MUST tener etiqueta.
@@ -340,3 +461,13 @@ Cada columna MUST tener un nombre accesible con su día o recurso y sus elemento
 #### Scenario: Filtros etiquetados
 - **WHEN** cuando la recepcionista busca los filtros por su etiqueta
 - **THEN** entonces encuentra `Profesional`, `Sillón` y `Mostrar cancelados`
+
+#### Scenario: Nombre de las columnas de la semana
+- **GIVEN** dada la vista semanal del 2026-11-09 al 2026-11-15
+- **WHEN** cuando se buscan las columnas por su nombre accesible
+- **THEN** entonces se encuentran `Lunes 09/11` y `Domingo 15/11`
+
+#### Scenario: Nombre de las columnas del día
+- **GIVEN** dada la vista diaria con la columna de "Ana Ficticia"
+- **WHEN** cuando se busca la columna por su nombre accesible
+- **THEN** entonces se encuentra `Ficticia, Ana`

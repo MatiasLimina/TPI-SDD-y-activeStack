@@ -14,7 +14,7 @@ El backend de la agenda y de los turnos está completo (C-03, C-04, C-05, C-07, 
 - **Spec modificado**: `/agenda` deja de ser una pantalla provisoria en `frontend-sesion`.
 - **Primer CSS del frontend**: C-14 no tiene estilos y la grilla los necesita (design D5).
 
-Las decisiones que la KB no fija están marcadas **[A confirmar]** en `design.md`, con la opción recomendada y sus trade-offs. El Apply no empieza hasta que el usuario las apruebe (tarea 1.2); se registran como **DD-34**.
+Las decisiones que la KB no fija figuran en `design.md` con sus trade-offs. El usuario las aprobó el 2026-11-10 con la opción recomendada, junto con las respuestas P1 a P8 de la revisión de escenarios (tarea 1.2); se registran como **DD-34**.
 
 ## Non-goals
 
