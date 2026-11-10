@@ -84,7 +84,7 @@ function Contenido({
 
   async function enviar(evento: FormEvent) {
     evento.preventDefault();
-    if (envio.enviando) return;
+    if (envio.enviando || envio.turnoObsoleto) return;
     setSinCambios(false);
     // Primero los obligatorios y después la comparación (P9)
     const faltantes: ErroresPorCampo = {};
@@ -213,7 +213,7 @@ function Contenido({
           />
         )}
       </Campo>
-      <button type="submit" disabled={envio.enviando}>
+      <button type="submit" disabled={envio.enviando || envio.turnoObsoleto}>
         Reprogramar
       </button>
       <button type="button" onClick={alCerrar}>

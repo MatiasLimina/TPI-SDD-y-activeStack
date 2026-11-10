@@ -379,3 +379,104 @@ describe("Formulario de reprogramación: solo lo que cambió", () => {
     expect(alReprogramado).toHaveBeenCalledTimes(1);
   });
 });
+
+function rechazar(api: ApiFalsa, status: number, detail: unknown) {
+  api.responder(`PATCH /turnos/${ID_TURNO}/reprogramar`, {
+    status,
+    cuerpo: { detail },
+  });
+}
+
+describe("Formulario de reprogramación: el turno cambió", () => {
+  it.each([
+    [409, "turno_ya_cancelado", "Este turno ya fue cancelado."],
+    [409, "turno_ya_iniciado", "Este turno ya inició: no se puede modificar."],
+    [404, "turno_inexistente", "Este turno ya no existe."],
+  ])(
+    "%i %s explica el motivo, deshabilita el envío y relee la agenda",
+    async (status, codigo, texto) => {
+      const api = instalarApiFalsa();
+      rechazar(api, status, { codigo, mensaje: "técnico" });
+      const { user, alReleerAgenda } = montar();
+      cambiar("Hora", "15:00");
+
+      await enviar(user);
+
+      expect(await screen.findByRole("alert")).toHaveTextContent(texto);
+      expect(
+        screen.getByRole("button", { name: "Reprogramar" }),
+      ).toBeDisabled();
+      expect(screen.getByRole("button", { name: "Cerrar" })).toBeEnabled();
+      expect(alReleerAgenda).toHaveBeenCalledTimes(1);
+      expect(pedidosPatch(api)).toHaveLength(1);
+    },
+  );
+
+  it("última escritura gana: el PATCH lleva solo el inicio aunque otro usuario cambió el profesional", async () => {
+    const api = apiConPatchExitoso();
+    const { user, alReprogramado } = montar();
+
+    cambiar("Hora", "15:00");
+    await enviar(user);
+
+    expect(cuerpoDelPatch(api)).toEqual({
+      inicio: "2026-11-12T15:00:00-03:00",
+    });
+    expect(alReprogramado).toHaveBeenCalledTimes(1);
+  });
+
+  it.each([
+    [
+      "paciente",
+      "El paciente está inactivo: este turno no se puede reprogramar, pero sí cancelar.",
+    ],
+    [
+      "prestacion",
+      "La prestación está inactiva: este turno no se puede reprogramar, pero sí cancelar.",
+    ],
+  ])(
+    "%s inactivo indica que solo se puede cancelar",
+    async (referencia, texto) => {
+      const api = instalarApiFalsa();
+      rechazar(api, 422, {
+        codigo: "referencia_invalida",
+        referencia,
+        motivo: "inactiva",
+      });
+      const { user } = montar();
+      cambiar("Hora", "15:00");
+
+      await enviar(user);
+
+      expect(await screen.findByRole("alert")).toHaveTextContent(texto);
+      expect(screen.getByRole("button", { name: "Reprogramar" })).toBeEnabled();
+    },
+  );
+
+  it("un valor rechazado que es el actual del turno se sigue ofreciendo al elegir otro", async () => {
+    const api = instalarApiFalsa();
+    rechazar(api, 422, {
+      codigo: "referencia_invalida",
+      referencia: "profesional",
+      motivo: "inactiva",
+    });
+    const { user } = montar({
+      catalogos: {
+        ...CATALOGOS,
+        profesionales: [profesional({ activo: false }), LUIS],
+      },
+    });
+    cambiar("Hora", "15:00");
+    await enviar(user);
+    await screen.findByText("El profesional está inactivo.");
+
+    await user.selectOptions(
+      screen.getByLabelText("Profesional"),
+      "Inventado, Luis",
+    );
+
+    expect(
+      screen.getByRole("option", { name: "Ficticia, Ana (inactivo)" }),
+    ).toBeInTheDocument();
+  });
+});
