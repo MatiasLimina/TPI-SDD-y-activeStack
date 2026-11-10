@@ -51,6 +51,9 @@ export default function PaginaAgenda() {
     if (errorCatalogos !== null) reintentar();
     if (agenda.error !== null) agenda.recargar();
   };
+  const nombres = crearNombres(
+    catalogos ?? { profesionales: [], sillones: [], prestaciones: [] },
+  );
   const columnas =
     datos === null || catalogos === null
       ? []
@@ -93,13 +96,14 @@ export default function PaginaAgenda() {
         <GrillaAgenda
           columnas={columnas}
           vista={vista}
-          nombres={crearNombres(catalogos)}
+          nombres={nombres}
           alElegirTurno={(turno) => setDetalleId(turno.id)}
         />
       )}
       {esRecepcionista && <button type="button">Nuevo turno</button>}
       <DetalleTurno
         turno={turnoDetalle}
+        nombres={nombres}
         puedeOperar={esRecepcionista}
         alCerrar={() => setDetalleId(null)}
         alReprogramar={() => setDetalleId(null)}

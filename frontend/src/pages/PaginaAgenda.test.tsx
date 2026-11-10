@@ -1525,3 +1525,159 @@ describe("Operaciones solo para la recepcionista", () => {
     ).toBeInTheDocument();
   });
 });
+
+describe("Detalle de un turno", () => {
+  it("muestra horario, paciente, prestación, profesional, sillón y estado", async () => {
+    conSesion();
+    cargar(instalarApiFalsa(), { turnos: [turno()] });
+    const { user } = renderizarApp("/agenda?fecha=2026-11-09");
+
+    await user.click(
+      await screen.findByRole("button", { name: /Imaginaria, Carla/ }),
+    );
+
+    const detalle = await screen.findByRole("dialog", {
+      name: "Detalle del turno",
+    });
+    expect(
+      within(detalle).getByText("09/11 10:00 – 10:45"),
+    ).toBeInTheDocument();
+    expect(within(detalle).getByText("Imaginaria, Carla")).toBeInTheDocument();
+    expect(within(detalle).getByText("Limpieza")).toBeInTheDocument();
+    expect(within(detalle).getByText("Ficticia, Ana")).toBeInTheDocument();
+    expect(within(detalle).getByText("Sillón 1")).toBeInTheDocument();
+    expect(within(detalle).getByText("Programado")).toBeInTheDocument();
+  });
+
+  it("un turno cancelado muestra el estado Cancelado y el motivo", async () => {
+    conSesion();
+    cargar(instalarApiFalsa(), {
+      turnos: [turno({ estado: "cancelado", motivo_cancelacion: "Viaje" })],
+    });
+    const { user } = renderizarApp("/agenda?fecha=2026-11-09&cancelados=1");
+
+    await user.click(
+      await screen.findByRole("button", { name: /Imaginaria, Carla/ }),
+    );
+
+    const detalle = await screen.findByRole("dialog");
+    expect(within(detalle).getByText("Cancelado")).toBeInTheDocument();
+    expect(within(detalle).getByText("Viaje")).toBeInTheDocument();
+  });
+
+  it("un turno sin sillón muestra Sin sillón", async () => {
+    conSesion();
+    cargar(instalarApiFalsa(), { turnos: [turno({ sillon_id: null })] });
+    const { user } = renderizarApp("/agenda?fecha=2026-11-09");
+
+    await user.click(
+      await screen.findByRole("button", { name: /Imaginaria, Carla/ }),
+    );
+
+    expect(
+      within(await screen.findByRole("dialog")).getByText("Sin sillón"),
+    ).toBeInTheDocument();
+  });
+
+  it("no muestra documento, teléfono ni email del paciente aunque la API los enviara", async () => {
+    conSesion();
+    const conDatosDePaciente = turno();
+    Object.assign(conDatosDePaciente.paciente, {
+      documento: "00000104",
+      telefono: "1100000000",
+      email: "carla@example.com",
+    });
+    cargar(instalarApiFalsa(), { turnos: [conDatosDePaciente] });
+    const { user } = renderizarApp("/agenda?fecha=2026-11-09");
+
+    await user.click(
+      await screen.findByRole("button", { name: /Imaginaria, Carla/ }),
+    );
+
+    await screen.findByRole("dialog");
+    expect(
+      screen.queryByText(/00000104|1100000000|carla@example.com/),
+    ).not.toBeInTheDocument();
+  });
+
+  it("Cerrar deja la agenda sin diálogo abierto", async () => {
+    conSesion();
+    cargar(instalarApiFalsa(), { turnos: [turno()] });
+    const { user } = renderizarApp("/agenda?fecha=2026-11-09");
+    await user.click(
+      await screen.findByRole("button", { name: /Imaginaria, Carla/ }),
+    );
+    await screen.findByRole("dialog");
+
+    await user.click(screen.getByRole("button", { name: "Cerrar" }));
+
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+  });
+});
+
+describe("Accesibilidad de la agenda", () => {
+  it("un turno se elige con el teclado: con el foco en el turno, Enter abre su detalle", async () => {
+    conSesion();
+    cargar(instalarApiFalsa(), { turnos: [turno()] });
+    const { user } = renderizarApp("/agenda?fecha=2026-11-09");
+    const boton = await screen.findByRole("button", {
+      name: /Imaginaria, Carla/,
+    });
+
+    boton.focus();
+    await user.keyboard("{Enter}");
+
+    expect(
+      await screen.findByRole("dialog", { name: "Detalle del turno" }),
+    ).toBeInTheDocument();
+  });
+
+  it("los elementos de una columna están en orden cronológico en el documento", async () => {
+    conSesion();
+    cargar(instalarApiFalsa(), {
+      turnos: [
+        turno({
+          id: "t11",
+          paciente: BRUNO,
+          inicio: "2026-11-09T11:00:00-03:00",
+          fin: "2026-11-09T11:30:00-03:00",
+        }),
+        turno({
+          id: "t09",
+          inicio: "2026-11-09T09:00:00-03:00",
+          fin: "2026-11-09T09:30:00-03:00",
+        }),
+      ],
+    });
+
+    renderizarApp("/agenda?fecha=2026-11-09");
+
+    const ana = await screen.findByRole("region", { name: "Ficticia, Ana" });
+    const botones = within(ana).getAllByRole("button");
+    expect(botones[0]).toHaveTextContent("Imaginaria, Carla");
+    expect(botones[1]).toHaveTextContent("Ejemplo, Bruno");
+  });
+
+  it("los filtros y la casilla tienen etiqueta", async () => {
+    conSesion();
+    cargar(instalarApiFalsa());
+
+    renderizarApp("/agenda?fecha=2026-11-09");
+
+    expect(await screen.findByLabelText("Profesional")).toBeInTheDocument();
+    expect(screen.getByLabelText("Sillón")).toBeInTheDocument();
+    expect(screen.getByLabelText("Mostrar cancelados")).toBeInTheDocument();
+  });
+
+  it("los controles de vista y de período tienen nombre accesible", async () => {
+    conSesion();
+    cargar(instalarApiFalsa());
+
+    renderizarApp("/agenda?fecha=2026-11-09");
+
+    expect(
+      await screen.findByRole("group", { name: "Vista" }),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("group", { name: "Período" })).toBeInTheDocument();
+  });
+});
