@@ -1,13 +1,21 @@
-import { act, screen, waitFor, within } from "@testing-library/react";
+import {
+  act,
+  fireEvent,
+  screen,
+  waitFor,
+  within,
+} from "@testing-library/react";
 
 import { CLAVE_TOKEN } from "../features/sesion/almacenamiento";
 import { instalarApiFalsa, type ApiFalsa } from "../test/apiFalsa";
 import {
   bloqueo,
   ID_ANA,
+  ID_LIMPIEZA,
   ID_LUIS,
   ID_SILLON_1,
   ID_SILLON_2,
+  paciente,
   prestacion,
   profesional,
   sillon,
@@ -1679,5 +1687,320 @@ describe("Accesibilidad de la agenda", () => {
       await screen.findByRole("group", { name: "Vista" }),
     ).toBeInTheDocument();
     expect(screen.getByRole("group", { name: "Período" })).toBeInTheDocument();
+  });
+});
+
+type Usuario = ReturnType<typeof renderizarApp>["user"];
+
+async function abrirNuevoTurno(user: Usuario) {
+  await esperarCarga();
+  await user.click(screen.getByRole("button", { name: "Nuevo turno" }));
+  return await screen.findByRole("dialog", { name: "Nuevo turno" });
+}
+
+/** Completa el formulario de alta con todo lo obligatorio, para el 12/11 a las 10:00. */
+async function llenarAlta(user: Usuario, api: ApiFalsa, dialogo: HTMLElement) {
+  api.responder("GET /pacientes", { status: 200, cuerpo: [paciente()] });
+  await user.type(within(dialogo).getByLabelText("Buscar paciente"), "car");
+  await user.click(
+    await within(dialogo).findByRole("button", { name: /Imaginaria, Carla/ }),
+  );
+  await user.selectOptions(
+    within(dialogo).getByLabelText("Profesional"),
+    "Ficticia, Ana",
+  );
+  await user.selectOptions(
+    within(dialogo).getByLabelText("Prestación"),
+    "Limpieza",
+  );
+  await user.selectOptions(
+    within(dialogo).getByLabelText("Sillón"),
+    "Sillón 1",
+  );
+  fireEvent.change(within(dialogo).getByLabelText("Fecha"), {
+    target: { value: "2026-11-12" },
+  });
+  fireEvent.change(within(dialogo).getByLabelText("Hora"), {
+    target: { value: "10:00" },
+  });
+}
+
+function enviarAlta(user: Usuario, dialogo: HTMLElement) {
+  return user.click(
+    within(dialogo).getByRole("button", { name: "Crear turno" }),
+  );
+}
+
+describe("Alta de un turno desde la agenda", () => {
+  it("un alta exitosa hace un POST, cierra el formulario, relee la agenda y confirma con día y hora", async () => {
+    conSesion();
+    const api = instalarApiFalsa();
+    cargar(api);
+    api.responder("POST /turnos", { status: 201, cuerpo: {} });
+    const { user } = renderizarApp("/agenda?fecha=2026-11-12");
+    const dialogo = await abrirNuevoTurno(user);
+    await llenarAlta(user, api, dialogo);
+    const lecturasAntes = api.pedidos("GET /turnos").length;
+
+    await enviarAlta(user, dialogo);
+
+    expect(
+      await screen.findByText("Turno creado para el 12/11 a las 10:00."),
+    ).toBeInTheDocument();
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    expect(api.pedidos("POST /turnos")).toHaveLength(1);
+    expect(api.pedidos("GET /turnos")).toHaveLength(lecturasAntes + 1);
+  });
+
+  it("no salta a la fecha del turno: la agenda sigue en el período en curso", async () => {
+    conSesion();
+    const api = instalarApiFalsa();
+    cargar(api);
+    api.responder("POST /turnos", { status: 201, cuerpo: {} });
+    const { user } = renderizarApp("/agenda?fecha=2026-11-09");
+    const dialogo = await abrirNuevoTurno(user);
+    await llenarAlta(user, api, dialogo);
+
+    await enviarAlta(user, dialogo);
+
+    await screen.findByText("Turno creado para el 12/11 a las 10:00.");
+    expect(screen.getByTestId("busqueda").textContent).toBe(
+      "?fecha=2026-11-09",
+    );
+  });
+
+  it("precarga la fecha de la agenda y el profesional del filtro", async () => {
+    conSesion();
+    const api = instalarApiFalsa();
+    cargar(api);
+    const { user } = renderizarApp(
+      "/agenda?fecha=2026-11-12&profesional=" + ID_ANA,
+    );
+    const dialogo = await abrirNuevoTurno(user);
+
+    expect(within(dialogo).getByLabelText("Fecha")).toHaveValue("2026-11-12");
+    expect(within(dialogo).getByLabelText("Profesional")).toHaveValue(ID_ANA);
+  });
+
+  it("con un POST sin responder el envío queda deshabilitado y no se hace otro", async () => {
+    conSesion();
+    const api = instalarApiFalsa();
+    cargar(api);
+    api.pendiente("POST /turnos");
+    const { user } = renderizarApp("/agenda?fecha=2026-11-12");
+    const dialogo = await abrirNuevoTurno(user);
+    await llenarAlta(user, api, dialogo);
+
+    await enviarAlta(user, dialogo);
+    const boton = within(dialogo).getByRole("button", { name: "Crear turno" });
+    await user.click(boton);
+
+    expect(boton).toBeDisabled();
+    expect(api.pedidos("POST /turnos")).toHaveLength(1);
+  });
+
+  it("si la relectura falla después del alta, el alta sigue confirmada y se ven el error y los datos anteriores", async () => {
+    conSesion();
+    const api = instalarApiFalsa();
+    cargar(api, { turnos: [turno({ paciente: BRUNO, id: "previo" })] });
+    api.responder("POST /turnos", { status: 201, cuerpo: {} });
+    const { user } = renderizarApp("/agenda?fecha=2026-11-09");
+    const dialogo = await abrirNuevoTurno(user);
+    await screen.findByText("Ejemplo, Bruno");
+    await llenarAlta(user, api, dialogo);
+    api.responder("GET /turnos", { red: true });
+
+    await enviarAlta(user, dialogo);
+
+    expect(
+      await screen.findByText("Turno creado para el 12/11 a las 10:00."),
+    ).toBeInTheDocument();
+    expect(
+      await screen.findByText("No se pudo conectar con el servidor."),
+    ).toBeInTheDocument();
+    expect(screen.getByText("Ejemplo, Bruno")).toBeInTheDocument();
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+  });
+
+  it("una lectura vieja del mismo período que llega después de la relectura no pisa el turno creado", async () => {
+    conSesion();
+    const api = instalarApiFalsa();
+    cargar(api);
+    const lecturaVieja = api.pendiente("GET /turnos");
+    api.responder("POST /turnos", { status: 201, cuerpo: {} });
+    const { user } = renderizarApp("/agenda?fecha=2026-11-09");
+    // Con la lectura inicial sin responder, el alta ya puede hacerse: los catálogos cargaron
+    await waitFor(() =>
+      expect(
+        screen.getByRole("button", { name: "Nuevo turno" }),
+      ).toBeInTheDocument(),
+    );
+    await user.click(screen.getByRole("button", { name: "Nuevo turno" }));
+    const dialogo = await screen.findByRole("dialog", { name: "Nuevo turno" });
+    await llenarAlta(user, api, dialogo);
+    api.responder("GET /turnos", {
+      status: 200,
+      cuerpo: {
+        turnos: [turno({ paciente: BRUNO, id: "creado" })],
+        bloqueos: [],
+      },
+    });
+
+    await enviarAlta(user, dialogo);
+    expect(await screen.findByText("Ejemplo, Bruno")).toBeInTheDocument();
+    await act(async () => {
+      lecturaVieja.resolver(SIN_ELEMENTOS);
+    });
+
+    expect(screen.getByText("Ejemplo, Bruno")).toBeInTheDocument();
+    expect(screen.queryByText(VACIO)).not.toBeInTheDocument();
+  });
+});
+
+describe("Errores del alta que cambian la agenda", () => {
+  it("un 409 solapamiento conserva todos los datos, muestra el conflicto y relee la agenda", async () => {
+    conSesion();
+    const api = instalarApiFalsa();
+    cargar(api);
+    api.responder("POST /turnos", {
+      status: 409,
+      cuerpo: {
+        detail: {
+          codigo: "solapamiento",
+          recursos: ["profesional", "paciente"],
+        },
+      },
+    });
+    const { user } = renderizarApp("/agenda?fecha=2026-11-12");
+    const dialogo = await abrirNuevoTurno(user);
+    await llenarAlta(user, api, dialogo);
+    fireEvent.change(within(dialogo).getByLabelText("Duración"), {
+      target: { value: "60" },
+    });
+    const lecturasAntes = api.pedidos("GET /turnos").length;
+
+    await enviarAlta(user, dialogo);
+
+    expect(await within(dialogo).findByRole("alert")).toHaveTextContent(
+      "Ese horario ya está ocupado para el profesional y el paciente.",
+    );
+    expect(
+      screen.getByRole("dialog", { name: "Nuevo turno" }),
+    ).toBeInTheDocument();
+    expect(within(dialogo).getByText("Imaginaria, Carla")).toBeInTheDocument();
+    expect(within(dialogo).getByLabelText("Profesional")).toHaveValue(ID_ANA);
+    expect(within(dialogo).getByLabelText("Prestación")).toHaveValue(
+      ID_LIMPIEZA,
+    );
+    expect(within(dialogo).getByLabelText("Sillón")).toHaveValue(ID_SILLON_1);
+    expect(within(dialogo).getByLabelText("Fecha")).toHaveValue("2026-11-12");
+    expect(within(dialogo).getByLabelText("Hora")).toHaveValue("10:00");
+    expect(within(dialogo).getByLabelText("Duración")).toHaveValue(60);
+    await waitFor(() =>
+      expect(api.pedidos("GET /turnos")).toHaveLength(lecturasAntes + 1),
+    );
+  });
+
+  it("un turno_en_bloqueo se muestra como error general y relee la agenda", async () => {
+    conSesion();
+    const api = instalarApiFalsa();
+    cargar(api);
+    api.responder("POST /turnos", {
+      status: 422,
+      cuerpo: { detail: { codigo: "turno_en_bloqueo", mensaje: "técnico" } },
+    });
+    const { user } = renderizarApp("/agenda?fecha=2026-11-12");
+    const dialogo = await abrirNuevoTurno(user);
+    await llenarAlta(user, api, dialogo);
+    const lecturasAntes = api.pedidos("GET /turnos").length;
+
+    await enviarAlta(user, dialogo);
+
+    expect(await within(dialogo).findByRole("alert")).toHaveTextContent(
+      "El turno se superpone con un bloqueo de la agenda del profesional.",
+    );
+    await waitFor(() =>
+      expect(api.pedidos("GET /turnos")).toHaveLength(lecturasAntes + 1),
+    );
+  });
+
+  it("corregir y reenviar con éxito hace un segundo POST y cierra el formulario", async () => {
+    conSesion();
+    const api = instalarApiFalsa();
+    cargar(api);
+    let intentos = 0;
+    api.responder("POST /turnos", () => {
+      intentos += 1;
+      return intentos === 1
+        ? {
+            status: 409,
+            cuerpo: {
+              detail: { codigo: "solapamiento", recursos: ["profesional"] },
+            },
+          }
+        : { status: 201, cuerpo: {} };
+    });
+    const { user } = renderizarApp("/agenda?fecha=2026-11-12");
+    const dialogo = await abrirNuevoTurno(user);
+    await llenarAlta(user, api, dialogo);
+    await enviarAlta(user, dialogo);
+    await within(dialogo).findByRole("alert");
+
+    fireEvent.change(within(dialogo).getByLabelText("Hora"), {
+      target: { value: "11:00" },
+    });
+    await enviarAlta(user, dialogo);
+
+    expect(
+      await screen.findByText("Turno creado para el 12/11 a las 11:00."),
+    ).toBeInTheDocument();
+    expect(api.pedidos("POST /turnos")).toHaveLength(2);
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+  });
+
+  it("un reenvío con otro error borra el anterior", async () => {
+    conSesion();
+    const api = instalarApiFalsa();
+    cargar(api);
+    let intentos = 0;
+    api.responder("POST /turnos", () => {
+      intentos += 1;
+      return intentos === 1
+        ? {
+            status: 409,
+            cuerpo: {
+              detail: { codigo: "solapamiento", recursos: ["profesional"] },
+            },
+          }
+        : {
+            status: 422,
+            cuerpo: {
+              detail: { codigo: "fuera_de_horario", mensaje: "técnico" },
+            },
+          };
+    });
+    const { user } = renderizarApp("/agenda?fecha=2026-11-12");
+    const dialogo = await abrirNuevoTurno(user);
+    await llenarAlta(user, api, dialogo);
+    await enviarAlta(user, dialogo);
+    await within(dialogo).findByText(
+      "Ese horario ya está ocupado para el profesional.",
+    );
+
+    fireEvent.change(within(dialogo).getByLabelText("Hora"), {
+      target: { value: "23:00" },
+    });
+    await enviarAlta(user, dialogo);
+
+    expect(
+      await within(dialogo).findByText(
+        "El turno queda fuera del horario de atención del profesional.",
+      ),
+    ).toBeInTheDocument();
+    expect(
+      within(dialogo).queryByText(
+        "Ese horario ya está ocupado para el profesional.",
+      ),
+    ).not.toBeInTheDocument();
   });
 });

@@ -3,6 +3,7 @@ import { useSearchParams } from "react-router";
 
 import { BarraAgenda } from "../features/agenda/BarraAgenda";
 
+import { FormularioNuevoTurno } from "../features/turnos/FormularioNuevoTurno";
 import { DetalleTurno } from "../features/agenda/DetalleTurno";
 import { GrillaAgenda } from "../features/agenda/GrillaAgenda";
 import { armarColumnas, contarElementos } from "../features/agenda/grilla";
@@ -16,7 +17,11 @@ import {
   type VistaAgenda,
 } from "../features/agenda/vistaAgenda";
 import { useSesion } from "../features/sesion/ProveedorSesion";
-import { hoyLocal } from "../shared/tiempo/zonaConsultorio";
+import {
+  diaYMes,
+  hoyLocal,
+  instanteALocal,
+} from "../shared/tiempo/zonaConsultorio";
 
 const TEXTO_VACIO = "No hay turnos ni bloqueos en este período.";
 const TEXTO_SOLO_CANCELADOS =
@@ -42,6 +47,8 @@ export default function PaginaAgenda() {
   const error = errorCatalogos ?? agenda.error;
   const sinDatos = datos === null || catalogos === null;
   const conteo = datos === null ? null : contarElementos(datos, vista);
+  const [nuevoAbierto, setNuevoAbierto] = useState(false);
+  const [aviso, setAviso] = useState<string | null>(null);
   const [detalleId, setDetalleId] = useState<string | null>(null);
   const turnoDetalle = datos?.turnos.find((t) => t.id === detalleId) ?? null;
   const esRecepcionista = rol === "recepcionista";
@@ -100,7 +107,31 @@ export default function PaginaAgenda() {
           alElegirTurno={(turno) => setDetalleId(turno.id)}
         />
       )}
-      {esRecepcionista && <button type="button">Nuevo turno</button>}
+      {aviso !== null && <p role="status">{aviso}</p>}
+      {esRecepcionista && (
+        <button type="button" onClick={() => setNuevoAbierto(true)}>
+          Nuevo turno
+        </button>
+      )}
+      {esRecepcionista && catalogos !== null && (
+        <FormularioNuevoTurno
+          abierto={nuevoAbierto}
+          catalogos={catalogos}
+          fechaInicial={vista.fecha}
+          profesionalInicial={vista.profesionalId}
+          alCrear={(inicio) => {
+            const local = instanteALocal(inicio);
+            setNuevoAbierto(false);
+            setAviso(
+              `Turno creado para el ${diaYMes(local.fecha)} a las ${local.hora}.`,
+            );
+            agenda.recargar();
+          }}
+          alCerrar={() => setNuevoAbierto(false)}
+          alReleerCatalogos={() => Promise.resolve(null)}
+          alReleerAgenda={agenda.recargar}
+        />
+      )}
       <DetalleTurno
         turno={turnoDetalle}
         nombres={nombres}
