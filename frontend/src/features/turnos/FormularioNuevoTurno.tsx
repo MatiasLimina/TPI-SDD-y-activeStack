@@ -1,22 +1,21 @@
 import { useState, type FormEvent } from "react";
 
-import { Dialogo } from "../../shared/ui/Dialogo";
 import type { ErrorApi } from "../../shared/api/errorApi";
 import { aInstanteConDesfasaje } from "../../shared/tiempo/zonaConsultorio";
-import type { Catalogos } from "../agenda/useCatalogos";
-import { SelectorPaciente } from "../pacientes/SelectorPaciente";
-import type { PacienteBusqueda } from "../pacientes/tipos";
-import { useClienteApi } from "../sesion/ProveedorSesion";
+import { Dialogo } from "../../shared/ui/Dialogo";
 import {
   nombreProfesional,
   PROFESIONAL_NO_DISPONIBLE,
   SILLON_NO_DISPONIBLE,
 } from "../agenda/grilla";
 import { PRESTACION_NO_DISPONIBLE } from "../agenda/nombres";
+import type { Catalogos } from "../agenda/useCatalogos";
+import { SelectorPaciente } from "../pacientes/SelectorPaciente";
+import type { PacienteBusqueda } from "../pacientes/tipos";
+import { useClienteApi } from "../sesion/ProveedorSesion";
 import { Campo } from "./Campo";
 import { OpcionesRecurso } from "./OpcionesRecurso";
-import { comoErrorApi } from "../agenda/errores";
-import { interpretarErrorTurno, type CampoTurno } from "./erroresTurno";
+import { useEnvioTurno, type ErroresPorCampo } from "./useEnvioTurno";
 
 export interface PropsFormularioNuevoTurno {
   abierto: boolean;
@@ -34,8 +33,6 @@ export interface PropsFormularioNuevoTurno {
 }
 
 const OBLIGATORIO = "Completá este campo.";
-
-type ErroresPorCampo = Partial<Record<CampoTurno, string>>;
 
 /**
  * Alta de un turno en un diálogo modal (D9). El contenido se monta solo con el diálogo
@@ -63,6 +60,7 @@ function Contenido({
   alReleerCatalogos,
 }: PropsFormularioNuevoTurno) {
   const cliente = useClienteApi();
+  const envio = useEnvioTurno("crear", { alReleerAgenda, alReleerCatalogos });
   const activoInicial = catalogos.profesionales.some(
     (p) => p.id === profesionalInicial && p.activo,
   );
@@ -75,32 +73,15 @@ function Contenido({
   const [fecha, setFecha] = useState(fechaInicial);
   const [hora, setHora] = useState("");
   const [duracion, setDuracion] = useState("");
-  const [errores, setErrores] = useState<ErroresPorCampo>({});
-  const [generales, setGenerales] = useState<string[]>([]);
-  // El sillón se muestra aunque el catálogo no lo pida, si la API dijo que hace falta
-  const [sillonForzado, setSillonForzado] = useState(false);
-  // Valor rechazado de cada selector: sigue como opción hasta que se cambie (P5)
-  const [rechazado, setRechazado] = useState<
-    Partial<Record<"profesional" | "prestacion" | "sillon", string>>
-  >({});
-  const [enviando, setEnviando] = useState(false);
 
+  const { errores } = envio;
   const prestacion = catalogos.prestaciones.find((p) => p.id === prestacionId);
-  const mostrarSillon = prestacion?.requiere_sillon === true || sillonForzado;
-
-  /** El valor rechazado se ofrece mientras siga elegido. */
-  function conservar(
-    campo: "profesional" | "prestacion" | "sillon",
-    elegido: string,
-  ): string[] {
-    return rechazado[campo] !== undefined && rechazado[campo] === elegido
-      ? [elegido]
-      : [];
-  }
+  const mostrarSillon =
+    prestacion?.requiere_sillon === true || envio.sillonForzado;
 
   async function enviar(evento: FormEvent) {
     evento.preventDefault();
-    if (enviando) return;
+    if (envio.enviando) return;
     // Solo los obligatorios se comprueban acá: lo demás lo decide la API (D9, P8)
     const faltantes: ErroresPorCampo = {};
     if (paciente === null) faltantes.paciente = "Elegí un paciente.";
@@ -109,59 +90,33 @@ function Contenido({
     if (mostrarSillon && sillonId === "") faltantes.sillon = OBLIGATORIO;
     if (fecha === "") faltantes.fecha = OBLIGATORIO;
     if (hora === "") faltantes.hora = OBLIGATORIO;
-    setErrores(faltantes);
-    setGenerales([]);
-    if (Object.keys(faltantes).length > 0 || paciente === null) return;
+    if (!envio.mostrarObligatorios(faltantes) || paciente === null) return;
 
     const inicio = aInstanteConDesfasaje(fecha, hora);
-    setEnviando(true);
-    try {
-      await cliente.pedir("POST", "/turnos", {
-        profesional_id: profesionalId,
-        paciente_id: paciente.id,
-        prestacion_id: prestacionId,
-        ...(mostrarSillon ? { sillon_id: sillonId } : {}),
-        inicio,
-        ...(duracion.trim() === "" ? {} : { duracion_min: Number(duracion) }),
-      });
-    } catch (causa) {
-      const error = comoErrorApi(causa);
-      const interpretado = interpretarErrorTurno(error, "crear");
-      setErrores(interpretado.porCampo);
-      if (interpretado.porCampo.sillon !== undefined) setSillonForzado(true);
-      const referencia = error.datos.referencia;
-      if (
-        error.codigo === "referencia_invalida" &&
-        (referencia === "profesional" ||
-          referencia === "prestacion" ||
-          referencia === "sillon")
-      )
-        setRechazado({
-          [referencia]: {
-            profesional: profesionalId,
-            prestacion: prestacionId,
-            sillon: sillonId,
-          }[referencia],
-        });
-      setGenerales(interpretado.general === null ? [] : [interpretado.general]);
-      if (interpretado.releerAgenda) alReleerAgenda();
-      setEnviando(false);
-      if (interpretado.releerCatalogos) {
-        const falla = await alReleerCatalogos();
-        // El formulario sigue abierto: la falla se suma como error general (D7, P14)
-        if (falla !== null)
-          setGenerales((anteriores) => [...anteriores, falla.mensaje]);
-      }
-      return;
-    }
-    alCrear(inicio);
+    const exito = await envio.enviar(
+      () =>
+        cliente.pedir("POST", "/turnos", {
+          profesional_id: profesionalId,
+          paciente_id: paciente.id,
+          prestacion_id: prestacionId,
+          ...(mostrarSillon ? { sillon_id: sillonId } : {}),
+          inicio,
+          ...(duracion.trim() === "" ? {} : { duracion_min: Number(duracion) }),
+        }),
+      {
+        profesional: profesionalId,
+        prestacion: prestacionId,
+        sillon: sillonId,
+      },
+    );
+    if (exito) alCrear(inicio);
   }
 
   return (
     <form noValidate onSubmit={(e) => void enviar(e)}>
-      {generales.length > 0 && (
+      {envio.generales.length > 0 && (
         <div role="alert">
-          {generales.map((texto) => (
+          {envio.generales.map((texto) => (
             <p key={texto}>{texto}</p>
           ))}
         </div>
@@ -188,7 +143,7 @@ function Contenido({
               estaActivo={(p) => p.activo}
               nombreDe={nombreProfesional}
               nombreAusente={PROFESIONAL_NO_DISPONIBLE}
-              conservar={conservar("profesional", profesionalId)}
+              conservar={envio.conservar("profesional", profesionalId)}
             />
           </select>
         )}
@@ -206,7 +161,7 @@ function Contenido({
               estaActivo={(p) => p.activa}
               nombreDe={(p) => p.nombre}
               nombreAusente={PRESTACION_NO_DISPONIBLE}
-              conservar={conservar("prestacion", prestacionId)}
+              conservar={envio.conservar("prestacion", prestacionId)}
             />
           </select>
         )}
@@ -222,10 +177,10 @@ function Contenido({
               <option value="">Elegir…</option>
               <OpcionesRecurso
                 catalogo={catalogos.sillones}
-                estaActivo={(x) => x.activo}
-                nombreDe={(x) => x.nombre}
+                estaActivo={(s) => s.activo}
+                nombreDe={(s) => s.nombre}
                 nombreAusente={SILLON_NO_DISPONIBLE}
-                conservar={conservar("sillon", sillonId)}
+                conservar={envio.conservar("sillon", sillonId)}
               />
             </select>
           )}
@@ -273,7 +228,7 @@ function Contenido({
           />
         )}
       </Campo>
-      <button type="submit" disabled={enviando}>
+      <button type="submit" disabled={envio.enviando}>
         Crear turno
       </button>
       <button type="button" onClick={alCerrar}>
