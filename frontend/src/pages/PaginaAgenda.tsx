@@ -17,19 +17,40 @@ export default function PaginaAgenda() {
   const rol = sesion?.claims.rol ?? "odontologo";
   const vista = leerVista(parametros, rol, hoyLocal());
   const { desde, hasta } = aRango(vista);
-  const { datos } = useAgenda({
+  const agenda = useAgenda({
     desde,
     hasta,
     profesionalId: vista.profesionalId,
     sillonId: vista.sillonId,
   });
-  const { catalogos } = useCatalogos();
+  const { catalogos, error: errorCatalogos, reintentar } = useCatalogos();
+  const { datos } = agenda;
 
+  // La carga inicial de catálogos o la lectura de la agenda sin datos previos ofrecen Reintentar
+  const error = errorCatalogos ?? agenda.error;
+  const sinDatos = datos === null || catalogos === null;
   const conteo = datos === null ? null : contarElementos(datos, vista);
+  const reintentarTodo = () => {
+    if (errorCatalogos !== null) reintentar();
+    if (agenda.error !== null) agenda.recargar();
+  };
   return (
     <main>
       <h1>Agenda</h1>
-      {(datos === null || catalogos === null) && <p>Cargando agenda…</p>}
+      <button type="button" onClick={agenda.recargar}>
+        Actualizar
+      </button>
+      {error !== null && (
+        <div role="alert">
+          <p>{error.mensaje}</p>
+          {sinDatos && (
+            <button type="button" onClick={reintentarTodo}>
+              Reintentar
+            </button>
+          )}
+        </div>
+      )}
+      {sinDatos && error === null && <p>Cargando agenda…</p>}
       {conteo !== null && catalogos !== null && conteo.visibles === 0 && (
         <p>
           {conteo.canceladosOcultos > 0 ? TEXTO_SOLO_CANCELADOS : TEXTO_VACIO}

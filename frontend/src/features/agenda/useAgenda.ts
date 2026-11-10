@@ -34,6 +34,8 @@ export function useAgenda(consulta: ConsultaAgenda): {
   datos: RespuestaAgenda | null;
   error: ErrorApi | null;
   cargando: boolean;
+  /** Vuelve a pedir el mismo período, manteniendo a la vista los datos actuales (D13). */
+  recargar: () => void;
 } {
   const cliente = useClienteApi();
   const clave = rutaDeAgenda(consulta);
@@ -44,6 +46,10 @@ export function useAgenda(consulta: ConsultaAgenda): {
   const [fallo, setFallo] = useState<{ clave: string; error: ErrorApi } | null>(
     null,
   );
+
+  // Cambiar `version` repite el efecto con la misma clave: invalida el pedido en curso, así
+  // una lectura vieja del mismo período no pisa al turno recién creado
+  const [version, setVersion] = useState(0);
 
   useEffect(() => {
     let vigente = true;
@@ -60,9 +66,17 @@ export function useAgenda(consulta: ConsultaAgenda): {
     return () => {
       vigente = false;
     };
-  }, [cliente, clave]);
+  }, [cliente, clave, version]);
 
   const datos = recibido?.clave === clave ? recibido.datos : null;
   const error = fallo?.clave === clave ? fallo.error : null;
-  return { datos, error, cargando: datos === null && error === null };
+  return {
+    datos,
+    error,
+    cargando: datos === null && error === null,
+    recargar: () => {
+      setFallo(null);
+      setVersion((anterior) => anterior + 1);
+    },
+  };
 }
