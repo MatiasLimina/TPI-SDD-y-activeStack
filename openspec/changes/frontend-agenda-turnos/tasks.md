@@ -54,7 +54,7 @@
 
 ## 8. Selector de paciente (D8)
 
-- [ ] 8.1 RED→GREEN: `src/features/pacientes/SelectorPaciente.test.tsx`, con fake timers sin `shouldAdvanceTime` — sin pedido a los 299 ms y único pedido a los 300 ms con `q` y `limite=20`, menos de 2 caracteres sin pedido, ` pe ` envía `q=pe`, `maxLength` 100, codificación de caracteres especiales (requirement "Búsqueda de pacientes"); verificar con `npm test -- SelectorPaciente`
+- [x] 8.1 RED→GREEN: `src/features/pacientes/SelectorPaciente.test.tsx`, con fake timers sin `shouldAdvanceTime` — sin pedido a los 299 ms y único pedido a los 300 ms con `q` y `limite=20`, menos de 2 caracteres sin pedido, ` pe ` envía `q=pe`, `maxLength` 100, codificación de caracteres especiales (requirement "Búsqueda de pacientes"); verificar con `npm test -- SelectorPaciente`
 - [ ] 8.2 RED→GREEN: mismo archivo — elegir y cambiar paciente, inactivo no elegible, sin resultados, 20 resultados, búsquedas fuera de orden, error de red, elección con Tab y Enter (requirements "Resultados de la búsqueda de pacientes" y "Accesibilidad de los formularios"); verificar con `npm test -- SelectorPaciente`
 
 ## 9. Formularios de turno (D9, D10, D11, D13)
