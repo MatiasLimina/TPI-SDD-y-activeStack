@@ -1,4 +1,4 @@
-import { useEffect, useId, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 
 import type { ErrorApi } from "../../shared/api/errorApi";
 import { comoErrorApi } from "../agenda/errores";
@@ -38,6 +38,10 @@ export function SelectorPaciente({
   const idError = useId();
   const [texto, setTexto] = useState("");
   const [respuesta, setRespuesta] = useState<Respuesta | null>(null);
+  const campo = useRef<HTMLInputElement>(null);
+  const cambiar = useRef<HTMLButtonElement>(null);
+  /** El botón o el campo que se desmontó tenía el foco: se recupera al cambiar de modo. */
+  const conservarFoco = useRef(false);
   const consulta = texto.trim();
   const muyCorto = consulta.length > 0 && consulta.length < MINIMO_CARACTERES;
 
@@ -65,6 +69,15 @@ export function SelectorPaciente({
     };
   }, [cliente, consulta]);
 
+  const hayElegido = elegido !== null;
+  // Al elegir, el botón del resultado se desmonta y el foco caería al body: pasa al control
+  // siguiente (`Cambiar paciente`); al cambiar de paciente, vuelve al campo. No actúa al montar
+  useEffect(() => {
+    if (!conservarFoco.current) return;
+    conservarFoco.current = false;
+    (hayElegido ? cambiar.current : campo.current)?.focus();
+  }, [hayElegido]);
+
   if (elegido !== null) {
     return (
       <div>
@@ -72,8 +85,12 @@ export function SelectorPaciente({
           {elegido.apellido}, {elegido.nombre}
         </p>
         <button
+          ref={cambiar}
           type="button"
-          onClick={alCambiar}
+          onClick={() => {
+            conservarFoco.current = true;
+            alCambiar();
+          }}
           aria-describedby={error !== undefined ? idError : undefined}
         >
           Cambiar paciente
@@ -90,6 +107,7 @@ export function SelectorPaciente({
       <label>
         Buscar paciente
         <input
+          ref={campo}
           type="search"
           value={texto}
           maxLength={MAXIMO_ENTRADA}
@@ -112,7 +130,13 @@ export function SelectorPaciente({
         <p role="alert">{actual.error.mensaje}</p>
       )}
       {actual !== null && "pacientes" in actual && (
-        <Resultados pacientes={actual.pacientes} alElegir={alElegir} />
+        <Resultados
+          pacientes={actual.pacientes}
+          alElegir={(paciente) => {
+            conservarFoco.current = true;
+            alElegir(paciente);
+          }}
+        />
       )}
     </div>
   );

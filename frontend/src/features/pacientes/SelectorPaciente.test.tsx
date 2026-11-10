@@ -173,6 +173,42 @@ describe("Resultados de la búsqueda de pacientes", () => {
     expect(screen.getByLabelText("Buscar paciente")).toBeInTheDocument();
   });
 
+  it("tras elegir un paciente con Enter, el foco pasa a Cambiar paciente y no se pierde en el body", async () => {
+    const api = instalarApiFalsa();
+    api.responder("GET /pacientes", { status: 200, cuerpo: [CARLA] });
+    const { campo } = montar();
+    await buscar(campo);
+    const resultado = screen.getByRole("button", { name: /Imaginaria, Carla/ });
+    resultado.focus();
+
+    fireEvent.click(resultado);
+
+    expect(document.activeElement).toBe(
+      screen.getByRole("button", { name: "Cambiar paciente" }),
+    );
+  });
+
+  it("tras Cambiar paciente, el foco pasa al campo de búsqueda", async () => {
+    const api = instalarApiFalsa();
+    api.responder("GET /pacientes", { status: 200, cuerpo: [CARLA] });
+    const { campo } = montar();
+    await buscar(campo);
+    fireEvent.click(screen.getByRole("button", { name: /Imaginaria, Carla/ }));
+
+    fireEvent.click(screen.getByRole("button", { name: "Cambiar paciente" }));
+
+    expect(document.activeElement).toBe(
+      screen.getByLabelText("Buscar paciente"),
+    );
+  });
+
+  it("al montar el selector no roba el foco", () => {
+    instalarApiFalsa();
+    const { campo } = montar();
+
+    expect(document.activeElement).not.toBe(campo);
+  });
+
   it("un paciente inactivo se ve identificado y no se puede elegir", async () => {
     const api = instalarApiFalsa();
     api.responder("GET /pacientes", {
