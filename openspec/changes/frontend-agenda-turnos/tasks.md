@@ -10,13 +10,13 @@
 
 ## 1. Preparación
 
-- [ ] 1.1 Safety net: correr en `frontend/` `npm run typecheck`, `npm run lint`, `npm run format:check` y `npm test`, y registrar el baseline en verde; si algo falla, frenar y reportarlo como falla preexistente
+- [x] 1.1 Safety net: correr en `frontend/` `npm run typecheck`, `npm run lint`, `npm run format:check` y `npm test`, y registrar el baseline en verde; si algo falla, frenar y reportarlo como falla preexistente
 - [x] 1.2 Aprobación previa al Apply: el usuario aprobó D1, D2, D3, D5, D6, D7, D8, D9, D10, D12 y D13 de `design.md` el 2026-11-10 con la opción recomendada (se registran como DD-34 en 11.1) y respondió P1 a P15 de la revisión con la opción (a); la tabla de Decisions ya no tiene ninguna fila pendiente de aprobación
-- [ ] 1.3 Correr `revisar-escenarios frontend-agenda-turnos` y resolver con `/opsx:update` todo hallazgo BLOQUEANTE o MAYOR; verificar que `openspec/changes/frontend-agenda-turnos/revision-escenarios.md` no deje ninguno abierto y que `openspec validate frontend-agenda-turnos --strict` pase
+- [x] 1.3 Correr `revisar-escenarios frontend-agenda-turnos` y resolver con `/opsx:update` todo hallazgo BLOQUEANTE o MAYOR; verificar que `openspec/changes/frontend-agenda-turnos/revision-escenarios.md` no deje ninguno abierto y que `openspec validate frontend-agenda-turnos --strict` pase
 
 ## 2. Soporte de tests (D6, D15)
 
-- [ ] 2.1 RED→GREEN: `src/shared/tiempo/zonaDePrueba.test.ts`, test de control: la zona efectiva es `Asia/Tokyo` y `new Date("2026-11-09T22:30:00-03:00").getHours()` es `10`; agregar `test.env.TZ` en `vite.config.ts`; verificar con `npm test -- zonaDePrueba` y con la suite completa en verde
+- [x] 2.1 RED→GREEN: `src/shared/tiempo/zonaDePrueba.test.ts`, test de control: la zona efectiva es `Asia/Tokyo` y `new Date("2026-11-09T22:30:00-03:00").getHours()` es `10`; agregar `test.env.TZ` en `vite.config.ts`; verificar con `npm test -- zonaDePrueba` y con la suite completa en verde
 - [ ] 2.2 RED→GREEN: `src/test/apiFalsa.test.ts` — `instalarApiFalsa` responde por `"METODO /ruta"` sin importar el orden de los pedidos, entrega catálogos y agenda vacíos por defecto, permite pedidos pendientes que el test resuelve en cualquier orden y lista los pedidos hechos; agregar `src/test/fabricas.ts` con turno, bloqueo, recursos y paciente ficticios; verificar con `npm test -- apiFalsa`
 - [ ] 2.3 Adaptar los tests de C-14 que renderizan `/agenda` y encolan respuestas (`sesion.test.tsx`, `guardas.test.tsx`, `Layout.test.tsx`, `PaginaLogin.test.tsx`): los que no prueban la agenda usan la API falsa; "Pantallas provisorias sin pedidos" queda solo con `/configuracion` (delta `frontend-sesion`); agregar a `src/test/setup.ts` el reemplazo de `showModal` y `close`, como espías que además abren y cierran el `<dialog>`, con un test que afirme que un `<dialog>` abierto es accesible por rol; verificar con `npm test`
 - [ ] 2.4 RED→GREEN: `src/shared/ui/Dialogo.test.tsx` — se abre llamando a `showModal`, y con los eventos `cancel` y `close` queda cerrado y puede volver a abrirse (scenarios "Apertura modal" y "Cierre con Esc"); verificar con `npm test -- Dialogo`

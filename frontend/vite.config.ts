@@ -15,5 +15,10 @@ export default defineConfig({
     globals: true,
     unstubGlobals: true,
     unstubEnvs: true,
+    env: {
+      // Zona distinta de la del consultorio (y de la de esta máquina): cualquier uso accidental
+      // de la zona local falla. `zonaDePrueba.test.ts` verifica que el mecanismo funciona (D15)
+      TZ: "Asia/Tokyo",
+    },
   },
 });
