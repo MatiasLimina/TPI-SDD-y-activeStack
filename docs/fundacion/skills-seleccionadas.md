@@ -53,8 +53,14 @@ Al llegar a C-14 (base del frontend y login) se reevaluaron las skills del Front
 | `vitest` | antfu/skills | Sí | desde C-14 se trabaja con TDD estricto y se consulta en cada test (jsdom, mocks, fake timers, hooks). Documenta Vitest 5.1.0-beta.1 (pre-release): verificar la versión instalada antes de usar comportamiento propio de v5. No cubre React Testing Library. |
 | `vite` | antfu/skills | No | su documentación ya la cubre Context7 y la configuración es chica y se escribe una sola vez. Las tareas deben exigir consultar Context7 antes de escribir `vite.config.ts`. |
 | Skills de React y TypeScript | varias | No | los candidatos encontrados apuntan a Next.js o tienen poco respaldo; el modo `strict` de TypeScript ya hace cumplir los tipos. |
-| `vercel-react-best-practices` | vercel-labs/agent-skills | No (por ahora) | es una guía de rendimiento, en parte exclusiva de Next.js, y no cubre login, guards de rutas ni formularios. Se reevalúa en C-15, donde la agenda semanal hace que los re-renders importen. |
+| `vercel-react-best-practices` | vercel-labs/agent-skills | No | es una guía de rendimiento, en parte exclusiva de Next.js, y no cubre login, guards de rutas ni formularios. Se reevaluó para C-15 y tampoco se instaló (ver la decisión abajo). |
 
 La documentación de React Router y de React Testing Library sale de Context7 (ver [docs/skills-mcp/mcp.md](../skills-mcp/mcp.md)). El registry (`.atl/skill-registry.md`) se actualizó agregando solo la fila y las reglas compactas de `vitest`, sin reescribir el resto.
+
+**Decisión para C-15 (2026-11-10)**: `vercel-react-best-practices` (vercel-labs/agent-skills) **no se instala**, y con esto se cierra la reevaluación que quedaba pendiente en la tabla. Motivos:
+
+- El volumen de la agenda es chico: como máximo 7 días, de 1 a 5 profesionales y decenas de turnos por vista, así que los re-renders no son el problema a resolver.
+- La dificultad de C-15 está en los formularios, el manejo de 409 y 422, el selector de pacientes y la presentación de horarios, temas que la skill no cubre.
+- Muchas de sus 70 reglas son exclusivas de Next.js o empujan a sumar librerías.
 
 > **Gotcha de instalación**: `npx skills add` con `--agent claude-code` copia la skill en `.claude/skills/` en lugar de `.agents/skills/`. La convención del proyecto exige `.agents/skills/` (versionado), así que el comando se ejecuta sin esa bandera. `.claude/skills/vitest` es solo un enlace local no versionado hacia `.agents/skills/vitest`.
