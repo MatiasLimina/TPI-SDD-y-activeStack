@@ -9,7 +9,7 @@ import {
   turno,
 } from "../../test/fabricas";
 import { GrillaAgenda } from "./GrillaAgenda";
-import type { Columna } from "./grilla";
+import { armarColumnas, type Columna } from "./grilla";
 import { crearNombres } from "./nombres";
 import type { VistaAgenda } from "./vistaAgenda";
 
@@ -242,5 +242,76 @@ describe("GrillaAgenda: contenido de cada elemento en una sola línea", () => {
     expect(container.querySelector("li [data-linea]")?.textContent).toBe(
       "Bloqueo · 15:00 – 16:00",
     );
+  });
+});
+
+describe("GrillaAgenda: tramo visible mínimo de 3 filas", () => {
+  const dia = vista();
+
+  function columnasDe(turnos: ReturnType<typeof turno>[]): Columna[] {
+    return armarColumnas({
+      vista: dia,
+      rol: "recepcionista",
+      profesionalPropio: null,
+      datos: { turnos, bloqueos: [] },
+      profesionales: [profesional()],
+      sillones: [],
+    });
+  }
+
+  function ubicaciones(turnos: ReturnType<typeof turno>[]) {
+    const { container } = render(
+      <GrillaAgenda
+        columnas={columnasDe(turnos)}
+        vista={dia}
+        nombres={nombres}
+        alElegirTurno={() => undefined}
+      />,
+    );
+    return Array.from(container.querySelectorAll<HTMLElement>("li")).map(
+      (li) => ({ gridRow: li.style.gridRow, gridColumn: li.style.gridColumn }),
+    );
+  }
+
+  it("un turno de 5 minutos ocupa 3 filas de la grilla, y no una", () => {
+    expect(
+      ubicaciones([
+        turno({
+          inicio: "2026-11-09T10:00:00-03:00",
+          fin: "2026-11-09T10:05:00-03:00",
+        }),
+      ]),
+    ).toEqual([{ gridRow: "121 / span 3", gridColumn: "1" }]);
+  });
+
+  it("dos turnos de 5 minutos consecutivos van uno al lado del otro y no se superponen", () => {
+    expect(
+      ubicaciones([
+        turno({
+          id: "t1",
+          inicio: "2026-11-09T10:00:00-03:00",
+          fin: "2026-11-09T10:05:00-03:00",
+        }),
+        turno({
+          id: "t2",
+          inicio: "2026-11-09T10:05:00-03:00",
+          fin: "2026-11-09T10:10:00-03:00",
+        }),
+      ]),
+    ).toEqual([
+      { gridRow: "121 / span 3", gridColumn: "1" },
+      { gridRow: "122 / span 3", gridColumn: "2" },
+    ]);
+  });
+
+  it("un turno de 23:55 se dibuja sobre las últimas 3 filas del día", () => {
+    expect(
+      ubicaciones([
+        turno({
+          inicio: "2026-11-09T23:55:00-03:00",
+          fin: "2026-11-10T00:00:00-03:00",
+        }),
+      ]),
+    ).toEqual([{ gridRow: "286 / span 3", gridColumn: "1" }]);
   });
 });

@@ -17,6 +17,9 @@ import type { VistaAgenda } from "./vistaAgenda";
 
 const MINUTOS_POR_FILA = 5;
 const MINUTOS_POR_DIA = 24 * 60;
+const FILAS_POR_DIA = MINUTOS_POR_DIA / MINUTOS_POR_FILA;
+/** Tramo visible mínimo: 3 filas (15 minutos), para que un turno corto se lea y se pueda clicar. */
+const FILAS_MINIMAS = 3;
 
 /** Todo lo que ocupa tiempo en la agenda: un turno o un bloqueo. */
 export interface Intervalo {
@@ -31,9 +34,12 @@ export interface Segmento {
   /** Minutos reales dentro del día, para mostrar la hora sin redondear. */
   desdeMin: number;
   hastaMin: number;
-  /** Fila de 5 minutos desde 0: inicio redondeado hacia abajo. */
+  /**
+   * Tramo visible: fila de 5 minutos desde 0 (inicio redondeado hacia abajo) y cantidad de filas
+   * (fin redondeado hacia arriba), con un mínimo de 3. Si no entra al final del día, se corre
+   * hacia arriba para no pasar de la fila 288. Los carriles y `grid-row` usan este tramo.
+   */
   fila: number;
-  /** Cantidad de filas: el fin se redondea hacia arriba. */
   filas: number;
   continuaAntes: boolean;
   continuaDespues: boolean;
@@ -60,13 +66,17 @@ export function segmentosPorDia(
     if (fin <= 0 || inicio >= MINUTOS_POR_DIA) continue;
     const desdeMin = Math.max(inicio, 0);
     const hastaMin = Math.min(fin, MINUTOS_POR_DIA);
-    const fila = Math.floor(desdeMin / MINUTOS_POR_FILA);
+    const filaReal = Math.floor(desdeMin / MINUTOS_POR_FILA);
+    const filas = Math.max(
+      Math.ceil(hastaMin / MINUTOS_POR_FILA) - filaReal,
+      FILAS_MINIMAS,
+    );
     segmentos.push({
       fecha,
       desdeMin,
       hastaMin,
-      fila,
-      filas: Math.ceil(hastaMin / MINUTOS_POR_FILA) - fila,
+      fila: Math.min(filaReal, FILAS_POR_DIA - filas),
+      filas,
       continuaAntes: inicio < 0,
       continuaDespues: fin > MINUTOS_POR_DIA,
     });
@@ -82,7 +92,7 @@ export interface Colocable {
 
 /**
  * Carriles paralelos dentro de una columna: por orden de inicio, cada segmento toma el primer
- * carril libre, con criterio `[)` (RN-AG-03) sobre las filas ya redondeadas (D4, P6).
+ * carril libre, con criterio `[)` (RN-AG-03) sobre el tramo visible, de al menos 3 filas (D4, P6).
  */
 export function asignarCarriles<T extends Colocable>(
   items: T[],

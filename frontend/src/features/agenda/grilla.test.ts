@@ -53,16 +53,73 @@ describe("segmentosPorDia: ubicación en filas de 5 minutos", () => {
     expect(segmento).toMatchObject({ fila: 0, filas: 6 });
   });
 
-  it("el último tramo del día ocupa solo la fila 287", () => {
+  it("un turno de 5 minutos ocupa 3 filas desde la 120 y conserva la hora real", () => {
+    const [segmento] = segmentos(
+      "2026-11-09T10:00:00-03:00",
+      "2026-11-09T10:05:00-03:00",
+    );
+
+    expect(segmento).toMatchObject({
+      fila: 120,
+      filas: 3,
+      desdeMin: 600,
+      hastaMin: 605,
+    });
+  });
+
+  it("un tramo de 10 minutos llega al mínimo de 3 filas, y uno de 15 o más no se alarga", () => {
+    const filasDe = (inicio: string, fin: string) =>
+      segmentos(
+        `2026-11-09T${inicio}:00-03:00`,
+        `2026-11-09T${fin}:00-03:00`,
+      )[0]!.filas;
+
+    expect(filasDe("10:00", "10:10")).toBe(3);
+    expect(filasDe("10:00", "10:15")).toBe(3);
+    expect(filasDe("10:00", "10:20")).toBe(4);
+  });
+
+  it("el último tramo del día se corre hacia arriba: 3 filas desde la 285, sin pasar de la 288", () => {
     const [segmento] = segmentos(
       "2026-11-09T23:55:00-03:00",
       "2026-11-10T00:00:00-03:00",
     );
 
-    expect(segmento).toMatchObject({ fila: 287, filas: 1 });
+    expect(segmento).toMatchObject({
+      fila: 285,
+      filas: 3,
+      // La hora real no cambia
+      desdeMin: 23 * 60 + 55,
+      hastaMin: 24 * 60,
+    });
   });
 
-  it("el inicio se redondea hacia abajo y el fin hacia arriba solo para ubicarlo", () => {
+  it("un tramo corto que empieza a las 23:50 también se corre, y uno de 15 minutos no hace falta correrlo", () => {
+    const [corto] = segmentos(
+      "2026-11-09T23:50:00-03:00",
+      "2026-11-09T23:55:00-03:00",
+    );
+    const [justo] = segmentos(
+      "2026-11-09T23:45:00-03:00",
+      "2026-11-10T00:00:00-03:00",
+    );
+
+    expect(corto).toMatchObject({ fila: 285, filas: 3 });
+    expect(justo).toMatchObject({ fila: 285, filas: 3 });
+  });
+
+  it("un turno corto que cruza la medianoche se corre solo al final del primer día", () => {
+    const [dia10, dia11] = segmentos(
+      "2026-11-09T23:58:00-03:00",
+      "2026-11-10T00:02:00-03:00",
+      [DIA, "2026-11-10"],
+    );
+
+    expect(dia10).toMatchObject({ fila: 285, filas: 3, continuaDespues: true });
+    expect(dia11).toMatchObject({ fila: 0, filas: 3, continuaAntes: true });
+  });
+
+  it("el inicio se redondea hacia abajo y el fin hacia arriba, y el tramo visible llega a 3 filas", () => {
     const [segmento] = segmentos(
       "2026-11-09T10:03:00-03:00",
       "2026-11-09T10:07:00-03:00",
@@ -70,7 +127,7 @@ describe("segmentosPorDia: ubicación en filas de 5 minutos", () => {
 
     expect(segmento).toMatchObject({
       fila: 120,
-      filas: 2,
+      filas: 3,
       // Las horas reales no se redondean
       desdeMin: 603,
       hastaMin: 607,
@@ -233,13 +290,58 @@ describe("asignarCarriles", () => {
   });
 
   it("dos bloqueos que comparten una fila redondeada usan carriles distintos", () => {
-    // 10:00-10:03 y 10:03-10:05 usan ambos la fila 120 (DD-30 f)
+    // 10:00-10:03 y 10:03-10:05 usan ambos la fila 120 y el mismo tramo visible (DD-30 f)
     expect(
       carrilesDe([
         colocable("a", "10:00", "10:03"),
         colocable("b", "10:03", "10:05"),
       ]),
     ).toEqual({ a: 0, b: 1 });
+  });
+
+  it("dos turnos de 5 minutos consecutivos van en carriles distintos, porque sus tramos visibles se pisan", () => {
+    expect(
+      carrilesDe([
+        colocable("a", "10:00", "10:05"),
+        colocable("b", "10:05", "10:10"),
+      ]),
+    ).toEqual({ a: 0, b: 1 });
+  });
+
+  it("turnos de 5 minutos separados por 15 minutos comparten carril, porque los tramos visibles son contiguos", () => {
+    expect(
+      carrilesDe([
+        colocable("a", "10:00", "10:05"),
+        colocable("b", "10:15", "10:20"),
+      ]),
+    ).toEqual({ a: 0, b: 0 });
+  });
+
+  it("tres turnos cortos: el tercero reusa el carril del primero cuando su tramo ya terminó", () => {
+    // Tramos visibles: a = filas 120-122, b = 121-123, c = 123-125
+    expect(
+      carrilesDe([
+        colocable("a", "10:00", "10:05"),
+        colocable("b", "10:05", "10:10"),
+        colocable("c", "10:15", "10:20"),
+      ]),
+    ).toEqual({ a: 0, b: 1, c: 0 });
+  });
+
+  it("dos turnos cortos al final del día ocupan carriles distintos, sin salir del día", () => {
+    const a = colocable("a", "23:50", "23:55");
+    const [segmentoB] = segmentosPorDia(
+      {
+        inicio: "2026-11-09T23:55:00-03:00",
+        fin: "2026-11-10T00:00:00-03:00",
+      },
+      [DIA],
+    );
+    const b = { clave: "b", segmento: segmentoB! };
+
+    expect(carrilesDe([a, b])).toEqual({ a: 0, b: 1 });
+    for (const { segmento } of [a, b])
+      expect(segmento.fila + segmento.filas).toBeLessThanOrEqual(288);
   });
 
   it("el orden de entrada no cambia el resultado", () => {
