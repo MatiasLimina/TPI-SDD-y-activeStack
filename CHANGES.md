@@ -365,7 +365,7 @@ C-01 a C-07 los hizo Matías (C-07 entró a `main` con el PR #3). Para avanzar l
   - `knowledge-base/07_flujos_principales.md` §Flujo 1
 
 ### [C-15] `frontend-agenda-turnos`
-- **Estado**: `[ ]` pendiente
+- **Estado**: `[x]` completado
 - **Responsable**: Nico · revisa Matías
 - **Scope**:
   - Agenda diaria y semanal filtrable por profesional/sillón (horarios en `America/Argentina/Buenos_Aires`)
