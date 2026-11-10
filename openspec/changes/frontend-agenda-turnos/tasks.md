@@ -23,9 +23,9 @@
 
 ## 3. Presentación horaria (D14)
 
-- [ ] 3.1 RED→GREEN: `src/shared/tiempo/zonaConsultorio.test.ts` — instante a `{fecha, hora, minutosDelDia}` en Buenos Aires: `2026-11-09T22:30:00-03:00` da `22:30` del día 9; `00:00` y nunca `24:00`; un instante en `Z`; verificar con `npm test -- zonaConsultorio`
-- [ ] 3.2 RED→GREEN: mismo archivo — `hoyLocal`: 2026-11-10T02:00Z da `2026-11-09` y 2026-11-10T03:00Z da `2026-11-10`; calendario: `sumarDias` con cambio de mes y de año, `lunesDeLaSemana` con jueves, lunes y domingo, y nombres de días por tabla propia (requirements "Día actual del consultorio" y "Vistas diaria y semanal"); verificar con `npm test -- zonaConsultorio`
-- [ ] 3.3 RED→GREEN: mismo archivo — `aInstanteConDesfasaje`: `("2026-11-12", "10:00")` da `2026-11-12T10:00:00-03:00`; `("2008-01-15", "10:00")` da `2008-01-15T10:00:00-02:00`, que un `-03:00` fijo no puede satisfacer; `("2009-03-16", "10:00")` da `2009-03-16T10:00:00-03:00`; `("1900-01-15", "10:00")`, con desfasaje con segundos, no lanza (requirement "Inicio con zona horaria"); verificar con `npm test -- zonaConsultorio`
+- [x] 3.1 RED→GREEN: `src/shared/tiempo/zonaConsultorio.test.ts` — instante a `{fecha, hora, minutosDelDia}` en Buenos Aires: `2026-11-09T22:30:00-03:00` da `22:30` del día 9; `00:00` y nunca `24:00`; un instante en `Z`; verificar con `npm test -- zonaConsultorio`
+- [x] 3.2 RED→GREEN: mismo archivo — `hoyLocal`: 2026-11-10T02:00Z da `2026-11-09` y 2026-11-10T03:00Z da `2026-11-10`; calendario: `sumarDias` con cambio de mes y de año, `lunesDeLaSemana` con jueves, lunes y domingo, y nombres de días por tabla propia (requirements "Día actual del consultorio" y "Vistas diaria y semanal"); verificar con `npm test -- zonaConsultorio`
+- [x] 3.3 RED→GREEN: mismo archivo — `aInstanteConDesfasaje`: `("2026-11-12", "10:00")` da `2026-11-12T10:00:00-03:00`; `("2008-01-15", "10:00")` da `2008-01-15T10:00:00-02:00`, que un `-03:00` fijo no puede satisfacer; `("2009-03-16", "10:00")` da `2009-03-16T10:00:00-03:00`; `("1900-01-15", "10:00")`, con desfasaje con segundos, no lanza (requirement "Inicio con zona horaria"); verificar con `npm test -- zonaConsultorio`
 
 ## 4. Modelo de la agenda (D1, D2, D4, D6)
 
