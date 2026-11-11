@@ -42,7 +42,9 @@ proyecto/
 │   └── tests/
 ├── frontend/
 │   └── src/
-│       ├── features/          # sesion (claims, guardas, ProveedorSesion; DD-33), agenda, turnos, pacientes, configuración
+│       ├── features/          # sesion (claims, guardas, ProveedorSesion; DD-33), agenda, turnos, pacientes (selector, formulario)
+│       │                      # gestion (patrón compartido: listado, diálogos, errores; DD-35), recursos (profesionales, sillones, prestaciones),
+│       │                      # horarios (franjas por día), bloqueos (alta con hora local, 409 con turnos), auditoria (historial de un turno)
 │       ├── shared/            # api (cliente HTTP y ErrorApi), layout, tiempo (zona del consultorio), ui (Dialogo), estilos (base.css)
 │       ├── pages/
 │       └── test/              # setup y fábricas de fixtures ficticios

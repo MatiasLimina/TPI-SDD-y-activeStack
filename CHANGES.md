@@ -448,4 +448,6 @@ Diferido por el Discovery (ver `docs/discovery/informe-discovery.md` §D.3 y §D
 - Bloqueos de agenda por sillón (mantenimiento): la **Suposición** de `04_modelo_de_datos.md` no se implementa en C-11 (DD-30)
 - Edición de un bloqueo (`PATCH /bloqueos/{id}`): hoy se borra y se crea otro (DD-30)
 - Trigger + lock como defensa en profundidad de RN-AG-06 y RN-HB-03: hoy la garantía es de la aplicación y un `INSERT` por SQL directo en `turno` o `bloqueo` puede violarla (DD-30; junto con el rol de base de datos de mínimo privilegio)
+- Nombre del autor en la auditoría de un turno: la API expone solo `usuario_id` (DD-25 f) y la SPA muestra `Vos` u `Otro usuario` (DD-35 j); resolverlo exige un cambio de backend
+- Vista de solo lectura del horario de atención para el odontólogo: la API se lo permite, pero ninguna historia de usuario la pide (DD-35 c)
 - Consulta de disponibilidad / huecos libres (US-007): no figura en D.4, es una suposición de la KB y se acopla naturalmente con el enlace público de reserva diferido (D.3)
