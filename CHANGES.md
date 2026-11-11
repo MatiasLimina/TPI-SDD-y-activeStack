@@ -371,6 +371,7 @@ C-01 a C-07 los hizo Matías (C-07 entró a `main` con el PR #3). Para avanzar l
   - Agenda diaria y semanal filtrable por profesional/sillón (horarios en `America/Argentina/Buenos_Aires`)
   - Formularios de crear, reprogramar y cancelar turno con manejo de 409/422 y selector de paciente
   - Tests de componentes de agenda y formulario de turno
+  - Seguimiento: `frontend-agenda-ajustes-revision` (revisión del PR #16)
 - **Dependencias**: `C-14, C-12, C-07, C-09`
 - **Governance**: MEDIO
 - **Leer antes**:
