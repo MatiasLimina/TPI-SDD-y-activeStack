@@ -60,7 +60,7 @@ No hay integraciones externas obligatorias en el MVP.
 | Bloqueos | `GET /bloqueos?profesional_id=` (recepcionista todos o el filtrado; odontólogo, solo los de su profesional); `POST /bloqueos` (el odontólogo puede omitir `profesional_id`); `DELETE /bloqueos/{id}` (recepcionista cualquiera; odontólogo, los de su profesional); sin `PATCH` (DD-30) |
 | Pacientes | `GET /pacientes?q=&limite=&desplazamiento=` (listado y búsqueda, solo recepcionista); `GET /pacientes/{id}` (recepcionista: ficha completa; odontólogo: `id`, `nombre` y `apellido` de pacientes de sus turnos, `403 paciente_ajeno` en otro caso); `POST /pacientes`, `PATCH /pacientes/{id}`, `POST /pacientes/{id}/desactivar` (recepcionista; DD-31) |
 | Turnos | `GET /turnos?desde&hasta&profesional_id&sillon_id` (agenda por rango de hasta 7 días locales `YYYY-MM-DD`, ambas incluidas; recepcionista y odontólogo, este último solo la suya; responde `{turnos, bloqueos}` con hora local; DD-32), `POST /turnos`, `PATCH /turnos/{id}/reprogramar`, `POST /turnos/{id}/cancelar` |
-| Disponibilidad | `GET /disponibilidad?profesional&prestacion&fecha` |
+| Disponibilidad | `GET /disponibilidad?profesional&prestacion&fecha` — **no implementado**: está en el backlog (US-007) y la interfaz (C-15) no lo consulta; los conflictos se informan por los errores de `POST /turnos` y `PATCH /turnos/{id}/reprogramar` (DD-34) |
 | Auditoría | `GET /turnos/{id}/auditoria` (solo lectura, recepcionista; DD-25) |
 
 Conflicto de solapamiento -> `409 Conflict`; fuera de horario o dentro de bloqueo -> `422`.

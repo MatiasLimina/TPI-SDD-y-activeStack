@@ -1,0 +1,125 @@
+.contenedor {
+  --alto-cabecera: 2.75rem;
+  display: flex;
+  gap: var(--espacio);
+  overflow: auto;
+  /* Ocho horas visibles aproximadas: el scroll inicial lleva a las 08:00 */
+  max-height: 70vh;
+  background: var(--color-superficie);
+  border: 1px solid var(--color-borde);
+}
+
+/*
+ * Eje de horas: fijo a la izquierda al desplazar en horizontal, alineado con las 288 filas.
+ * Sin `align-self: flex-start` se estira solo hasta el alto visible del contenedor (70vh), y su
+ * borde derecho se corta a mitad de la grilla al desplazarse; así mide lo mismo que las columnas.
+ */
+.eje {
+  align-self: flex-start;
+  position: sticky;
+  left: 0;
+  z-index: 2;
+  flex: 0 0 auto;
+  background: var(--color-superficie);
+  border-right: 1px solid var(--color-borde);
+}
+
+.cabeceraEje {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  box-sizing: border-box;
+  height: var(--alto-cabecera);
+  background: var(--color-superficie);
+  border-bottom: 1px solid var(--color-borde);
+}
+
+.horas {
+  display: grid;
+  grid-template-rows: repeat(288, var(--alto-fila));
+  padding: 0 var(--espacio);
+}
+
+.hora {
+  font-size: 0.75rem;
+  line-height: 1;
+}
+
+.columna {
+  /* Todas las columnas del mismo ancho, sin crecer por el texto de sus turnos */
+  flex: 1 1 0;
+  min-width: 7rem;
+}
+
+.columna h2 {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  box-sizing: border-box;
+  height: var(--alto-cabecera);
+  margin: 0;
+  padding: var(--espacio);
+  overflow: hidden;
+  font-size: 0.95rem;
+  background: var(--color-superficie);
+  border-bottom: 1px solid var(--color-borde);
+}
+
+/* 288 filas de 5 minutos por día (D1) */
+.lista {
+  display: grid;
+  grid-template-rows: repeat(288, var(--alto-fila));
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.item {
+  min-width: 0;
+  overflow: hidden;
+  font-size: 0.8rem;
+}
+
+/* Una sola línea alineada arriba: lo que no entra se recorta con puntos suspensivos */
+.linea {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: block;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.turno {
+  display: flex;
+  align-items: flex-start;
+  width: 100%;
+  height: 100%;
+  padding: 2px 4px;
+  text-align: left;
+  background: var(--color-turno);
+  border: 1px solid var(--color-primario);
+  border-radius: var(--radio);
+}
+
+/* El cancelado se distingue por texto, tachado y borde punteado, no solo por color */
+.cancelado {
+  text-decoration: line-through;
+  border-style: dotted;
+  background: var(--color-cancelado);
+}
+
+.bloqueo {
+  box-sizing: border-box;
+  height: 100%;
+  padding: 2px 4px;
+  background: repeating-linear-gradient(
+    45deg,
+    var(--color-bloqueo),
+    var(--color-bloqueo) 6px,
+    var(--color-superficie) 6px,
+    var(--color-superficie) 12px
+  );
+  border: 1px solid var(--color-error);
+  border-radius: var(--radio);
+}

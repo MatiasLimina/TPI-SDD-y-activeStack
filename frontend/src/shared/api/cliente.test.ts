@@ -41,6 +41,16 @@ describe("URL base de la API", () => {
     expect(pedidoHecho(falso).url).toBe("http://localhost:8000/auth/login");
   });
 
+  it("usa http://localhost:8000 cuando VITE_API_URL está vacía", async () => {
+    vi.stubEnv("VITE_API_URL", "");
+    const falso = instalarFetchFalso();
+    falso.mockResolvedValue(respuestaJson(200, {}));
+
+    await clienteSinSesion().pedir("POST", "/auth/login");
+
+    expect(pedidoHecho(falso).url).toBe("http://localhost:8000/auth/login");
+  });
+
   it.each(["http://api.example.test:9000/", "http://api.example.test:9000///"])(
     "no produce barra doble con la base %s",
     async (base) => {
@@ -185,6 +195,15 @@ async function errorDe(respuesta: Response): Promise<ErrorApi> {
   );
   expect(error).toBeInstanceOf(ErrorApi);
   return error as ErrorApi;
+}
+
+/** Un cuerpo cuya conexión se corta al leerlo. */
+function cuerpoCortado(): ReadableStream<Uint8Array> {
+  return new ReadableStream<Uint8Array>({
+    start(controlador) {
+      controlador.error(new TypeError("terminated"));
+    },
+  });
 }
 
 describe("Error de negocio de la API", () => {
@@ -418,19 +437,43 @@ describe("Otras fallas", () => {
   );
 
   it("una conexión cortada al leer el cuerpo da status 0 y el mensaje de conexión", async () => {
-    const cuerpoCortado = new ReadableStream<Uint8Array>({
-      start(controlador) {
-        controlador.error(new TypeError("terminated"));
-      },
-    });
-
-    const error = await errorDe(new Response(cuerpoCortado, { status: 200 }));
+    const error = await errorDe(new Response(cuerpoCortado(), { status: 200 }));
 
     expect(error).toMatchObject({
       status: 0,
       codigo: null,
       mensaje: "No se pudo conectar con el servidor.",
     });
+  });
+
+  it.each([401, 500])(
+    "una conexión cortada al leer el cuerpo de un %i da status 0 y el mensaje de conexión",
+    async (status) => {
+      const error = await errorDe(new Response(cuerpoCortado(), { status }));
+
+      expect(error).toMatchObject({
+        status: 0,
+        codigo: null,
+        mensaje: "No se pudo conectar con el servidor.",
+      });
+    },
+  );
+
+  it("un 401 con el cuerpo cortado no cierra la sesión", async () => {
+    const falso = instalarFetchFalso();
+    falso.mockResolvedValue(new Response(cuerpoCortado(), { status: 401 }));
+    const alNoAutenticado = vi.fn();
+    const cliente = crearClienteApi({
+      obtenerToken: () => TOKEN_A,
+      alNoAutenticado,
+    });
+
+    const error = await cliente
+      .pedir("GET", "/turnos")
+      .catch((causa: unknown) => causa);
+
+    expect(error).toMatchObject({ status: 0 });
+    expect(alNoAutenticado).not.toHaveBeenCalled();
   });
 
   it("una falla de red da status 0 y el mensaje de conexión", async () => {

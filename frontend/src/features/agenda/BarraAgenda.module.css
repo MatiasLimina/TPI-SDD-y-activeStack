@@ -1,0 +1,18 @@
+.barra {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--espacio) 1rem;
+  margin-bottom: 1rem;
+}
+
+.barra label {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.barra [aria-pressed="true"] {
+  background: var(--color-primario);
+  color: #fff;
+}

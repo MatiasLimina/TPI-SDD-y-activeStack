@@ -1,6 +1,7 @@
 import { screen } from "@testing-library/react";
 
 import { CLAVE_TOKEN } from "../features/sesion/almacenamiento";
+import { instalarApiFalsa } from "../test/apiFalsa";
 import { renderizarApp } from "../test/renderizarApp";
 import { usarRelojFijo } from "../test/reloj";
 import {
@@ -110,10 +111,11 @@ function ubicacion(): string {
 describe("Redirección por rol tras el login", () => {
   it("lleva a la recepcionista a /agenda, con su rol y el enlace a la configuración", async () => {
     const token = tokenDeRecepcionista(AHORA_SEGUNDOS + 3600);
-    const falso = instalarFetchFalso();
-    falso.mockResolvedValue(
-      respuestaJson(200, { access_token: token, token_type: "bearer" }),
-    );
+    const api = instalarApiFalsa();
+    api.responder("POST /auth/login", {
+      status: 200,
+      cuerpo: { access_token: token, token_type: "bearer" },
+    });
     const { user } = renderizarApp("/login");
 
     await completarYEnviar(user, "recepcion@example.com", "clave-ficticia");
@@ -131,10 +133,11 @@ describe("Redirección por rol tras el login", () => {
 
   it("lleva al odontólogo a /agenda, con su rol y sin enlace a la configuración", async () => {
     const token = tokenDeOdontologo(AHORA_SEGUNDOS + 3600);
-    const falso = instalarFetchFalso();
-    falso.mockResolvedValue(
-      respuestaJson(200, { access_token: token, token_type: "bearer" }),
-    );
+    const api = instalarApiFalsa();
+    api.responder("POST /auth/login", {
+      status: 200,
+      cuerpo: { access_token: token, token_type: "bearer" },
+    });
     const { user } = renderizarApp("/login");
 
     await completarYEnviar(user, "odontologa@example.com", "clave-ficticia");
@@ -153,10 +156,11 @@ describe("Redirección por rol tras el login", () => {
     "guarda el token en sessionStorage y deja localStorage vacío",
     async (crear) => {
       const token = crear(AHORA_SEGUNDOS + 3600);
-      const falso = instalarFetchFalso();
-      falso.mockResolvedValue(
-        respuestaJson(200, { access_token: token, token_type: "bearer" }),
-      );
+      const api = instalarApiFalsa();
+      api.responder("POST /auth/login", {
+        status: 200,
+        cuerpo: { access_token: token, token_type: "bearer" },
+      });
       const { user } = renderizarApp("/login");
 
       await completarYEnviar(user, "recepcion@example.com", "clave-ficticia");
@@ -203,11 +207,17 @@ describe("Login rechazado", () => {
 
   it("un reintento exitoso limpia el error y muestra el inicio del rol", async () => {
     const token = tokenDeRecepcionista(AHORA_SEGUNDOS + 3600);
-    const falso = instalarFetchFalso();
-    falso.mockResolvedValueOnce(respuestaJson(401, CREDENCIALES_INVALIDAS));
-    falso.mockResolvedValueOnce(
-      respuestaJson(200, { access_token: token, token_type: "bearer" }),
-    );
+    const api = instalarApiFalsa();
+    let intentos = 0;
+    api.responder("POST /auth/login", () => {
+      intentos += 1;
+      return intentos === 1
+        ? { status: 401, cuerpo: CREDENCIALES_INVALIDAS }
+        : {
+            status: 200,
+            cuerpo: { access_token: token, token_type: "bearer" },
+          };
+    });
     const { user } = renderizarApp("/login");
 
     await completarYEnviar(user, "recepcion@example.com", "clave-equivocada");

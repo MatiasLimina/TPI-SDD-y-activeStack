@@ -271,7 +271,7 @@ Una ruta restringida SHALL mostrar su contenido solo a los roles permitidos. A o
 - **THEN** entonces se ve el contenido de la agenda
 
 ### Requirement: Layout de la aplicación
-Las rutas protegidas SHALL mostrarse dentro de un layout con el rol del usuario, la navegación y la acción de cerrar sesión. El enlace a `/configuracion` MUST mostrarse solo a `recepcionista`. `/agenda` y `/configuracion` MUST ser pantallas provisorias, sin pedidos a la API y sin datos de pacientes.
+Las rutas protegidas SHALL mostrarse dentro de un layout con el rol del usuario, la navegación y la acción de cerrar sesión. El enlace a `/configuracion` MUST mostrarse solo a `recepcionista`. `/configuracion` MUST ser una pantalla provisoria, sin pedidos a la API y sin datos de pacientes.
 
 #### Scenario: Navegación de la recepcionista
 - **GIVEN** dada una sesión activa de rol `recepcionista`
@@ -285,7 +285,7 @@ Las rutas protegidas SHALL mostrarse dentro de un layout con el rol del usuario,
 
 #### Scenario: Pantallas provisorias sin pedidos
 - **GIVEN** dada una sesión activa de rol `recepcionista`
-- **WHEN** cuando se navega a `/agenda` y después a `/configuracion`
+- **WHEN** cuando se navega directamente a `/configuracion`
 - **THEN** entonces no se hace ningún pedido a la API
 
 #### Scenario: El login no usa el layout

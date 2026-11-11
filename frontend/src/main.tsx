@@ -3,6 +3,7 @@ import { createRoot } from "react-dom/client";
 import { BrowserRouter } from "react-router";
 
 import App from "./App";
+import "./shared/estilos/base.css";
 
 const raiz = document.getElementById("root");
 if (raiz === null) throw new Error("Falta el elemento #root en index.html");

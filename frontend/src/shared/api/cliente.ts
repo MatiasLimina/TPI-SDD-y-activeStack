@@ -27,7 +27,8 @@ export interface ClienteApi {
 
 function urlBaseDesdeEntorno(): string {
   const configurada = import.meta.env.VITE_API_URL as string | undefined;
-  return configurada ?? URL_BASE_POR_DEFECTO;
+  // Una variable vacía vale como no definida, igual que el `:-` de Compose
+  return configurada || URL_BASE_POR_DEFECTO;
 }
 
 export function crearClienteApi(opciones: OpcionesCliente): ClienteApi {
@@ -79,11 +80,10 @@ export function crearClienteApi(opciones: OpcionesCliente): ClienteApi {
   };
 }
 
-/** Un corte al leer el cuerpo es una falla de red; un cuerpo que no es JSON, una falla genérica. */
-async function leerCuerpoJson<T>(respuesta: Response): Promise<T> {
-  let texto: string;
+/** Un corte al leer el cuerpo es una falla de red, sea cual sea el status de la respuesta. */
+async function leerTexto(respuesta: Response): Promise<string> {
   try {
-    texto = await respuesta.text();
+    return await respuesta.text();
   } catch {
     throw new ErrorApi({
       status: 0,
@@ -91,6 +91,11 @@ async function leerCuerpoJson<T>(respuesta: Response): Promise<T> {
       mensaje: MENSAJE_SIN_CONEXION,
     });
   }
+}
+
+/** Un cuerpo que no es JSON es una falla genérica que conserva el status. */
+async function leerCuerpoJson<T>(respuesta: Response): Promise<T> {
+  const texto = await leerTexto(respuesta);
   try {
     return JSON.parse(texto) as T;
   } catch {
@@ -107,7 +112,13 @@ function esObjeto(valor: unknown): valor is Record<string, unknown> {
 }
 
 async function interpretarError(respuesta: Response): Promise<ErrorApi> {
-  const cuerpo: unknown = await respuesta.json().catch(() => null);
+  const texto = await leerTexto(respuesta);
+  let cuerpo: unknown = null;
+  try {
+    cuerpo = JSON.parse(texto);
+  } catch {
+    // Un cuerpo que no es JSON no trae detail: cae en el error genérico
+  }
   const detail = esObjeto(cuerpo) ? cuerpo.detail : undefined;
   if (esObjeto(detail) && typeof detail.codigo === "string") {
     const { codigo, mensaje, ...datos } = detail;

@@ -41,7 +41,7 @@ La fuente de verdad del dominio vive en `knowledge-base/`. **Leé el archivo rel
 | [09_decisiones_y_supuestos.md](knowledge-base/09_decisiones_y_supuestos.md) | Decisiones DD-xx y supuestos SU-xx |
 | [10_preguntas_abiertas.md](knowledge-base/10_preguntas_abiertas.md) | ⚠️ Preguntas abiertas e inconsistencias |
 
-> ⚠️ Antes de cada change, revisá `10_preguntas_abiertas.md`. Al 2026-11-04 queda una pregunta abierta no bloqueante, surgida en C-12 (lectura del estado de los recordatorios); el resto se resolvió en DD-13..DD-32 (`09_decisiones_y_supuestos.md`).
+> ⚠️ Antes de cada change, revisá `10_preguntas_abiertas.md`. Al 2026-11-04 queda una pregunta abierta no bloqueante, surgida en C-12 (lectura del estado de los recordatorios); el resto se resolvió en DD-13..DD-34 (`09_decisiones_y_supuestos.md`).
 
 ---
 
@@ -51,7 +51,7 @@ La fuente de verdad del dominio vive en `knowledge-base/`. **Leé el archivo rel
 |--------|-----|------------------|
 | **Backend Core** | Dominio de agenda, API FastAPI, modelos y migraciones | `fastapi-python`, `supabase-postgres-best-practices`, `tdd`, `python-testing-patterns` |
 | **Backend Seguridad** | JWT, roles, auditoría (C-06, C-07) | `auth-implementation-patterns`, `python-testing-patterns` |
-| **Frontend** | React + TypeScript + Vite (C-14..C-16) | `vitest`; Context7 cubre Vite, React Router y React Testing Library; `vercel-react-best-practices` se reevalúa en C-15 |
+| **Frontend** | React + TypeScript + Vite (C-14..C-16) | `vitest`; Context7 cubre Vite, React Router y React Testing Library |
 | **Orquestación** | Fundación y ciclo OPSX | `active-orchestrator`, `kb-creator`, `roadmap-generator`, `skill-registry`, `agent-instruction`, skills `openspec-*` |
 | **Revisión de specs** | Control de escenarios entre Propose y Apply | `revisar-escenarios` (skill propia), `skill-creator` (para mantenerla) |
 | **Integración de ramas** | Numeración de migraciones de Alembic antes de mergear | `revisar-migraciones` (skill propia) |

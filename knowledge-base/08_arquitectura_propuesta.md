@@ -43,7 +43,7 @@ proyecto/
 ├── frontend/
 │   └── src/
 │       ├── features/          # sesion (claims, guardas, ProveedorSesion; DD-33), agenda, turnos, pacientes, configuración
-│       ├── shared/            # api (cliente HTTP y ErrorApi), layout
+│       ├── shared/            # api (cliente HTTP y ErrorApi), layout, tiempo (zona del consultorio), ui (Dialogo), estilos (base.css)
 │       ├── pages/
 │       └── test/              # setup y fábricas de fixtures ficticios
 ├── knowledge-base/

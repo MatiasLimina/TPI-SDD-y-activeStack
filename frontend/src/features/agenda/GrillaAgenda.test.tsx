@@ -1,0 +1,465 @@
+import { render, screen } from "@testing-library/react";
+
+import {
+  ID_ANA,
+  bloqueo,
+  profesional,
+  prestacion,
+  sillon,
+  turno,
+} from "../../test/fabricas";
+import { GrillaAgenda } from "./GrillaAgenda";
+import { armarColumnas, type Columna } from "./grilla";
+import { crearNombres } from "./nombres";
+import type { VistaAgenda } from "./vistaAgenda";
+
+const SCROLL_A_LAS_OCHO = 96 * 6;
+
+const nombres = crearNombres({
+  profesionales: [],
+  sillones: [],
+  prestaciones: [],
+});
+
+function vista(cambios: Partial<VistaAgenda> = {}): VistaAgenda {
+  return {
+    vista: "dia",
+    fecha: "2026-11-09",
+    profesionalId: null,
+    sillonId: null,
+    columnas: "profesional",
+    cancelados: false,
+    ...cambios,
+  };
+}
+
+function columnas(): Columna[] {
+  return [{ clave: ID_ANA, nombre: "Ficticia, Ana", items: [], carriles: 1 }];
+}
+
+/** Registra cada asignación a `scrollTop` con la cantidad de columnas que había en ese momento. */
+const asignaciones: Array<{ valor: number; columnas: number }> = [];
+
+beforeEach(() => {
+  asignaciones.length = 0;
+  Object.defineProperty(HTMLElement.prototype, "scrollTop", {
+    configurable: true,
+    get: () => 0,
+    set(this: HTMLElement, valor: number) {
+      asignaciones.push({
+        valor,
+        columnas: this.querySelectorAll("section").length,
+      });
+    },
+  });
+});
+
+afterEach(() => {
+  delete (HTMLElement.prototype as { scrollTop?: number }).scrollTop;
+});
+
+function conContenido(): number {
+  return asignaciones.filter(
+    (a) => a.columnas > 0 && a.valor === SCROLL_A_LAS_OCHO,
+  ).length;
+}
+
+function grilla(v: VistaAgenda, cols: Columna[]) {
+  return (
+    <GrillaAgenda
+      columnas={cols}
+      vista={v}
+      nombres={nombres}
+      alElegirTurno={() => undefined}
+    />
+  );
+}
+
+describe("GrillaAgenda: desplazamiento inicial a las 08:00", () => {
+  it("se desplaza cuando las columnas llegan después del montaje", () => {
+    const { rerender } = render(grilla(vista(), []));
+    expect(conContenido()).toBe(0);
+
+    rerender(grilla(vista(), columnas()));
+
+    expect(conContenido()).toBe(1);
+  });
+
+  it("vuelve a desplazarse al cambiar de período y recibir columnas de nuevo", () => {
+    const { rerender } = render(grilla(vista(), columnas()));
+    expect(conContenido()).toBe(1);
+
+    rerender(grilla(vista({ fecha: "2026-11-10" }), []));
+    rerender(grilla(vista({ fecha: "2026-11-10" }), columnas()));
+
+    expect(conContenido()).toBe(2);
+  });
+
+  it("vuelve a desplazarse al cambiar de vista", () => {
+    const { rerender } = render(grilla(vista(), columnas()));
+
+    rerender(grilla(vista({ vista: "semana" }), []));
+    rerender(grilla(vista({ vista: "semana" }), columnas()));
+
+    expect(conContenido()).toBe(2);
+  });
+
+  it("Actualizar (mismo período, columnas nuevas) no reinicia el desplazamiento", () => {
+    const { rerender } = render(grilla(vista(), columnas()));
+
+    rerender(grilla(vista(), columnas()));
+    rerender(grilla(vista(), columnas()));
+
+    expect(conContenido()).toBe(1);
+  });
+});
+
+describe("GrillaAgenda: eje de horas", () => {
+  it("muestra 24 etiquetas de 00:00 a 23:00, cada una en la fila donde empieza su hora", () => {
+    const { container } = render(grilla(vista(), columnas()));
+
+    const etiquetas = Array.from(
+      container.querySelectorAll<HTMLElement>("[data-eje-hora]"),
+    );
+    // Filas de 5 minutos: cada hora ocupa 12 y la de las HH:00 empieza en HH * 12 + 1
+    expect(etiquetas).toHaveLength(24);
+    const [primera, , , , , , , , ocho] = etiquetas;
+    const ultima = etiquetas.at(-1);
+    expect(primera).toHaveTextContent("00:00");
+    expect(primera?.style.gridRow).toBe("1 / span 12");
+    expect(ocho).toHaveTextContent("08:00");
+    expect(ocho?.style.gridRow).toBe("97 / span 12");
+    expect(ultima).toHaveTextContent("23:00");
+    expect(ultima?.style.gridRow).toBe("277 / span 12");
+  });
+
+  it("queda oculto para lectores de pantalla y no cuenta como columna", () => {
+    const { container } = render(grilla(vista(), columnas()));
+
+    const eje = container.querySelector("[data-eje]");
+    expect(eje).not.toBeNull();
+    expect(eje).toHaveAttribute("aria-hidden", "true");
+    expect(container.querySelectorAll("section")).toHaveLength(1);
+    expect(
+      screen.getAllByRole("region").map((r) => r.getAttribute("aria-label")),
+    ).toEqual(["Ficticia, Ana"]);
+  });
+
+  it("no aparece mientras no hay columnas", () => {
+    const { container } = render(grilla(vista(), []));
+
+    expect(container.querySelector("[data-eje]")).toBeNull();
+  });
+});
+
+describe("GrillaAgenda: contenido de cada elemento en una sola línea", () => {
+  const nombresCompletos = crearNombres({
+    profesionales: [profesional()],
+    sillones: [sillon()],
+    prestaciones: [prestacion()],
+  });
+  const segmento = {
+    fecha: "2026-11-09",
+    desdeMin: 9 * 60,
+    hastaMin: 9 * 60 + 25,
+    fila: 108,
+    filas: 5,
+    continuaAntes: false,
+    continuaDespues: false,
+  };
+
+  function conItems(items: Columna["items"], v: VistaAgenda) {
+    return render(
+      <GrillaAgenda
+        columnas={[
+          { clave: ID_ANA, nombre: "Ficticia, Ana", items, carriles: 1 },
+        ]}
+        vista={v}
+        nombres={nombresCompletos}
+        alElegirTurno={() => undefined}
+      />,
+    );
+  }
+
+  it("un turno muestra horario, paciente, prestación, profesional y sillón en un solo elemento, separados por ·", () => {
+    const t = turno({
+      inicio: "2026-11-09T09:00:00-03:00",
+      fin: "2026-11-09T09:25:00-03:00",
+    });
+    const { container } = conItems(
+      [
+        {
+          tipo: "turno",
+          turno: t,
+          clave: t.id,
+          carril: 0,
+          carrilesGrupo: 1,
+          segmento,
+        },
+      ],
+      vista({ vista: "semana" }),
+    );
+
+    const lineas = container.querySelectorAll("li [data-linea]");
+    expect(lineas).toHaveLength(1);
+    expect(lineas[0]?.textContent).toBe(
+      "09:00 – 09:25 · Imaginaria, Carla · Limpieza · Ficticia, Ana · Sillón 1",
+    );
+    expect(screen.getByRole("button")).toHaveAccessibleName(
+      "09:00 – 09:25 · Imaginaria, Carla · Limpieza · Ficticia, Ana · Sillón 1",
+    );
+  });
+
+  it("un turno cancelado antepone Cancelado en la misma línea y omite lo que la columna ya dice", () => {
+    const t = turno({
+      estado: "cancelado",
+      inicio: "2026-11-09T09:00:00-03:00",
+      fin: "2026-11-09T09:25:00-03:00",
+    });
+    const { container } = conItems(
+      [
+        {
+          tipo: "turno",
+          turno: t,
+          clave: t.id,
+          carril: 0,
+          carrilesGrupo: 1,
+          segmento,
+        },
+      ],
+      vista(),
+    );
+
+    const lineas = container.querySelectorAll("li [data-linea]");
+    expect(lineas).toHaveLength(1);
+    expect(lineas[0]?.textContent).toBe(
+      "Cancelado · 09:00 – 09:25 · Imaginaria, Carla · Limpieza · Sillón 1",
+    );
+  });
+
+  it("un bloqueo muestra Bloqueo, horario, motivo y profesional en un solo elemento, separados por ·", () => {
+    const b = bloqueo({
+      inicio: "2026-11-09T09:00:00-03:00",
+      fin: "2026-11-09T09:25:00-03:00",
+    });
+    const { container } = conItems(
+      [
+        {
+          tipo: "bloqueo",
+          bloqueo: b,
+          clave: b.id,
+          carril: 0,
+          carrilesGrupo: 1,
+          segmento,
+        },
+      ],
+      vista({ vista: "semana" }),
+    );
+
+    const lineas = container.querySelectorAll("li [data-linea]");
+    expect(lineas).toHaveLength(1);
+    expect(lineas[0]?.textContent).toBe(
+      "Bloqueo · 09:00 – 09:25 · Congreso · Ficticia, Ana",
+    );
+  });
+
+  it("un bloqueo sin motivo no deja separadores vacíos", () => {
+    const b = bloqueo({ motivo: null });
+    const { container } = conItems(
+      [
+        {
+          tipo: "bloqueo",
+          bloqueo: b,
+          clave: b.id,
+          carril: 0,
+          carrilesGrupo: 1,
+          segmento,
+        },
+      ],
+      vista(),
+    );
+
+    expect(container.querySelector("li [data-linea]")?.textContent).toBe(
+      "Bloqueo · 15:00 – 16:00",
+    );
+  });
+});
+
+describe("GrillaAgenda: tramo visible mínimo de 3 filas", () => {
+  const dia = vista();
+
+  function columnasDe(turnos: ReturnType<typeof turno>[]): Columna[] {
+    return armarColumnas({
+      vista: dia,
+      rol: "recepcionista",
+      profesionalPropio: null,
+      datos: { turnos, bloqueos: [] },
+      profesionales: [profesional()],
+      sillones: [],
+    });
+  }
+
+  function ubicaciones(turnos: ReturnType<typeof turno>[]) {
+    const { container } = render(
+      <GrillaAgenda
+        columnas={columnasDe(turnos)}
+        vista={dia}
+        nombres={nombres}
+        alElegirTurno={() => undefined}
+      />,
+    );
+    return Array.from(container.querySelectorAll<HTMLElement>("li")).map(
+      (li) => ({ gridRow: li.style.gridRow, gridColumn: li.style.gridColumn }),
+    );
+  }
+
+  it("un turno de 5 minutos ocupa 3 filas de la grilla, y no una", () => {
+    expect(
+      ubicaciones([
+        turno({
+          inicio: "2026-11-09T10:00:00-03:00",
+          fin: "2026-11-09T10:05:00-03:00",
+        }),
+      ]),
+    ).toEqual([{ gridRow: "121 / span 3", gridColumn: "1 / span 1" }]);
+  });
+
+  it("dos turnos de 5 minutos consecutivos van uno al lado del otro y no se superponen", () => {
+    expect(
+      ubicaciones([
+        turno({
+          id: "t1",
+          inicio: "2026-11-09T10:00:00-03:00",
+          fin: "2026-11-09T10:05:00-03:00",
+        }),
+        turno({
+          id: "t2",
+          inicio: "2026-11-09T10:05:00-03:00",
+          fin: "2026-11-09T10:10:00-03:00",
+        }),
+      ]),
+    ).toEqual([
+      { gridRow: "121 / span 3", gridColumn: "1 / span 1" },
+      { gridRow: "122 / span 3", gridColumn: "2 / span 1" },
+    ]);
+  });
+
+  it("un turno de 23:55 se dibuja sobre las últimas 3 filas del día", () => {
+    expect(
+      ubicaciones([
+        turno({
+          inicio: "2026-11-09T23:55:00-03:00",
+          fin: "2026-11-10T00:00:00-03:00",
+        }),
+      ]),
+    ).toEqual([{ gridRow: "286 / span 3", gridColumn: "1 / span 1" }]);
+  });
+});
+
+describe("GrillaAgenda: ancho por grupo de superposición", () => {
+  function seg(fila: number, filas: number) {
+    return {
+      fecha: "2026-11-09",
+      desdeMin: fila * 5,
+      hastaMin: (fila + filas) * 5,
+      fila,
+      filas,
+      continuaAntes: false,
+      continuaDespues: false,
+    };
+  }
+
+  it("el elemento aislado ocupa todo el ancho y los superpuestos se reparten el suyo", () => {
+    const solo = turno({ id: "solo" });
+    const a = turno({ id: "a" });
+    const b = turno({ id: "b" });
+    const columna: Columna = {
+      clave: ID_ANA,
+      nombre: "Ficticia, Ana",
+      carriles: 2,
+      items: [
+        {
+          tipo: "turno",
+          turno: solo,
+          clave: "solo",
+          carril: 0,
+          carrilesGrupo: 1,
+          segmento: seg(108, 6),
+        },
+        {
+          tipo: "turno",
+          turno: a,
+          clave: "a",
+          carril: 0,
+          carrilesGrupo: 2,
+          segmento: seg(120, 6),
+        },
+        {
+          tipo: "turno",
+          turno: b,
+          clave: "b",
+          carril: 1,
+          carrilesGrupo: 2,
+          segmento: seg(121, 6),
+        },
+      ],
+    };
+
+    const { container } = render(
+      <GrillaAgenda
+        columnas={[columna]}
+        vista={vista()}
+        nombres={nombres}
+        alElegirTurno={() => undefined}
+      />,
+    );
+
+    const columnaDe = (i: number) =>
+      (container.querySelectorAll("li")[i] as HTMLElement).style.gridColumn;
+    expect(columnaDe(0)).toBe("1 / span 2");
+    expect(columnaDe(1)).toBe("1 / span 1");
+    expect(columnaDe(2)).toBe("2 / span 1");
+  });
+
+  it("con grupos de dos y tres carriles, la rejilla se divide en seis y cada uno ocupa su parte", () => {
+    const items = [
+      ["d1", 0, 2, 100],
+      ["d2", 1, 2, 100],
+      ["t1", 0, 3, 120],
+      ["t2", 1, 3, 120],
+      ["t3", 2, 3, 120],
+    ].map(([id, carril, n, fila]) => ({
+      tipo: "turno" as const,
+      turno: turno({ id: id as string }),
+      clave: id as string,
+      carril: carril as number,
+      carrilesGrupo: n as number,
+      segmento: seg(fila as number, 6),
+    }));
+
+    const { container } = render(
+      <GrillaAgenda
+        columnas={[
+          { clave: ID_ANA, nombre: "Ficticia, Ana", items, carriles: 3 },
+        ]}
+        vista={vista()}
+        nombres={nombres}
+        alElegirTurno={() => undefined}
+      />,
+    );
+
+    expect(container.querySelector("ol")!.style.gridTemplateColumns).toBe(
+      "repeat(6, minmax(0px, 1fr))",
+    );
+    const lugares = [...container.querySelectorAll("li")].map(
+      (li) => li.style.gridColumn,
+    );
+    expect(lugares).toEqual([
+      "1 / span 3",
+      "4 / span 3",
+      "1 / span 2",
+      "3 / span 2",
+      "5 / span 2",
+    ]);
+  });
+});

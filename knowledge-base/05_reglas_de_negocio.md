@@ -56,7 +56,7 @@ Códigos `RN-{DOMINIO}-{NN}`. Las reglas del Discovery (RN1-RN6) se conservan co
 - **RN-CU-01**: Ley 25.326 y 26.529 — acceso por rol y **auditoría** de todo cambio de turno (crear, reprogramar, cancelar) con usuario y momento; registro append-only.
 - **RN-CU-02**: solo datos ficticios en repositorio, ejemplos, tests y capturas.
 - **RN-CU-03**: sin secretos en el repositorio; configuración por variables de entorno con `.env.example` versionado.
-- **RN-CU-04**: horarios persistidos en UTC y presentados en `America/Argentina/Buenos_Aires`. Los horarios de atención (hora local) se convierten a UTC al evaluar disponibilidad. Argentina no usa horario de verano, lo que simplifica la conversión (**Suposición** a verificar).
+- **RN-CU-04**: horarios persistidos en UTC y presentados en `America/Argentina/Buenos_Aires`. Los horarios de atención (hora local) se convierten a UTC al evaluar disponibilidad. La conversión sigue la zona IANA (SU-08), así que también resuelve los desfasajes históricos (por ejemplo, el `-02:00` de 2008).
 
 ## Excepciones globales
 - Cualquier violación de solapamiento -> `409 Conflict` con indicación de **todos** los recursos en conflicto (profesional, sillón y/o paciente): la aplicación hace un pre-chequeo que los lista a todos y, ante una carrera, la restricción de BD (SQLSTATE `23P01`) se traduce a 409 indicando el recurso deducido de `constraint_name` (decisión del equipo, 2026-10-07, DD-21).
