@@ -380,7 +380,7 @@ C-01 a C-07 los hizo Matías (C-07 entró a `main` con el PR #3). Para avanzar l
   - `knowledge-base/08_arquitectura_propuesta.md`
 
 ### [C-16] `frontend-configuracion-pacientes-bloqueos`
-- **Estado**: `[ ]` pendiente
+- **Estado**: `[x]` completado
 - **Responsable**: Matías · revisa Nico
 - **Scope**:
   - Pantallas de profesionales, sillones, prestaciones, horarios de atención, pacientes y bloqueos
