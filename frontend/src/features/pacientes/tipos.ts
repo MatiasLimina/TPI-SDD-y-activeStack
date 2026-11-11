@@ -6,3 +6,10 @@ export interface PacienteBusqueda {
   documento: string;
   activo: boolean;
 }
+
+/** Ficha completa de GET /pacientes (DD-31): lo que lista y edita la pantalla de pacientes. */
+export interface PacienteFicha extends PacienteBusqueda {
+  telefono: string;
+  /** Nulo si el paciente no tiene email. */
+  email: string | null;
+}

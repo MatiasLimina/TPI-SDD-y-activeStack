@@ -1,7 +1,7 @@
 import { useEffect, useId, useRef, useState } from "react";
 
 import type { ErrorApi } from "../../shared/api/errorApi";
-import { comoErrorApi } from "../agenda/errores";
+import { comoErrorApi } from "../../shared/api/comoErrorApi";
 import { useClienteApi } from "../sesion/ProveedorSesion";
 import type { PacienteBusqueda } from "./tipos";
 
