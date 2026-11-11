@@ -3,6 +3,8 @@ export type Rol = "recepcionista" | "odontologo";
 export interface Claims {
   rol: Rol;
   profesionalId: string | null;
+  /** Claim `sub`: id del usuario, solo para mostrar `Vos` en la auditoría (C-16, D10). */
+  usuarioId: string | null;
   /** Vencimiento en segundos desde epoch, como en el JWT. */
   exp: number;
 }
@@ -48,6 +50,7 @@ export function interpretarToken(
   const {
     rol,
     profesional_id: profesionalId,
+    sub,
     exp,
   } = payload as Record<string, unknown>;
   if (!esRol(rol) || typeof exp !== "number" || !Number.isFinite(exp))
@@ -56,6 +59,7 @@ export function interpretarToken(
   const claims: Claims = {
     rol,
     profesionalId: typeof profesionalId === "string" ? profesionalId : null,
+    usuarioId: typeof sub === "string" ? sub : null,
     exp,
   };
   return { estado: exp * 1000 <= ahoraMs ? "vencido" : "vigente", claims };

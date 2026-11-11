@@ -2,6 +2,7 @@ import {
   AHORA_ISO,
   AHORA_SEGUNDOS,
   ID_PROFESIONAL,
+  ID_USUARIO,
   crearToken,
   tokenDeOdontologo,
   tokenDeRecepcionista,
@@ -27,7 +28,12 @@ describe("claims del token", () => {
 
     expect(resultado).toEqual({
       estado: "vigente",
-      claims: { rol: "recepcionista", profesionalId: null, exp: 1794229200 },
+      claims: {
+        rol: "recepcionista",
+        profesionalId: null,
+        usuarioId: ID_USUARIO,
+        exp: 1794229200,
+      },
     });
   });
 
@@ -39,6 +45,7 @@ describe("claims del token", () => {
       claims: {
         rol: "odontologo",
         profesionalId: ID_PROFESIONAL,
+        usuarioId: ID_USUARIO,
         exp: 1794229200,
       },
     });
@@ -55,7 +62,12 @@ describe("claims del token", () => {
     (exp) => {
       expect(interpretarToken(tokenDeRecepcionista(exp))).toEqual({
         estado: "vencido",
-        claims: { rol: "recepcionista", profesionalId: null, exp },
+        claims: {
+          rol: "recepcionista",
+          profesionalId: null,
+          usuarioId: ID_USUARIO,
+          exp,
+        },
       });
     },
   );
@@ -100,6 +112,49 @@ describe("claims del token", () => {
   ])("un token %s es inválido, nunca vencido", (_caso, claims) => {
     expect(interpretarToken(crearToken(claims))).toEqual({
       estado: "invalido",
+    });
+  });
+});
+
+describe("usuario de la sesión (claim sub)", () => {
+  it("un token sin sub sigue vigente, con usuario nulo", () => {
+    const token = crearToken({
+      rol: "recepcionista",
+      profesional_id: null,
+      exp: AHORA_SEGUNDOS + 3600,
+    });
+
+    expect(interpretarToken(token)).toMatchObject({
+      estado: "vigente",
+      claims: { usuarioId: null },
+    });
+  });
+
+  it("un sub numérico no es un usuario: el token sigue vigente, con usuario nulo", () => {
+    const token = crearToken({
+      sub: 5,
+      rol: "recepcionista",
+      profesional_id: null,
+      exp: AHORA_SEGUNDOS + 3600,
+    });
+
+    expect(interpretarToken(token)).toMatchObject({
+      estado: "vigente",
+      claims: { usuarioId: null },
+    });
+  });
+
+  it("un sub textual se toma tal cual, sin comprobar que sea un UUID", () => {
+    const token = crearToken({
+      sub: "no-es-un-uuid",
+      rol: "odontologo",
+      profesional_id: ID_PROFESIONAL,
+      exp: AHORA_SEGUNDOS + 3600,
+    });
+
+    expect(interpretarToken(token)).toMatchObject({
+      estado: "vigente",
+      claims: { usuarioId: "no-es-un-uuid" },
     });
   });
 });
