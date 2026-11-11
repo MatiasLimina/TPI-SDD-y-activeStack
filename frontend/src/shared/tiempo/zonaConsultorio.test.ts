@@ -3,6 +3,9 @@ import {
   cruzaDias,
   diasEntre,
   etiquetaDia,
+  etiquetaDiaCompleta,
+  fechaCompleta,
+  fechaHoraCompleta,
   hoyLocal,
   instanteALocal,
   lunesDeLaSemana,
@@ -95,6 +98,16 @@ describe("etiquetaDia", () => {
   });
 });
 
+describe("etiquetaDiaCompleta", () => {
+  it.each([
+    ["2026-11-12", "Jueves 12/11/2026"],
+    ["2026-11-16", "Lunes 16/11/2026"],
+    ["2027-01-03", "Domingo 03/01/2027"],
+  ])("%s se llama %s", (fecha, etiqueta) => {
+    expect(etiquetaDiaCompleta(fecha)).toBe(etiqueta);
+  });
+});
+
 describe("aInstanteConDesfasaje", () => {
   it.each([
     ["2026-11-12", "10:00", "2026-11-12T10:00:00-03:00"],
@@ -168,5 +181,20 @@ describe("cruzaDias", () => {
     expect(
       cruzaDias("2026-11-09T22:00:00-03:00", "2026-11-09T23:30:00-03:00"),
     ).toBe(false);
+  });
+});
+
+describe("fechaCompleta y fechaHoraCompleta", () => {
+  it("fechaCompleta da DD/MM/AAAA a partir de una fecha YYYY-MM-DD", () => {
+    expect(fechaCompleta("2026-11-09")).toBe("09/11/2026");
+    expect(fechaCompleta("2027-01-31")).toBe("31/01/2027");
+  });
+
+  it("fechaHoraCompleta toma la hora del consultorio aunque la suite corra en Asia/Tokyo", () => {
+    expect(fechaHoraCompleta("2026-11-09T18:00:00Z")).toBe("09/11/2026 15:00");
+  });
+
+  it("fechaHoraCompleta cambia de día según la zona del consultorio, no la de UTC", () => {
+    expect(fechaHoraCompleta("2026-11-10T01:30:00Z")).toBe("09/11/2026 22:30");
   });
 });

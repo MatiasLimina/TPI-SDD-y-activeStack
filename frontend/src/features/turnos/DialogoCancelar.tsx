@@ -4,7 +4,7 @@ import { diaYMes, instanteALocal } from "../../shared/tiempo/zonaConsultorio";
 import { Dialogo } from "../../shared/ui/Dialogo";
 import type { TurnoAgenda } from "../agenda/tipos";
 import { useClienteApi } from "../sesion/ProveedorSesion";
-import { Campo } from "./Campo";
+import { Campo } from "../../shared/ui/Campo";
 import { useEnvioTurno } from "./useEnvioTurno";
 
 interface PropsDialogoCancelar {

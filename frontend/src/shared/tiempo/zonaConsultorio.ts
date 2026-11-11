@@ -90,10 +90,29 @@ export function diaYMes(fecha: string): string {
   return `${fecha.slice(8, 10)}/${fecha.slice(5, 7)}`;
 }
 
+/** `DD/MM/AAAA` de una fecha `YYYY-MM-DD`. */
+export function fechaCompleta(fecha: string): string {
+  return `${diaYMes(fecha)}/${fecha.slice(0, 4)}`;
+}
+
+/** `DD/MM/AAAA HH:MM` de un instante, en la zona del consultorio. */
+export function fechaHoraCompleta(instante: string | Date): string {
+  const local = instanteALocal(instante);
+  return `${fechaCompleta(local.fecha)} ${local.hora}`;
+}
+
+function nombreDelDia(fecha: string): string {
+  return NOMBRES_DIAS[new Date(aMsUtc(fecha)).getUTCDay()]!;
+}
+
 /** Nombre de una columna de la semana, por ejemplo `Lunes 09/11`. */
 export function etiquetaDia(fecha: string): string {
-  const nombre = NOMBRES_DIAS[new Date(aMsUtc(fecha)).getUTCDay()]!;
-  return `${nombre} ${diaYMes(fecha)}`;
+  return `${nombreDelDia(fecha)} ${diaYMes(fecha)}`;
+}
+
+/** Día y fecha completa, por ejemplo `Jueves 12/11/2026`. */
+export function etiquetaDiaCompleta(fecha: string): string {
+  return `${nombreDelDia(fecha)} ${fechaCompleta(fecha)}`;
 }
 
 const formateadorDesfasaje = new Intl.DateTimeFormat("en-US", {

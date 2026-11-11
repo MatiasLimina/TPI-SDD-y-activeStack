@@ -15,7 +15,7 @@ import type { Nombres } from "../agenda/nombres";
 import type { TurnoAgenda } from "../agenda/tipos";
 import type { Catalogos } from "../agenda/useCatalogos";
 import { useClienteApi } from "../sesion/ProveedorSesion";
-import { Campo } from "./Campo";
+import { Campo } from "../../shared/ui/Campo";
 import { OpcionesRecurso } from "./OpcionesRecurso";
 import { useEnvioTurno, type ErroresPorCampo } from "./useEnvioTurno";
 
@@ -24,8 +24,8 @@ export interface PropsFormularioReprogramar {
   turno: TurnoAgenda | null;
   catalogos: Catalogos;
   nombres: Nombres;
-  /** La reprogramación fue exitosa. */
-  alReprogramado: () => void;
+  /** La reprogramación fue exitosa; recibe el `inicio` que quedó. */
+  alReprogramado: (inicio: string) => void;
   alCerrar: () => void;
   alReleerCatalogos: () => Promise<ErrorApi | null>;
   alReleerAgenda: () => void;
@@ -119,7 +119,10 @@ function Contenido({
         sillon: sillonId,
       },
     );
-    if (exito) alReprogramado();
+    if (exito)
+      alReprogramado(
+        typeof cuerpo.inicio === "string" ? cuerpo.inicio : turno.inicio,
+      );
   }
 
   return (

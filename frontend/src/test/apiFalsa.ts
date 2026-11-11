@@ -59,6 +59,7 @@ const POR_DEFECTO: Record<string, RespuestaFalsa> = {
   "GET /profesionales": { status: 200, cuerpo: [] },
   "GET /sillones": { status: 200, cuerpo: [] },
   "GET /prestaciones": { status: 200, cuerpo: [] },
+  "GET /bloqueos": { status: 200, cuerpo: [] },
   "GET /turnos": { status: 200, cuerpo: { turnos: [], bloqueos: [] } },
 };
 

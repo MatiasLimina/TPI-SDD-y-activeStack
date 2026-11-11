@@ -29,6 +29,7 @@ describe("instalarApiFalsa", () => {
     expect(await c.pedir("GET", "/profesionales")).toEqual([]);
     expect(await c.pedir("GET", "/sillones")).toEqual([]);
     expect(await c.pedir("GET", "/prestaciones")).toEqual([]);
+    expect(await c.pedir("GET", "/bloqueos")).toEqual([]);
     expect(
       await c.pedir("GET", "/turnos?desde=2026-11-09&hasta=2026-11-09"),
     ).toEqual({ turnos: [], bloqueos: [] });

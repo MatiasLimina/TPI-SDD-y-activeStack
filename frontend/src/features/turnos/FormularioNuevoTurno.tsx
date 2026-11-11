@@ -13,7 +13,7 @@ import type { Catalogos } from "../agenda/useCatalogos";
 import { SelectorPaciente } from "../pacientes/SelectorPaciente";
 import type { PacienteBusqueda } from "../pacientes/tipos";
 import { useClienteApi } from "../sesion/ProveedorSesion";
-import { Campo } from "./Campo";
+import { Campo } from "../../shared/ui/Campo";
 import { OpcionesRecurso } from "./OpcionesRecurso";
 import { useEnvioTurno, type ErroresPorCampo } from "./useEnvioTurno";
 
