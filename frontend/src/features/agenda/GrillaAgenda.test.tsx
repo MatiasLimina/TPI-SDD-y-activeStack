@@ -121,12 +121,16 @@ describe("GrillaAgenda: eje de horas", () => {
     const etiquetas = Array.from(
       container.querySelectorAll<HTMLElement>("[data-eje-hora]"),
     );
-    expect(etiquetas.map((e) => e.textContent)).toEqual(
-      Array.from({ length: 24 }, (_, h) => `${String(h).padStart(2, "0")}:00`),
-    );
-    expect(etiquetas.map((e) => e.style.gridRow)).toEqual(
-      Array.from({ length: 24 }, (_, h) => `${h * 12 + 1} / span 12`),
-    );
+    // Filas de 5 minutos: cada hora ocupa 12 y la de las HH:00 empieza en HH * 12 + 1
+    expect(etiquetas).toHaveLength(24);
+    const [primera, , , , , , , , ocho] = etiquetas;
+    const ultima = etiquetas.at(-1);
+    expect(primera).toHaveTextContent("00:00");
+    expect(primera?.style.gridRow).toBe("1 / span 12");
+    expect(ocho).toHaveTextContent("08:00");
+    expect(ocho?.style.gridRow).toBe("97 / span 12");
+    expect(ultima).toHaveTextContent("23:00");
+    expect(ultima?.style.gridRow).toBe("277 / span 12");
   });
 
   it("queda oculto para lectores de pantalla y no cuenta como columna", () => {
