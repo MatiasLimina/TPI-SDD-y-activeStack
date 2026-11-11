@@ -701,6 +701,86 @@ describe("Formulario de nuevo turno: referencias inválidas", () => {
   });
 });
 
+describe("Formulario de nuevo turno: sillón tras un rechazo de la API", () => {
+  const ID_CONSULTA = "00000000-0000-4000-8000-0000000000d3";
+  const CONSULTA = prestacion({
+    id: ID_CONSULTA,
+    nombre: "Consulta",
+    duracion_min: 15,
+    requiere_sillon: false,
+  });
+
+  it("tras un sillón rechazado, cambiar a una prestación sin sillón lo oculta y el POST no incluye sillon_id", async () => {
+    const api = instalarApiFalsa();
+    const { user } = await montarConCatalogos(api);
+    await llenar(user, api);
+    rechazar(api, 422, {
+      codigo: "referencia_invalida",
+      referencia: "sillon",
+      motivo: "inactiva",
+    });
+    await enviar(user);
+    await waitFor(() =>
+      expect(screen.getByLabelText("Sillón")).toHaveAccessibleDescription(
+        "El sillón está inactivo.",
+      ),
+    );
+    api.responder("POST /turnos", { status: 201, cuerpo: {} });
+
+    await user.selectOptions(screen.getByLabelText("Prestación"), "Control");
+    expect(screen.queryByLabelText("Sillón")).not.toBeInTheDocument();
+    await enviar(user);
+
+    await waitFor(() => expect(api.pedidos("POST /turnos")).toHaveLength(2));
+    expect(api.pedidos("POST /turnos")[1]?.cuerpo).not.toHaveProperty(
+      "sillon_id",
+    );
+  });
+
+  it("tras sillon_requerido, otra prestación sin sillón no muestra el campo", async () => {
+    const api = instalarApiFalsa();
+    const { user } = await montarConCatalogos(api);
+    await elegirPaciente(user, api);
+    await user.selectOptions(
+      screen.getByLabelText("Profesional"),
+      "Ficticia, Ana",
+    );
+    await user.selectOptions(screen.getByLabelText("Prestación"), "Control");
+    completar("Hora", "10:00");
+    api.responder("GET /prestaciones", {
+      status: 200,
+      cuerpo: [...CATALOGOS.prestaciones, CONSULTA],
+    });
+    rechazar(api, 422, { codigo: "sillon_requerido", mensaje: "técnico" });
+    await enviar(user);
+    await screen.findByRole("option", { name: "Consulta" });
+
+    await user.selectOptions(screen.getByLabelText("Prestación"), "Consulta");
+
+    expect(screen.queryByLabelText("Sillón")).not.toBeInTheDocument();
+  });
+
+  it("tras sillon_requerido, el campo sigue visible al volver a la prestación rechazada", async () => {
+    const api = instalarApiFalsa();
+    const { user } = await montarConCatalogos(api);
+    await elegirPaciente(user, api);
+    await user.selectOptions(
+      screen.getByLabelText("Profesional"),
+      "Ficticia, Ana",
+    );
+    await user.selectOptions(screen.getByLabelText("Prestación"), "Control");
+    completar("Hora", "10:00");
+    rechazar(api, 422, { codigo: "sillon_requerido", mensaje: "técnico" });
+    await enviar(user);
+    await screen.findByLabelText("Sillón");
+
+    await user.selectOptions(screen.getByLabelText("Prestación"), "Limpieza");
+    await user.selectOptions(screen.getByLabelText("Prestación"), "Control");
+
+    expect(screen.getByLabelText("Sillón")).toBeInTheDocument();
+  });
+});
+
 describe("Formulario de nuevo turno: validación, permisos y red", () => {
   it("un error de validación marca el campo con un texto propio y no muestra el msg de la API", async () => {
     const api = instalarApiFalsa();

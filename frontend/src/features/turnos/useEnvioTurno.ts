@@ -34,8 +34,10 @@ export function useEnvioTurno(
   // Número del último envío: la relectura de uno anterior no toca los errores del vigente
   const ultimoEnvio = useRef(0);
   const [turnoObsoleto, setTurnoObsoleto] = useState(false);
-  // El sillón se muestra aunque el catálogo no lo pida, si la API dijo que hace falta
-  const [sillonForzado, setSillonForzado] = useState(false);
+  // La prestación para la que la API dijo que hace falta sillón aunque el catálogo no lo pida
+  const [sillonForzadoPara, setSillonForzadoPara] = useState<string | null>(
+    null,
+  );
   const [rechazado, setRechazado] = useState<
     Partial<Record<CampoDeRecurso, string>>
   >({});
@@ -45,6 +47,11 @@ export function useEnvioTurno(
     return rechazado[campo] !== undefined && rechazado[campo] === elegido
       ? [elegido]
       : [];
+  }
+
+  /** El sillón se muestra para esta prestación aunque el catálogo no lo pida. */
+  function sillonForzado(prestacionId: string): boolean {
+    return sillonForzadoPara !== null && sillonForzadoPara === prestacionId;
   }
 
   /** Reemplaza los errores previos: así se limpian al reenviar. */
@@ -73,7 +80,9 @@ export function useEnvioTurno(
       const interpretado = interpretarErrorTurno(error, operacion);
       setErrores(interpretado.porCampo);
       setGenerales(interpretado.general === null ? [] : [interpretado.general]);
-      if (interpretado.porCampo.sillon !== undefined) setSillonForzado(true);
+      // Solo sillon_requerido revela que el catálogo está desactualizado; vale para esa prestación
+      if (error.codigo === "sillon_requerido")
+        setSillonForzadoPara(elegidos.prestacion);
       const referencia = error.datos.referencia;
       if (
         error.codigo === "referencia_invalida" &&

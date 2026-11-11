@@ -77,7 +77,7 @@ function Contenido({
   const { errores } = envio;
   const prestacion = catalogos.prestaciones.find((p) => p.id === prestacionId);
   const mostrarSillon =
-    prestacion?.requiere_sillon === true || envio.sillonForzado;
+    prestacion?.requiere_sillon === true || envio.sillonForzado(prestacionId);
 
   async function enviar(evento: FormEvent) {
     evento.preventDefault();

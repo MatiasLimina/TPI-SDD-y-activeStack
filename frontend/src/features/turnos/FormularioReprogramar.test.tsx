@@ -387,6 +387,27 @@ function rechazar(api: ApiFalsa, status: number, detail: unknown) {
   });
 }
 
+describe("Formulario de reprogramación: sillón tras un rechazo de la API", () => {
+  it("sillon_requerido con el catálogo desactualizado muestra el campo Sillón", async () => {
+    const api = instalarApiFalsa();
+    rechazar(api, 422, { codigo: "sillon_requerido", mensaje: "técnico" });
+    const { user } = montar({
+      catalogos: {
+        ...CATALOGOS,
+        prestaciones: [prestacion({ requiere_sillon: false })],
+      },
+    });
+    expect(screen.queryByLabelText("Sillón")).not.toBeInTheDocument();
+    cambiar("Hora", "15:00");
+
+    await enviar(user);
+
+    expect(await screen.findByLabelText("Sillón")).toHaveAccessibleDescription(
+      "Esta prestación requiere un sillón.",
+    );
+  });
+});
+
 describe("Formulario de reprogramación: el turno cambió", () => {
   it.each([
     [409, "turno_ya_cancelado", "Este turno ya fue cancelado."],

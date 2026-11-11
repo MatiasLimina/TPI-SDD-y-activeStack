@@ -80,7 +80,8 @@ function Contenido({
   const requiereSillon =
     catalogos.prestaciones.find((p) => p.id === turno.prestacion_id)
       ?.requiere_sillon === true;
-  const mostrarSillon = requiereSillon || envio.sillonForzado;
+  const mostrarSillon =
+    requiereSillon || envio.sillonForzado(turno.prestacion_id);
 
   async function enviar(evento: FormEvent) {
     evento.preventDefault();
@@ -112,7 +113,11 @@ function Contenido({
 
     const exito = await envio.enviar(
       () => cliente.pedir("PATCH", `/turnos/${turno.id}/reprogramar`, cuerpo),
-      { profesional: profesionalId, prestacion: "", sillon: sillonId },
+      {
+        profesional: profesionalId,
+        prestacion: turno.prestacion_id,
+        sillon: sillonId,
+      },
     );
     if (exito) alReprogramado();
   }

@@ -72,3 +72,47 @@ describe("useEnvioTurno: relectura de catálogos", () => {
     expect(result.current.generales).toEqual(erroresDelSegundo);
   });
 });
+
+describe("useEnvioTurno: sillón forzado", () => {
+  const montarHook = () =>
+    renderHook(() =>
+      useEnvioTurno("crear", {
+        alReleerAgenda: vi.fn(),
+        alReleerCatalogos: () => Promise.resolve(null),
+      }),
+    );
+
+  it("sillon_requerido fuerza el sillón solo para la prestación del envío rechazado", async () => {
+    const { result } = montarHook();
+
+    await act(async () => {
+      await result.current.enviar(
+        () => Promise.reject(sillonRequerido()),
+        ELEGIDOS,
+      );
+    });
+
+    expect(result.current.sillonForzado("r")).toBe(true);
+    expect(result.current.sillonForzado("otra")).toBe(false);
+  });
+
+  it("un sillón inexistente marca el campo pero no lo fuerza", async () => {
+    const { result } = montarHook();
+    const sillonInexistente = new ErrorApi({
+      status: 422,
+      codigo: "referencia_invalida",
+      mensaje: "No existe.",
+      datos: { referencia: "sillon", motivo: "inexistente" },
+    });
+
+    await act(async () => {
+      await result.current.enviar(
+        () => Promise.reject(sillonInexistente),
+        ELEGIDOS,
+      );
+    });
+
+    expect(result.current.errores.sillon).toBeDefined();
+    expect(result.current.sillonForzado("r")).toBe(false);
+  });
+});
