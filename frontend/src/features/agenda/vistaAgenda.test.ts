@@ -1,4 +1,11 @@
-import { aParametros, aRango, leerVista } from "./vistaAgenda";
+import {
+  aParametros,
+  aRango,
+  leerVista,
+  rotuloPeriodo,
+  type VistaAgenda,
+  vistaTrasGuardar,
+} from "./vistaAgenda";
 
 const HOY = "2026-11-09";
 const ID_A = "00000000-0000-4000-8000-0000000000a1";
@@ -153,5 +160,82 @@ describe("aParametros", () => {
     ];
 
     expect(claves).toEqual(["vista", "fecha", "profesional", "cancelados"]);
+  });
+});
+
+describe("rotuloPeriodo", () => {
+  const base: VistaAgenda = {
+    vista: "dia",
+    fecha: "2026-11-12",
+    profesionalId: null,
+    sillonId: null,
+    columnas: "profesional",
+    cancelados: false,
+  };
+
+  it.each([
+    ["2026-11-12", "Jueves 12/11/2026"],
+    ["2026-11-16", "Lunes 16/11/2026"],
+  ])("en la vista diaria de %s dice %s", (fecha, rotulo) => {
+    expect(rotuloPeriodo({ ...base, fecha })).toBe(rotulo);
+  });
+
+  it.each([
+    ["2026-11-12", "Semana del 09/11 al 15/11/2026"],
+    ["2026-11-15", "Semana del 09/11 al 15/11/2026"],
+    ["2026-11-09", "Semana del 09/11 al 15/11/2026"],
+  ])("en la vista semanal de %s dice %s", (fecha, rotulo) => {
+    expect(rotuloPeriodo({ ...base, vista: "semana", fecha })).toBe(rotulo);
+  });
+
+  it("lleva el año en ambas fechas si la semana cruza de año", () => {
+    expect(
+      rotuloPeriodo({ ...base, vista: "semana", fecha: "2026-12-30" }),
+    ).toBe("Semana del 28/12/2026 al 03/01/2027");
+  });
+});
+
+describe("vistaTrasGuardar", () => {
+  const base: VistaAgenda = {
+    vista: "dia",
+    fecha: "2026-11-09",
+    profesionalId: "00000000-0000-4000-8000-0000000000a1",
+    sillonId: null,
+    columnas: "sillon",
+    cancelados: true,
+  };
+
+  it("devuelve null si el turno cae en el día visible", () => {
+    expect(vistaTrasGuardar(base, "2026-11-09T10:00:00-03:00")).toBeNull();
+  });
+
+  it("navega al día del turno conservando vista, filtros y el resto", () => {
+    expect(vistaTrasGuardar(base, "2026-11-10T10:00:00-03:00")).toEqual({
+      ...base,
+      fecha: "2026-11-10",
+    });
+  });
+
+  it.each([
+    ["2026-11-09T00:00:00-03:00"],
+    ["2026-11-13T10:00:00-03:00"],
+    ["2026-11-15T23:30:00-03:00"],
+  ])("en la semana visible no navega para %s", (inicio) => {
+    expect(vistaTrasGuardar({ ...base, vista: "semana" }, inicio)).toBeNull();
+  });
+
+  it.each([
+    ["2026-11-16T09:00:00-03:00", "2026-11-16"],
+    ["2026-11-08T22:00:00-03:00", "2026-11-08"],
+  ])("en otra semana navega a la fecha de %s", (inicio, fecha) => {
+    expect(vistaTrasGuardar({ ...base, vista: "semana" }, inicio)?.fecha).toBe(
+      fecha,
+    );
+  });
+
+  it("usa el día del consultorio y no el del navegador", () => {
+    // 23:30 del 09/11 en Buenos Aires es el 10/11 en UTC y en Tokio
+    expect(vistaTrasGuardar(base, "2026-11-09T23:30:00-03:00")).toBeNull();
+    expect(vistaTrasGuardar(base, "2026-11-10T02:30:00Z")).toBeNull();
   });
 });

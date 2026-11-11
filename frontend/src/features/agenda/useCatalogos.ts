@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 
 import type { ErrorApi } from "../../shared/api/errorApi";
 import { useClienteApi } from "../sesion/ProveedorSesion";
-import { comoErrorApi } from "./errores";
+import { comoErrorApi } from "../../shared/api/comoErrorApi";
 import type { Prestacion, Profesional, Sillon } from "./tipos";
 
 export interface Catalogos {

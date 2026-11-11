@@ -11,6 +11,7 @@ import { instalarApiFalsa, type ApiFalsa } from "../test/apiFalsa";
 import {
   bloqueo,
   ID_ANA,
+  ID_TURNO,
   ID_LIMPIEZA,
   ID_LUIS,
   ID_SILLON_1,
@@ -1698,8 +1699,14 @@ async function abrirNuevoTurno(user: Usuario) {
   return await screen.findByRole("dialog", { name: "Nuevo turno" });
 }
 
-/** Completa el formulario de alta con todo lo obligatorio, para el 12/11 a las 10:00. */
-async function llenarAlta(user: Usuario, api: ApiFalsa, dialogo: HTMLElement) {
+/** Completa el formulario de alta con todo lo obligatorio, por defecto para el 12/11 a las 10:00. */
+async function llenarAlta(
+  user: Usuario,
+  api: ApiFalsa,
+  dialogo: HTMLElement,
+  fecha = "2026-11-12",
+  hora = "10:00",
+) {
   api.responder("GET /pacientes", { status: 200, cuerpo: [paciente()] });
   await user.type(within(dialogo).getByLabelText("Buscar paciente"), "car");
   await user.click(
@@ -1718,10 +1725,10 @@ async function llenarAlta(user: Usuario, api: ApiFalsa, dialogo: HTMLElement) {
     "Sillón 1",
   );
   fireEvent.change(within(dialogo).getByLabelText("Fecha"), {
-    target: { value: "2026-11-12" },
+    target: { value: fecha },
   });
   fireEvent.change(within(dialogo).getByLabelText("Hora"), {
-    target: { value: "10:00" },
+    target: { value: hora },
   });
 }
 
@@ -1752,21 +1759,89 @@ describe("Alta de un turno desde la agenda", () => {
     expect(api.pedidos("GET /turnos")).toHaveLength(lecturasAntes + 1);
   });
 
-  it("no salta a la fecha del turno: la agenda sigue en el período en curso", async () => {
+  it("si el turno cae en otro día de la vista diaria, la agenda navega a ese día conservando vista y filtros", async () => {
     conSesion();
     const api = instalarApiFalsa();
     cargar(api);
     api.responder("POST /turnos", { status: 201, cuerpo: {} });
-    const { user } = renderizarApp("/agenda?fecha=2026-11-09");
+    const { user } = renderizarApp(
+      `/agenda?fecha=2026-11-09&profesional=${ID_ANA}`,
+    );
     const dialogo = await abrirNuevoTurno(user);
-    await llenarAlta(user, api, dialogo);
+    await llenarAlta(user, api, dialogo, "2026-11-10");
 
     await enviarAlta(user, dialogo);
 
-    await screen.findByText("Turno creado para el 12/11 a las 10:00.");
-    expect(screen.getByTestId("busqueda").textContent).toBe(
-      "?fecha=2026-11-09",
+    expect(
+      await screen.findByText("Turno creado para el 10/11 a las 10:00."),
+    ).toBeInTheDocument();
+    const url = new URLSearchParams(screen.getByTestId("busqueda").textContent);
+    expect(url.get("fecha")).toBe("2026-11-10");
+    expect(url.get("vista")).toBe("dia");
+    expect(url.get("profesional")).toBe(ID_ANA);
+    expect(screen.getByText("Martes 10/11/2026")).toBeInTheDocument();
+    await waitFor(() =>
+      expect(rangoPedido(api)).toEqual(["2026-11-10", "2026-11-10"]),
     );
+  });
+
+  it("si el turno cae dentro de la semana visible no navega y relee el mismo rango", async () => {
+    conSesion();
+    const api = instalarApiFalsa();
+    cargar(api);
+    api.responder("POST /turnos", { status: 201, cuerpo: {} });
+    const { user } = renderizarApp("/agenda?vista=semana&fecha=2026-11-09");
+    const dialogo = await abrirNuevoTurno(user);
+    await llenarAlta(user, api, dialogo, "2026-11-13");
+    const lecturasAntes = api.pedidos("GET /turnos").length;
+
+    await enviarAlta(user, dialogo);
+
+    await screen.findByText("Turno creado para el 13/11 a las 10:00.");
+    expect(screen.getByTestId("busqueda").textContent).toBe(
+      "?vista=semana&fecha=2026-11-09",
+    );
+    expect(api.pedidos("GET /turnos")).toHaveLength(lecturasAntes + 1);
+    expect(rangoPedido(api)).toEqual(["2026-11-09", "2026-11-15"]);
+  });
+
+  it("si el turno cae en otra semana de la vista semanal, navega a su fecha", async () => {
+    conSesion();
+    const api = instalarApiFalsa();
+    cargar(api);
+    api.responder("POST /turnos", { status: 201, cuerpo: {} });
+    const { user } = renderizarApp("/agenda?vista=semana&fecha=2026-11-09");
+    const dialogo = await abrirNuevoTurno(user);
+    await llenarAlta(user, api, dialogo, "2026-11-17");
+
+    await enviarAlta(user, dialogo);
+
+    await screen.findByText("Turno creado para el 17/11 a las 10:00.");
+    const url = new URLSearchParams(screen.getByTestId("busqueda").textContent);
+    expect(url.get("fecha")).toBe("2026-11-17");
+    expect(url.get("vista")).toBe("semana");
+    expect(
+      screen.getByText("Semana del 16/11 al 22/11/2026"),
+    ).toBeInTheDocument();
+  });
+
+  it("usa el día del consultorio: un turno de las 22:00 no salta al día siguiente de Tokio", async () => {
+    conSesion();
+    const api = instalarApiFalsa();
+    cargar(api);
+    api.responder("POST /turnos", { status: 201, cuerpo: {} });
+    const { user } = renderizarApp("/agenda?fecha=2026-11-12");
+    const dialogo = await abrirNuevoTurno(user);
+    await llenarAlta(user, api, dialogo, "2026-11-12", "22:00");
+    const lecturasAntes = api.pedidos("GET /turnos").length;
+
+    await enviarAlta(user, dialogo);
+
+    await screen.findByText("Turno creado para el 12/11 a las 22:00.");
+    expect(screen.getByTestId("busqueda").textContent).toBe(
+      "?fecha=2026-11-12",
+    );
+    expect(api.pedidos("GET /turnos")).toHaveLength(lecturasAntes + 1);
   });
 
   it("precarga la fecha de la agenda y el profesional del filtro", async () => {
@@ -1807,13 +1882,13 @@ describe("Alta de un turno desde la agenda", () => {
     const { user } = renderizarApp("/agenda?fecha=2026-11-09");
     const dialogo = await abrirNuevoTurno(user);
     await screen.findByText("Ejemplo, Bruno");
-    await llenarAlta(user, api, dialogo);
+    await llenarAlta(user, api, dialogo, "2026-11-09");
     api.responder("GET /turnos", { red: true });
 
     await enviarAlta(user, dialogo);
 
     expect(
-      await screen.findByText("Turno creado para el 12/11 a las 10:00."),
+      await screen.findByText("Turno creado para el 09/11 a las 10:00."),
     ).toBeInTheDocument();
     expect(
       await screen.findByText("No se pudo conectar con el servidor."),
@@ -1837,7 +1912,7 @@ describe("Alta de un turno desde la agenda", () => {
     );
     await user.click(screen.getByRole("button", { name: "Nuevo turno" }));
     const dialogo = await screen.findByRole("dialog", { name: "Nuevo turno" });
-    await llenarAlta(user, api, dialogo);
+    await llenarAlta(user, api, dialogo, "2026-11-09");
     api.responder("GET /turnos", {
       status: 200,
       cuerpo: {
@@ -2097,6 +2172,46 @@ describe("Reprogramar y cancelar desde la agenda", () => {
     expect(screen.getAllByRole("dialog")).toHaveLength(1);
   });
 
+  it("reprogramar a otro día lleva la agenda a ese día", async () => {
+    const { api, user } = await abrirOperacion("Reprogramar");
+    api.responder(RUTA_PATCH, { status: 200, cuerpo: {} });
+    const dialogo = await screen.findByRole("dialog", {
+      name: "Reprogramar turno",
+    });
+    fireEvent.change(within(dialogo).getByLabelText("Fecha"), {
+      target: { value: "2026-11-11" },
+    });
+
+    await user.click(
+      within(dialogo).getByRole("button", { name: "Reprogramar" }),
+    );
+
+    expect(await screen.findByText("Turno reprogramado.")).toBeInTheDocument();
+    const url = new URLSearchParams(screen.getByTestId("busqueda").textContent);
+    expect(url.get("fecha")).toBe("2026-11-11");
+    expect(screen.getByText("Miércoles 11/11/2026")).toBeInTheDocument();
+  });
+
+  it("reprogramar solo la duración no cambia la URL", async () => {
+    const { api, user } = await abrirOperacion("Reprogramar");
+    api.responder(RUTA_PATCH, { status: 200, cuerpo: {} });
+    const dialogo = await screen.findByRole("dialog", {
+      name: "Reprogramar turno",
+    });
+    fireEvent.change(within(dialogo).getByLabelText("Duración"), {
+      target: { value: "60" },
+    });
+
+    await user.click(
+      within(dialogo).getByRole("button", { name: "Reprogramar" }),
+    );
+
+    await screen.findByText("Turno reprogramado.");
+    expect(screen.getByTestId("busqueda").textContent).toBe(
+      "?fecha=2026-11-09",
+    );
+  });
+
   it("una reprogramación exitosa deja la agenda sin diálogos, relee y confirma", async () => {
     const { api, user } = await abrirOperacion("Reprogramar");
     api.responder(RUTA_PATCH, { status: 200, cuerpo: {} });
@@ -2203,5 +2318,164 @@ describe("Ubicación del botón Nuevo turno", () => {
     expect(
       boton.compareDocumentPosition(ana) & Node.DOCUMENT_POSITION_FOLLOWING,
     ).toBeTruthy();
+  });
+});
+
+describe("Historial del turno desde la agenda", () => {
+  const RUTA_AUDITORIA = `GET /turnos/${ID_TURNO}/auditoria`;
+
+  async function abrirDetalle(
+    rol: "recepcionista" | "odontologo",
+    elemento = turno({
+      inicio: "2026-11-09T15:00:00-03:00",
+      fin: "2026-11-09T15:45:00-03:00",
+    }),
+    ruta = "/agenda?fecha=2026-11-09",
+  ) {
+    conSesion(rol, AHORA_SEGUNDOS + 2 * 24 * 3600);
+    const api = instalarApiFalsa();
+    cargar(api, { turnos: [elemento] });
+    api.responder(RUTA_AUDITORIA, { status: 200, cuerpo: [] });
+    const vista = renderizarApp(ruta);
+    await vista.user.click(
+      await screen.findByRole("button", { name: /Imaginaria, Carla/ }),
+    );
+    await screen.findByRole("dialog", { name: "Detalle del turno" });
+    return { api, ...vista };
+  }
+
+  it("la recepcionista abre el historial: un solo diálogo y se pide la auditoría del turno", async () => {
+    const { api, user } = await abrirDetalle("recepcionista");
+
+    await user.click(screen.getByRole("button", { name: "Ver historial" }));
+
+    expect(
+      await screen.findByRole("dialog", { name: "Historial del turno" }),
+    ).toBeInTheDocument();
+    expect(screen.getAllByRole("dialog")).toHaveLength(1);
+    await waitFor(() => expect(api.pedidos(RUTA_AUDITORIA)).toHaveLength(1));
+  });
+
+  it("también se ofrece para un turno cancelado y pasado, sin Reprogramar ni Cancelar turno", async () => {
+    vi.setSystemTime("2026-11-09T15:00:00Z");
+    await abrirDetalle(
+      "recepcionista",
+      turno({
+        estado: "cancelado",
+        inicio: "2026-11-09T10:00:00-03:00",
+        fin: "2026-11-09T10:45:00-03:00",
+      }),
+      "/agenda?fecha=2026-11-09&cancelados=1",
+    );
+
+    expect(
+      screen.getByRole("button", { name: "Ver historial" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Reprogramar" }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Cancelar turno" }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("el odontólogo no ve Ver historial ni genera pedidos a la auditoría", async () => {
+    const { api } = await abrirDetalle("odontologo");
+
+    expect(
+      screen.queryByRole("button", { name: "Ver historial" }),
+    ).not.toBeInTheDocument();
+    expect(api.pedidos(RUTA_AUDITORIA)).toHaveLength(0);
+  });
+
+  it("Cerrar deja la agenda sin diálogos", async () => {
+    const { user } = await abrirDetalle("recepcionista");
+    await user.click(screen.getByRole("button", { name: "Ver historial" }));
+    const dialogo = await screen.findByRole("dialog", {
+      name: "Historial del turno",
+    });
+
+    await user.click(within(dialogo).getByRole("button", { name: "Cerrar" }));
+
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Agenda" })).toBeInTheDocument();
+  });
+});
+
+describe("Rótulo del período visible", () => {
+  it("la vista diaria muestra el día y la fecha completa", async () => {
+    conSesion();
+    instalarApiFalsa();
+
+    renderizarApp("/agenda?vista=dia&fecha=2026-11-12");
+    await esperarCarga();
+
+    expect(screen.getByText("Jueves 12/11/2026")).toBeInTheDocument();
+  });
+
+  it.each([
+    ["2026-11-12", "Semana del 09/11 al 15/11/2026"],
+    ["2026-12-30", "Semana del 28/12/2026 al 03/01/2027"],
+  ])("la vista semanal de %s muestra %s", async (fecha, rotulo) => {
+    conSesion();
+    instalarApiFalsa();
+
+    renderizarApp(`/agenda?vista=semana&fecha=${fecha}`);
+    await esperarCarga();
+
+    expect(screen.getByText(rotulo)).toBeInTheDocument();
+  });
+
+  it("se actualiza al navegar, volver a hoy y cambiar de vista", async () => {
+    conSesion();
+    instalarApiFalsa();
+    const { user } = renderizarApp("/agenda?vista=dia&fecha=2026-11-12");
+    await esperarCarga();
+
+    await user.click(screen.getByRole("button", { name: "Período siguiente" }));
+    expect(await screen.findByText("Viernes 13/11/2026")).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Período anterior" }));
+    await user.click(screen.getByRole("button", { name: "Período anterior" }));
+    expect(await screen.findByText("Miércoles 11/11/2026")).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Hoy" }));
+    expect(await screen.findByText("Lunes 09/11/2026")).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Semana" }));
+    expect(
+      await screen.findByText("Semana del 09/11 al 15/11/2026"),
+    ).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Período siguiente" }));
+    expect(
+      await screen.findByText("Semana del 16/11 al 22/11/2026"),
+    ).toBeInTheDocument();
+  });
+
+  it("usa la fecha del consultorio aunque el navegador esté en otra zona", async () => {
+    conSesion("recepcionista", AHORA_SEGUNDOS + 10 * 86400);
+    instalarApiFalsa();
+    // En Buenos Aires son las 20:00 del 11/11; en Tokio (zona de la suite) ya es el 12
+    vi.setSystemTime("2026-11-11T23:00:00Z");
+
+    renderizarApp("/agenda");
+    await esperarCarga();
+
+    expect(screen.getByText("Miércoles 11/11/2026")).toBeInTheDocument();
+    expect(screen.queryByText(/12\/11\/2026/)).not.toBeInTheDocument();
+  });
+
+  it("es una región aria-live polite", async () => {
+    conSesion();
+    instalarApiFalsa();
+
+    renderizarApp("/agenda?vista=dia&fecha=2026-11-12");
+    await esperarCarga();
+
+    expect(screen.getByText("Jueves 12/11/2026")).toHaveAttribute(
+      "aria-live",
+      "polite",
+    );
   });
 });

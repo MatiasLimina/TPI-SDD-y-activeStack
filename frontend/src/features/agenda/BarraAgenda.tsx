@@ -7,7 +7,7 @@ import {
   SILLON_NO_DISPONIBLE,
 } from "./grilla";
 import type { Catalogos } from "./useCatalogos";
-import type { VistaAgenda } from "./vistaAgenda";
+import { rotuloPeriodo, type VistaAgenda } from "./vistaAgenda";
 
 interface PropsBarra {
   vista: VistaAgenda;
@@ -67,6 +67,9 @@ export function BarraAgenda({
           Período siguiente
         </button>
       </div>
+      <p className={estilos.rotulo} aria-live="polite" aria-atomic="true">
+        {rotuloPeriodo(vista)}
+      </p>
       <Filtros
         vista={vista}
         rol={rol}

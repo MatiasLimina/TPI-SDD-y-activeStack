@@ -16,3 +16,8 @@
   background: var(--color-primario);
   color: #fff;
 }
+
+.rotulo {
+  margin: 0;
+  font-weight: 600;
+}

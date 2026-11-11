@@ -97,6 +97,7 @@ describe("Horario de un elemento que termina a las 00:00", () => {
         alCerrar={() => undefined}
         alReprogramar={() => undefined}
         alCancelar={() => undefined}
+        alVerHistorial={() => undefined}
       />,
     );
 
@@ -115,6 +116,7 @@ describe("Horario de un elemento que termina a las 00:00", () => {
         alCerrar={() => undefined}
         alReprogramar={() => undefined}
         alCancelar={() => undefined}
+        alVerHistorial={() => undefined}
       />,
     );
 

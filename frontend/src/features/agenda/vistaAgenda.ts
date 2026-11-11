@@ -1,5 +1,9 @@
 import type { Rol } from "../sesion/claims";
 import {
+  diaYMes,
+  etiquetaDiaCompleta,
+  fechaCompleta,
+  instanteALocal,
   lunesDeLaSemana,
   sumarDias,
 } from "../../shared/tiempo/zonaConsultorio";
@@ -86,4 +90,28 @@ export function aParametros(vista: VistaAgenda): URLSearchParams {
   if (vista.columnas === "sillon") parametros.set("columnas", "sillon");
   if (vista.cancelados) parametros.set("cancelados", "1");
   return parametros;
+}
+
+/** Rótulo del período visible (D19): el día, o la semana con el año en ambas fechas si cruza de año. */
+export function rotuloPeriodo(vista: VistaAgenda): string {
+  if (vista.vista === "dia") return etiquetaDiaCompleta(vista.fecha);
+  const { desde, hasta } = aRango(vista);
+  const inicio =
+    desde.slice(0, 4) === hasta.slice(0, 4)
+      ? diaYMes(desde)
+      : fechaCompleta(desde);
+  return `Semana del ${inicio} al ${fechaCompleta(hasta)}`;
+}
+
+/**
+ * Vista a la que ir tras guardar un turno (D20): la misma con la `fecha` del turno si su día en
+ * la zona del consultorio cae fuera del período visible, o `null` si ya se ve.
+ */
+export function vistaTrasGuardar(
+  vista: VistaAgenda,
+  inicio: string,
+): VistaAgenda | null {
+  const { fecha } = instanteALocal(inicio);
+  const { desde, hasta } = aRango(vista);
+  return fecha >= desde && fecha <= hasta ? null : { ...vista, fecha };
 }
