@@ -1,4 +1,4 @@
-import { ErrorApi, MENSAJE_GENERICO } from "../../shared/api/errorApi";
+import { ErrorApi, MENSAJE_GENERICO } from "./errorApi";
 
 /** El cliente HTTP solo lanza `ErrorApi`; cualquier otra cosa es una falla inesperada. */
 export function comoErrorApi(causa: unknown): ErrorApi {

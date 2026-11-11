@@ -15,3 +15,22 @@ export function usarRelojFijo(): void {
     vi.useRealTimers();
   });
 }
+
+/**
+ * Reloj fijo con avance manual (sin `shouldAdvanceTime`): para probar esperas como la de 300 ms
+ * de la búsqueda de pacientes. React Testing Library solo adelanta los temporizadores si ve el
+ * global `jest`; sin él, `userEvent` y `findBy*` esperan para siempre con relojes falsos de
+ * Vitest. El global se desinstala solo (`unstubGlobals`).
+ */
+export function usarRelojManual(): void {
+  beforeEach(() => {
+    vi.useFakeTimers();
+    vi.setSystemTime(AHORA_ISO);
+    vi.stubGlobal("jest", {
+      advanceTimersByTime: (ms: number) => vi.advanceTimersByTime(ms),
+    });
+  });
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+}

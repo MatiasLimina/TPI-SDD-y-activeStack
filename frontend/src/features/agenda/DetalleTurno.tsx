@@ -16,6 +16,8 @@ interface PropsDetalle {
   alCerrar: () => void;
   alReprogramar: (turno: TurnoAgenda) => void;
   alCancelar: (turno: TurnoAgenda) => void;
+  /** Historial de auditoría, solo para la recepcionista (DD-25 a). */
+  alVerHistorial: (turno: TurnoAgenda) => void;
 }
 
 /**
@@ -47,6 +49,7 @@ export function DetalleTurno({
   alCerrar,
   alReprogramar,
   alCancelar,
+  alVerHistorial,
 }: PropsDetalle) {
   return (
     <Dialogo
@@ -87,6 +90,11 @@ export function DetalleTurno({
                 Cancelar turno
               </button>
             </div>
+          )}
+          {puedeOperar && (
+            <button type="button" onClick={() => alVerHistorial(turno)}>
+              Ver historial
+            </button>
           )}
           <button type="button" onClick={alCerrar}>
             Cerrar

@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 
 import type { ErrorApi } from "../../shared/api/errorApi";
 import { useClienteApi } from "../sesion/ProveedorSesion";
-import { comoErrorApi } from "./errores";
+import { comoErrorApi } from "../../shared/api/comoErrorApi";
 import type { RespuestaAgenda } from "./tipos";
 
 export interface ConsultaAgenda {

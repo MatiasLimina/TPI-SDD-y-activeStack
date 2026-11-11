@@ -1,0 +1,23 @@
+.nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--espacio) 1rem;
+  margin: var(--espacio) 0;
+}
+
+.nav a {
+  padding: 0.25rem 0.5rem;
+  border-radius: var(--radio);
+  color: var(--color-primario);
+  text-decoration: none;
+}
+
+.nav a:hover {
+  text-decoration: underline;
+}
+
+.nav a[aria-current="page"] {
+  background: var(--color-primario);
+  color: #fff;
+  font-weight: 600;
+}

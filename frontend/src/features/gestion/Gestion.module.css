@@ -1,0 +1,94 @@
+/* Estilos de las pantallas de gestión: solo variables de shared/estilos/base.css */
+.tabla {
+  width: 100%;
+  border-collapse: collapse;
+  background: var(--color-superficie);
+  border: 1px solid var(--color-borde);
+  border-radius: var(--radio);
+}
+
+.tabla th,
+.tabla td {
+  padding: var(--espacio) 0.75rem;
+  text-align: left;
+  border-bottom: 1px solid var(--color-borde);
+  vertical-align: middle;
+}
+
+.tabla th {
+  color: var(--color-texto-suave);
+  font-weight: 600;
+}
+
+/* "Inactivo" se dice con texto; el fondo y la cursiva solo lo refuerzan */
+.inactivo {
+  background: var(--color-cancelado);
+  font-style: italic;
+}
+
+.acciones button + button {
+  margin-left: var(--espacio);
+}
+
+.barra {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--espacio) 1rem;
+  margin: 1rem 0;
+}
+
+.paginacion {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-top: 1rem;
+}
+
+.dias {
+  display: grid;
+  gap: var(--espacio);
+  margin-top: 1rem;
+}
+
+.dia {
+  background: var(--color-superficie);
+  border: 1px solid var(--color-borde);
+  border-radius: var(--radio);
+  padding: var(--espacio) 0.75rem;
+}
+
+.dia h3 {
+  margin: 0 0 var(--espacio);
+  font-size: 1rem;
+}
+
+.dia ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.dia li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--espacio);
+}
+
+.turnosAfectados {
+  list-style: none;
+  padding: 0;
+  margin: var(--espacio) 0;
+}
+
+.turnosAfectados li {
+  background: var(--color-bloqueo);
+  border-radius: var(--radio);
+  padding: 0.25rem 0.5rem;
+  margin-bottom: 0.25rem;
+}
+
+.pagina {
+  padding: 1rem;
+}

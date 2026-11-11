@@ -6,6 +6,7 @@ import { BarraAgenda } from "../features/agenda/BarraAgenda";
 import { DialogoCancelar } from "../features/turnos/DialogoCancelar";
 import { FormularioReprogramar } from "../features/turnos/FormularioReprogramar";
 import { FormularioNuevoTurno } from "../features/turnos/FormularioNuevoTurno";
+import { HistorialTurno } from "../features/auditoria/HistorialTurno";
 import { DetalleTurno } from "../features/agenda/DetalleTurno";
 import { GrillaAgenda } from "../features/agenda/GrillaAgenda";
 import { armarColumnas, contarElementos } from "../features/agenda/grilla";
@@ -18,6 +19,7 @@ import {
   aRango,
   leerVista,
   type VistaAgenda,
+  vistaTrasGuardar,
 } from "../features/agenda/vistaAgenda";
 import { useSesion } from "../features/sesion/ProveedorSesion";
 import {
@@ -61,11 +63,18 @@ export default function PaginaAgenda() {
   // turno entero, para que una relectura no cierre el formulario si el turno desaparece
   const [reprogramando, setReprogramando] = useState<TurnoAgenda | null>(null);
   const [cancelando, setCancelando] = useState<TurnoAgenda | null>(null);
+  const [historial, setHistorial] = useState<TurnoAgenda | null>(null);
   const [detalleId, setDetalleId] = useState<string | null>(null);
   const turnoDetalle = datos?.turnos.find((t) => t.id === detalleId) ?? null;
   const esRecepcionista = rol === "recepcionista";
   const cambiarVista = (nueva: VistaAgenda) =>
     setParametros(aParametros(nueva));
+  // Un turno guardado fuera del período visible se sigue con la agenda (D20); si no, se relee
+  const irAlTurno = (inicio: string) => {
+    const destino = vistaTrasGuardar(vista, inicio);
+    if (destino === null) agenda.recargar();
+    else cambiarVista(destino);
+  };
   const reintentarTodo = () => {
     if (errorCatalogos !== null) reintentar();
     if (agenda.error !== null) agenda.recargar();
@@ -137,7 +146,7 @@ export default function PaginaAgenda() {
             setAviso(
               `Turno creado para el ${diaYMes(local.fecha)} a las ${local.hora}.`,
             );
-            agenda.recargar();
+            irAlTurno(inicio);
           }}
           alCerrar={() => setNuevoAbierto(false)}
           alReleerCatalogos={recargarCatalogos}
@@ -157,16 +166,28 @@ export default function PaginaAgenda() {
           setDetalleId(null);
           setCancelando(t);
         }}
+        alVerHistorial={(t) => {
+          setDetalleId(null);
+          setHistorial(t);
+        }}
       />
+      {esRecepcionista && (
+        <HistorialTurno
+          turno={historial}
+          nombres={nombres}
+          usuarioSesion={sesion?.claims.usuarioId ?? null}
+          alCerrar={() => setHistorial(null)}
+        />
+      )}
       {esRecepcionista && catalogos !== null && (
         <FormularioReprogramar
           turno={reprogramando}
           catalogos={catalogos}
           nombres={nombres}
-          alReprogramado={() => {
+          alReprogramado={(inicio) => {
             setReprogramando(null);
             setAviso("Turno reprogramado.");
-            agenda.recargar();
+            irAlTurno(inicio);
           }}
           alCerrar={() => setReprogramando(null)}
           alReleerCatalogos={recargarCatalogos}

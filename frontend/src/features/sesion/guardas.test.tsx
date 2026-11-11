@@ -76,7 +76,7 @@ describe("Guarda por rol", () => {
     expect(
       screen.getByRole("heading", { name: "Configuración" }),
     ).toBeInTheDocument();
-    expect(ubicacion()).toBe("/configuracion");
+    expect(ubicacion()).toBe("/configuracion/profesionales");
   });
 
   it("el odontólogo ve la falta de permiso, con la URL intacta y el token guardado", () => {
@@ -103,6 +103,39 @@ describe("Guarda por rol", () => {
 
     expect(ubicacion()).toBe("/agenda");
     expect(screen.getByRole("heading", { name: "Agenda" })).toBeInTheDocument();
+  });
+
+  it.each(["/configuracion/horarios", "/configuracion", "/pacientes"])(
+    "el odontólogo ve la falta de permiso en %s, con la URL intacta y sin pedidos a la API",
+    (ruta) => {
+      const token = tokenDeOdontologo(VIGENTE);
+      sessionStorage.setItem(CLAVE_TOKEN, token);
+      const api = instalarApiFalsa();
+
+      renderizarApp(ruta);
+
+      expect(
+        screen.getByRole("heading", { name: "Sin permiso" }),
+      ).toBeInTheDocument();
+      expect(ubicacion()).toBe(ruta);
+      expect(sessionStorage.getItem(CLAVE_TOKEN)).toBe(token);
+      expect(api.fetch).not.toHaveBeenCalled();
+    },
+  );
+
+  it("el odontólogo ve el contenido de /agenda y luego el de /bloqueos", async () => {
+    sessionStorage.setItem(CLAVE_TOKEN, tokenDeOdontologo(VIGENTE));
+    const { navegarA } = renderizarApp("/agenda");
+    expect(screen.getByRole("heading", { name: "Agenda" })).toBeInTheDocument();
+
+    await navegarA("/bloqueos");
+
+    expect(
+      await screen.findByRole("heading", { name: "Mis bloqueos" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("heading", { name: "Sin permiso" }),
+    ).not.toBeInTheDocument();
   });
 
   it("el odontólogo ve el contenido de /agenda", () => {

@@ -46,6 +46,11 @@
 }
 
 .columna {
+  /*
+   * Mide lo que sus 288 filas: estirada solo hasta el alto visible (70vh), el encabezado fijo
+   * se iba con el scroll al salir de la caja de su sección (D21)
+   */
+  align-self: flex-start;
   /* Todas las columnas del mismo ancho, sin crecer por el texto de sus turnos */
   flex: 1 1 0;
   min-width: 7rem;
